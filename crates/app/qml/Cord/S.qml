@@ -150,6 +150,7 @@ QtObject {
     }
 
     function refresh() {
+        const og = glds
         const j = JSON.parse(c.snap())
         const am = {}
         for (const a of j.accs || []) am[a.id] = a
@@ -183,7 +184,14 @@ QtObject {
         gmap = gm
         glds = gl
         chans = cm
-        rels = j.rels || []
+        const nr = j.rels || []
+        if (f("relnotif") && rels.length) {
+            const ids = new Set(nr.filter(x => x.k === "Friend" && x.usr.id).map(x => ridOf(x.usr.id)))
+            for (const o of rels) if (o.k === "Friend" && o.usr.id && !ids.has(ridOf(o.usr.id)) && accs[o.usr.id.acc]) c.notify("Friend removed", (o.usr.disp || o.usr.name) + " is no longer on your friends list")
+            const gs = new Set(Object.keys(gm))
+            for (const g of og) if (!gs.has(g.rid) && am[acc(g.rid)]) c.notify("Server removed", "You are no longer in " + g.name)
+        }
+        rels = nr
         pres = j.pres || {}
         unr = j.unr || {}
         vs = j.vs || []

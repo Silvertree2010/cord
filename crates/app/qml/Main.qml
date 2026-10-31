@@ -21,6 +21,10 @@ ApplicationWindow {
         const sh = Qt.application.arguments.indexOf("--shot")
         const sp = Qt.application.arguments.indexOf("--page")
         if (sp >= 0) { S.setPage = Qt.application.arguments[sp + 1]; S.showSet = true }
+        if (Qt.application.arguments.indexOf("--edit") >= 0) S.edit = true
+        if (Qt.application.arguments.indexOf("--quick") >= 0) S.qk = true
+        const sl = Qt.application.arguments.indexOf("--preset")
+        if (sl >= 0) S.lay = L.cp(L.presets[Qt.application.arguments[sl + 1]])
         const so = Qt.application.arguments.indexOf("--open")
         if (so >= 0) { const g = Qt.application.arguments[so + 1]; Qt.callLater(() => S.pick(g)) }
         if (sh >= 0) shotT.out = Qt.application.arguments[sh + 1] || "/tmp/cord.png"

@@ -65,7 +65,7 @@ Rectangle {
         Rectangle {
             height: 42 * Th.dens
             x: 8
-            width: lv.width - 16
+            width: lv.width - 22
             radius: Th.rs
             color: ma.containsMouse ? Th.hov : "transparent"
             opacity: it.p && it.p.st !== "Off" ? 1 : 0.5
@@ -95,9 +95,9 @@ Rectangle {
                 id: pl
                 visible: S.f("platform") && !!it.p
                 anchors.right: parent.right
-                anchors.rightMargin: 8
+                anchors.rightMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 2
+                spacing: 3
                 Ico { visible: !!(it.p && it.p.desk); n: "screen"; sz: 13; col: Th.tx3 }
                 Ico { visible: !!(it.p && it.p.mob); n: "phone"; sz: 13; col: Th.tx3 }
                 Ico { visible: !!(it.p && it.p.web); n: "globe"; sz: 13; col: Th.tx3 }

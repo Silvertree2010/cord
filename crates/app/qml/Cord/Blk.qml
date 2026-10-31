@@ -32,11 +32,15 @@ Item {
             spacing: 8
             Lbl {
                 anchors.horizontalCenter: parent.horizontalCenter
+                width: Math.min(implicitWidth, r.width - 8)
+                horizontalAlignment: Text.AlignHCenter
                 text: (S.allBlks().find(b => b.id === r.n.b) || { name: r.n.b }).name
                 font.weight: Font.DemiBold
+                visible: r.width > 60
             }
-            Row {
+            Flow {
                 anchors.horizontalCenter: parent.horizontalCenter
+                width: Math.min(68, r.width - 4)
                 spacing: 4
                 Rectangle {
                     width: 32
