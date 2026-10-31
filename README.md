@@ -21,6 +21,32 @@ Early development. Nothing here is usable yet.
 
 Rust core, Qt 6 / QML UI through [cxx-qt](https://github.com/KDAB/cxx-qt). Voice through PipeWire and Opus, Discord E2EE through libdave, Matrix and Stoat calls through LiveKit, screen capture through the XDG desktop portal with hardware encoding.
 
+## Screenshots
+
+![Chat](docs/shot-chat.png)
+
+![Setup](docs/shot-setup.png)
+
+## Install
+
+From source into `~/.local`, or any other prefix via `PREFIX=`:
+
+```sh
+./install.sh
+./install.sh --uninstall
+```
+
+The script builds a release binary, installs `bin/cord`, `share/cord/qml`, the desktop entry and the icon, and prints the Arch package names of any missing dependency.
+
+On Arch Linux:
+
+```sh
+cd packaging/arch
+makepkg -si
+```
+
+Runtime dependencies: Qt 6 (base, declarative, multimedia), GStreamer with base, good and bad plugins, `gst-plugin-pipewire`, PipeWire, libsecret, opus. Optional: `playerctl`, `wl-clipboard` or `xclip`.
+
 ## Building
 
 Requires Rust, Qt 6.8+ (base, declarative, multimedia), PipeWire, libsecret.
@@ -28,6 +54,46 @@ Requires Rust, Qt 6.8+ (base, declarative, multimedia), PipeWire, libsecret.
 ```sh
 cargo run -p cord
 ```
+
+## Configuration
+
+Everything lives in `~/.config/cord`:
+
+- `ui.json`: layout and UI settings
+- `cfg.json`: application settings
+- `themes/*.json`: themes
+- `mods/<name>/main.qml`: mods
+- `blocks/<id>.qml`: overrides for built-in blocks
+
+## Mods
+
+A mod is a directory with a `main.qml` under `mods/`.
+
+```qml
+import QtQuick
+import Cord
+
+Item {
+    Component.onCompleted: {
+        S.hook("send", o => o)
+        S.regBlk("clock", Qt.resolvedUrl("Clock.qml"), "Clock")
+    }
+}
+```
+
+## Theme format
+
+A theme is a JSON object with the keys `bg`, `bg2`, `bg3`, `bg4`, `hov`, `sel`, `ln`, `tx`, `tx2`, `tx3`, `ac`, `acTx`, `ok`, `warn`, `err`, `ment`, `r`, `rs`, `font`, `mono`, `fs` and `dens`. Colors are `#RRGGBB`, or `#RRGGBBAA` when 8 digits are used.
+
+## Keyboard shortcuts
+
+- Ctrl+K: quick switcher
+- Ctrl+,: settings
+- Ctrl+E: edit layout
+- Alt+Up / Alt+Down: previous / next channel
+- Shift+Esc: mark read
+- Up: edit last message
+- Middle click: open in second chat
 
 ## Disclaimer
 
