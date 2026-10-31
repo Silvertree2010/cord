@@ -26,13 +26,22 @@ pub fn mx_any() -> Option<Arc<cord_mx::Mx>> {
     mx().lock().ok()?.values().next().cloned()
 }
 
-fn mdir(id: u32) -> std::path::PathBuf {
+pub fn mdir(id: u32) -> std::path::PathBuf {
     let d = crate::cfg::data().join(format!("mx{id}"));
     let _ = std::fs::create_dir_all(&d);
     d
 }
 
-pub async fn mk(a: &Ac, sec: String) -> Option<Arc<dyn Bk>> {
+pub fn forget(a: u32) {
+    if let Ok(mut g) = DC.get_or_init(Default::default).lock() {
+        g.remove(&a);
+    }
+    if let Ok(mut g) = mx().lock() {
+        g.remove(&a);
+    }
+}
+
+pub async fn mk(a: &Ac, sec: String) -> Res<Arc<dyn Bk>> {
     match a.svc {
         Svc::Dc => {
             let d = Arc::new(cord_dc::Dc::new(a.id, sec));
@@ -40,20 +49,20 @@ pub async fn mk(a: &Ac, sec: String) -> Option<Arc<dyn Bk>> {
             if let Ok(mut g) = DC.get_or_init(Default::default).lock() {
                 g.insert(a.id, d.clone());
             }
-            Some(d)
+            Ok(d)
         }
         Svc::St => {
             let v: Value = serde_json::from_str(&sec).unwrap_or(json!({"tok": sec}));
             let base = v["base"].as_str().map(String::from).unwrap_or_else(|| if a.base.is_empty() { "https://api.stoat.chat".into() } else { a.base.clone() });
-            Some(Arc::new(cord_st::St::new(a.id, base, v["tok"].as_str().unwrap_or("").to_string())))
+            Ok(Arc::new(cord_st::St::new(a.id, base, v["tok"].as_str().unwrap_or("").to_string())))
         }
         Svc::Mx => {
-            let m = cord_mx::Mx::restore(a.id, &mdir(a.id), &sec).await.ok()?;
+            let m = cord_mx::Mx::restore(a.id, &mdir(a.id), &sec).await.map_err(|e| anyhow::anyhow!("matrix restore failed: {e}"))?;
             let m = Arc::new(m);
             if let Ok(mut g) = mx().lock() {
                 g.insert(a.id, m.clone());
             }
-            Some(Arc::new(MxB(m)))
+            Ok(Arc::new(MxB(m)))
         }
     }
 }
@@ -76,7 +85,7 @@ pub async fn login(sv: Svc, id: u32, v: &Value) -> Res<(String, String)> {
             if hs.is_empty() {
                 hs = "https://matrix.org".into();
             }
-            if !hs.starts_with("http") {
+            if !(hs.starts_with("http://") || hs.starts_with("https://")) {
                 hs = format!("https://{hs}");
             }
             let m = cord_mx::Mx::login(id, &hs, &g("user"), &g("pass"), &mdir(id)).await?;
@@ -127,6 +136,9 @@ impl Bk for MxB {
     }
     async fn set_st(&self, s: St, a: Option<String>) -> Res<()> {
         self.0.set_st(s, a).await
+    }
+    async fn stop(&self) {
+        self.0.stop().await
     }
 }
 

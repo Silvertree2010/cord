@@ -7,11 +7,12 @@ pub struct Demo {
     sv: Svc,
     n: AtomicU64,
     tx: tokio::sync::OnceCell<Tx>,
+    jh: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
 }
 
 impl Demo {
     pub fn new(a: u32, sv: Svc) -> Self {
-        Self { a, sv, n: AtomicU64::new(1000), tx: Default::default() }
+        Self { a, sv, n: AtomicU64::new(1000), tx: Default::default(), jh: Default::default() }
     }
     fn r(&self, s: impl Into<String>) -> Rid {
         Rid::new(self.sv, self.a, s.into())
@@ -107,8 +108,8 @@ impl Bk for Demo {
             }
         }
         let c = self.r("g0c0");
-        let s = Self { a: self.a, sv: self.sv, n: AtomicU64::new(0), tx: Default::default() };
-        tokio::spawn(async move {
+        let s = Self { a: self.a, sv: self.sv, n: AtomicU64::new(0), tx: Default::default(), jh: Default::default() };
+        let jh = tokio::spawn(async move {
             loop {
                 tokio::time::sleep(std::time::Duration::from_secs(9 + s.a as u64 * 4)).await;
                 let i = s.n.fetch_add(1, Ordering::Relaxed);
@@ -121,7 +122,24 @@ impl Bk for Demo {
                 }
             }
         });
+        if let Ok(mut g) = self.jh.lock() {
+            *g = Some(jh);
+        }
         Ok(())
+    }
+    async fn stop(&self) {
+        if let Some(j) = self.jh.lock().ok().and_then(|mut g| g.take()) {
+            j.abort();
+        }
+    }
+    async fn open_dm(&self, usr: &Rid) -> Res<Rid> {
+        let c = self.r(format!("dm{}", usr.raw));
+        if let Some(tx) = self.tx.get() {
+            let name = usr.raw.to_string();
+            let u = Usr { id: Some(usr.clone()), name: name.clone(), ..Default::default() };
+            tx.send(Ev::Chan(Chan { id: c.clone(), gld: None, par: None, k: ChK::Dm, name, topic: None, pos: 0, nsfw: false, hidden: false, last: None, rcp: vec![u], icon: None }))?;
+        }
+        Ok(c)
     }
     async fn hist(&self, chan: &Rid, before: Option<&Rid>, n: u32) -> Res<Vec<Msg>> {
         let b: u64 = before.and_then(|r| r.raw.trim_start_matches('m').parse().ok()).unwrap_or(200);

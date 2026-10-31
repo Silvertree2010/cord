@@ -46,6 +46,7 @@ pub struct Sh {
     pub gt: Mutex<Option<tokio::sync::mpsc::UnboundedSender<String>>>,
     pub vo: vc::Vo,
     pub st: stm::Stm,
+    pub jh: Mutex<Option<tokio::task::JoinHandle<()>>>,
 }
 
 pub struct Dc(Arc<Sh>);
@@ -67,6 +68,7 @@ impl Dc {
             gt: Default::default(),
             vo: Default::default(),
             st: Default::default(),
+            jh: Default::default(),
         }))
     }
 
@@ -124,8 +126,26 @@ impl Bk for Dc {
 
     async fn start(&self, tx: Tx) -> Res<()> {
         self.0.vo.set_tx(tx.clone());
-        tokio::spawn(gw::run(self.0.clone(), tx));
+        let j = tokio::spawn(gw::run(self.0.clone(), tx));
+        if let Some(o) = self.0.jh.lock().unwrap().replace(j) {
+            o.abort();
+        }
         Ok(())
+    }
+
+    async fn stop(&self) {
+        if let Some(j) = self.0.jh.lock().unwrap().take() {
+            j.abort();
+        }
+        self.0.st.stop_all(&self.0);
+        let _ = self.0.vo.end();
+        *self.0.gt.lock().unwrap() = None;
+    }
+
+    async fn open_dm(&self, usr: &Rid) -> Res<Rid> {
+        let v = self.0.rest.js(Method::POST, "/users/@me/channels", Some(json!({"recipient_id": &*usr.raw}))).await?;
+        let id = v["id"].as_str().ok_or_else(|| anyhow::anyhow!("no channel id in reply"))?;
+        Ok(Rid::new(Svc::Dc, self.0.a, id))
     }
 
     async fn hist(&self, chan: &Rid, before: Option<&Rid>, n: u32) -> Res<Vec<Msg>> {
@@ -150,6 +170,9 @@ impl Bk for Dc {
                 mr["guild_id"] = json!(g);
             }
             j["message_reference"] = mr;
+            if feat::on("noreplyping") {
+                j["allowed_mentions"] = json!({"parse": ["users", "roles", "everyone"], "replied_user": false});
+            }
         }
         if !o.stks.is_empty() {
             j["sticker_ids"] = json!(o.stks.iter().map(|s| s.raw.to_string()).collect::<Vec<_>>());

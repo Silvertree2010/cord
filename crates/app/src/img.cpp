@@ -1,50 +1,86 @@
 #include "img.h"
 #include "cord/src/img.cxxqt.h"
+#include <QMetaObject>
+#include <QPointer>
+#include <atomic>
+#include <memory>
 
-class MRes : public QQuickImageResponse, public QRunnable {
+class MRes : public QQuickImageResponse {
 public:
-    MRes(QString id, QSize rq) : m_id(std::move(id)), m_rq(rq) { setAutoDelete(false); }
+    explicit MRes(std::shared_ptr<std::atomic<bool>> stop) : m_stop(std::move(stop)) {}
     QQuickTextureFactory* textureFactory() const override { return QQuickTextureFactory::textureFactoryForImage(m_img); }
-    void run() override {
-        auto u = m_id.toStdString();
-        auto v = media_get(rust::Str(u.data(), u.size()));
-        m_img.loadFromData(reinterpret_cast<const uchar*>(v.data()), int(v.size()));
-        if (m_rq.isValid() && !m_img.isNull()) m_img = m_img.scaled(m_rq, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    QString errorString() const override { return m_err; }
+    void cancel() override { m_stop->store(true); }
+    void done(const QImage& im, const QString& err) {
+        m_img = im;
+        m_err = err;
         emit finished();
     }
 private:
+    std::shared_ptr<std::atomic<bool>> m_stop;
+    QImage m_img;
+    QString m_err;
+};
+
+class MTask : public QRunnable {
+public:
+    MTask(QPointer<MRes> r, QObject* ctx, std::shared_ptr<std::atomic<bool>> stop, QString id, QSize rq)
+        : m_r(r), m_ctx(ctx), m_stop(std::move(stop)), m_id(std::move(id)), m_rq(rq) {}
+    void run() override {
+        QImage img;
+        QString err;
+        if (!m_stop->load()) {
+            auto u = m_id.toStdString();
+            auto v = media_get(rust::Str(u.data(), u.size()));
+            if (!img.loadFromData(reinterpret_cast<const uchar*>(v.data()), int(v.size()))) err = QStringLiteral("media load failed");
+            else if (m_rq.isValid() && !img.isNull() && (img.width() > m_rq.width() || img.height() > m_rq.height())) img = img.scaled(m_rq, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        } else {
+            err = QStringLiteral("cancelled");
+        }
+        QPointer<MRes> r = m_r;
+        QMetaObject::invokeMethod(m_ctx, [r, img, err]() { if (r) r->done(img, err); }, Qt::QueuedConnection);
+    }
+private:
+    QPointer<MRes> m_r;
+    QObject* m_ctx;
+    std::shared_ptr<std::atomic<bool>> m_stop;
     QString m_id;
     QSize m_rq;
-    QImage m_img;
 };
 
 class MProv : public QQuickAsyncImageProvider {
 public:
+    MProv() { m_pool.setMaxThreadCount(12); }
     QQuickImageResponse* requestImageResponse(const QString& id, const QSize& rq) override {
-        auto* r = new MRes(id, rq);
-        m_pool.start(r);
+        auto stop = std::make_shared<std::atomic<bool>>(false);
+        auto* r = new MRes(stop);
+        m_pool.start(new MTask(QPointer<MRes>(r), &m_ctx, stop, id, rq));
         return r;
     }
 private:
+    QObject m_ctx;
     QThreadPool m_pool;
 };
+
+static void fr_free(void* p) { delete static_cast<rust::Box<FrameRef>*>(p); }
 
 class VProv : public QQuickImageProvider {
 public:
     VProv() : QQuickImageProvider(QQuickImageProvider::Image) {}
     QImage requestImage(const QString& id, QSize* sz, const QSize&) override {
         auto u = id.section('?', 0, 0).toStdString();
-        uint32_t w = 0, h = 0;
-        auto v = frame_get(rust::Str(u.data(), u.size()), w, h);
-        if (!w || !h || v.size() < size_t(w) * h * 4) {
+        auto* b = new rust::Box<FrameRef>(frame_ref(rust::Str(u.data(), u.size())));
+        uint32_t w = (*b)->fr_w(), h = (*b)->fr_h();
+        auto d = (*b)->fr_data();
+        if (!w || !h || d.size() < size_t(w) * h * 4) {
+            delete b;
             if (sz) *sz = QSize(16, 9);
-            QImage b(16, 9, QImage::Format_RGBA8888);
-            b.fill(Qt::black);
-            return b;
+            QImage bl(16, 9, QImage::Format_RGBA8888);
+            bl.fill(Qt::black);
+            return bl;
         }
-        QImage im(reinterpret_cast<const uchar*>(v.data()), int(w), int(h), QImage::Format_RGBA8888);
         if (sz) *sz = QSize(int(w), int(h));
-        return im.copy();
+        return QImage(d.data(), int(w), int(h), QImage::Format_RGBA8888, fr_free, b);
     }
 };
 

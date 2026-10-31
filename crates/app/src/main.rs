@@ -1,6 +1,10 @@
 mod acc;
+mod accounts;
+mod files;
+mod media;
+mod out;
+mod snap;
 mod bks;
-mod feat;
 mod frames;
 mod img;
 mod br;

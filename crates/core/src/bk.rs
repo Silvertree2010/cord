@@ -43,6 +43,10 @@ pub trait Bk: Send + Sync {
     async fn set_st(&self, _st: St, _act: Option<String>) -> Res<()> {
         Ok(())
     }
+    async fn open_dm(&self, _usr: &Rid) -> Res<Rid> {
+        anyhow::bail!("direct messages unsupported on this network")
+    }
+    async fn stop(&self) {}
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
