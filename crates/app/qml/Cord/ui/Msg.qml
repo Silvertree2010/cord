@@ -244,7 +244,7 @@ Item {
             property real k: a.w && a.h ? Math.min(1, 420 / a.w, 320 / a.h) : 1
             width: a.w ? a.w * k : 320
             height: a.h ? a.h * k : 200
-            source: a.url
+            source: S.u(a.url)
             fillMode: Image.PreserveAspectFit
             asynchronous: true
             sourceSize: Qt.size(width * 2, height * 2)

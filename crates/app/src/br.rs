@@ -71,6 +71,8 @@ pub mod q {
         #[qinvokable]
         fn copy(self: &Core, t: &QString);
         #[qinvokable]
+        fn qr(self: &Core, t: &QString) -> QString;
+        #[qinvokable]
         fn qml(self: &Core) -> QString;
     }
     impl cxx_qt::Threading for Core {}
@@ -499,6 +501,12 @@ impl q::Core {
                 return;
             }
         }
+    }
+
+    pub fn qr(&self, t: &QString) -> QString {
+        let Ok(c) = qrcode::QrCode::new(qs(t).as_bytes()) else { return QString::default() };
+        let svg = c.render::<qrcode::render::svg::Color>().min_dimensions(400, 400).quiet_zone(false).build();
+        QString::from(&format!("data:image/svg+xml;utf8,{}", svg.replace('#', "%23")))
     }
 
     pub fn home(&self) -> QString {

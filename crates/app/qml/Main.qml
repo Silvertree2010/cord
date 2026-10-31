@@ -122,6 +122,30 @@ ApplicationWindow {
         onTriggered: S.errs = S.errs.filter(e => Date.now() - e.at < 8000)
     }
 
+    Feats {}
+    Emo { id: emoP }
+    Prof { id: profP }
+    View { id: viewP; anchors.fill: parent; z: 95 }
+    Connections {
+        target: S
+        function onEmoReq(at, cb) {
+            emoP.cb = cb
+            const p = at.mapToItem(win.contentItem, 0, 0)
+            emoP.x = Math.max(8, Math.min(win.width - emoP.width - 8, p.x - emoP.width + at.width))
+            emoP.y = Math.max(8, p.y - emoP.height - 8)
+            emoP.open()
+        }
+        function onProfReq(u, at) {
+            if (!u) return
+            profP.u = u
+            const p = at.mapToItem(win.contentItem, 0, 0)
+            profP.x = Math.max(8, Math.min(win.width - profP.width - 8, p.x + at.width + 8))
+            profP.y = Math.max(8, Math.min(win.height - 320, p.y))
+            profP.open()
+        }
+        function onViewReq(u, v) { viewP.vid = v; viewP.url = u }
+    }
+
     Instantiator {
         model: S.mods.filter(m => m.on)
         delegate: Loader {

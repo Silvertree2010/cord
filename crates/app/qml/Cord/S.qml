@@ -436,6 +436,23 @@ QtObject {
     function prof(u, at) { profReq(u, at) }
     function emoji(at, cb) { emoReq(at, cb) }
     function view(u, v) { viewReq(u, !!v) }
+    property var media: null
+    function goLive() {
+        const h = ui.sh || 1080
+        const q = f("streamq") ? { w: Math.round(h * 16 / 9), h: h, fps: ui.sfps || 60, kbps: h >= 1440 ? 16000 : 8000, snd: ui.ssnd !== false } : { w: 1280, h: 720, fps: 30, kbps: 4000, snd: ui.ssnd !== false }
+        c.golive(true, JSON.stringify(q))
+    }
+    function u(x) {
+        if (!x) return ""
+        if (x.startsWith("mxc://") || x.startsWith("mxe:")) return "image://cordm/0/" + x
+        return x
+    }
+    property Timer medT: Timer {
+        interval: 2000
+        repeat: true
+        running: s.f("spotify")
+        onTriggered: { const j = s.c.mpris(); s.media = j ? JSON.parse(j) : null }
+    }
     property bool qk: false
     function quick() { qk = true }
     function copy(t) { c.copy(t) }
