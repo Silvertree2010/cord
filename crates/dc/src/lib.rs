@@ -4,6 +4,7 @@ pub mod map;
 pub mod perm;
 pub mod ra;
 pub mod rest;
+pub mod vc;
 pub mod zl;
 
 use async_trait::async_trait;
@@ -42,6 +43,7 @@ pub struct Sh {
     pub mu: Mutex<HashSet<String>>,
     pub ss: Mutex<Sess>,
     pub gt: Mutex<Option<tokio::sync::mpsc::UnboundedSender<String>>>,
+    pub vo: vc::Vo,
 }
 
 pub struct Dc(Arc<Sh>);
@@ -61,6 +63,7 @@ impl Dc {
             mu: Default::default(),
             ss: Default::default(),
             gt: Default::default(),
+            vo: Default::default(),
         }))
     }
 
@@ -105,6 +108,7 @@ impl Bk for Dc {
     }
 
     async fn start(&self, tx: Tx) -> Res<()> {
+        self.0.vo.set_tx(tx.clone());
         tokio::spawn(gw::run(self.0.clone(), tx));
         Ok(())
     }
@@ -205,6 +209,33 @@ impl Bk for Dc {
         let Some(c) = c else { return Ok(vec![]) };
         self.gsend(json!({"op": 14, "d": {"guild_id": &*gld.raw, "typing": true, "activities": true, "threads": true, "channels": {c: [[0, 99]]}}}))?;
         Ok(vec![])
+    }
+
+    async fn join(&self, chan: &Rid) -> Res<()> {
+        let g = self.0.cg.lock().unwrap().get(&*chan.raw).cloned();
+        let (g, m, d) = self.0.vo.begin(chan, g)?;
+        self.gsend(vc::op4(Some(&chan.raw), g.as_deref(), m, d))
+    }
+
+    async fn leave(&self) -> Res<()> {
+        let g = self.0.vo.gld();
+        let (m, d) = self.0.vo.end();
+        self.gsend(vc::op4(None, g.as_deref(), m, d))
+    }
+
+    async fn vset(&self, mute: bool, deaf: bool) -> Res<()> {
+        match self.0.vo.flags(mute, deaf) {
+            Some(c) => {
+                let g = self.0.vo.gld();
+                self.gsend(vc::op4(Some(&c), g.as_deref(), mute, deaf))
+            }
+            None => Ok(()),
+        }
+    }
+
+    async fn vol(&self, usr: &Rid, v: f32) -> Res<()> {
+        self.0.vo.vol(&usr.raw, v);
+        Ok(())
     }
 
     async fn set_st(&self, st: St, act: Option<String>) -> Res<()> {

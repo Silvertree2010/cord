@@ -56,6 +56,7 @@ fn ldg(sh: &Sh, tx: &Tx, g: &Value, pos: i64, my: Option<Vec<String>>) {
     let a = sh.a;
     let gl = gld(a, g, pos);
     let gid = gl.id.raw.to_string();
+    let gid_s = gid.clone();
     let uid = sh.me.lock().unwrap().clone();
     let mut chs = arr(g, "channels");
     chs.extend(arr(g, "threads"));
@@ -78,6 +79,7 @@ fn ldg(sh: &Sh, tx: &Tx, g: &Value, pos: i64, my: Option<Vec<String>>) {
     for e in evs {
         out(sh, tx, e);
     }
+    crate::vc::guild_vs(sh, tx, &gid_s, g);
 }
 
 fn refresh(sh: &Sh, tx: &Tx, gid: &str) {
@@ -249,6 +251,9 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
     match t {
         "READY" => ready(sh, tx, &d),
         "READY_SUPPLEMENTAL" => supp(sh, tx, &d),
+        "VOICE_STATE_UPDATE" => crate::vc::vsu(sh, tx, &d),
+        "VOICE_SERVER_UPDATE" => crate::vc::vsv(sh, &d),
+        "CALL_CREATE" | "CALL_UPDATE" => crate::vc::call(sh, tx, &d),
         "RESUMED" => {
             let _ = tx.send(Ev::Conn { acc: a, up: true });
         }
