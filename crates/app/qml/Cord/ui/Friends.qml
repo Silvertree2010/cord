@@ -76,21 +76,29 @@ Rectangle {
         }
         Fld {
             Layout.fillWidth: true
-            Layout.margins: 16
-            Layout.bottomMargin: 8
+            Layout.maximumWidth: 720 - 32
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 16
+            Layout.bottomMargin: 16
             placeholderText: "Search"
             onTextChanged: r.q = text
         }
         Lbl {
-            Layout.leftMargin: 20
+            Layout.fillWidth: true
+            Layout.maximumWidth: 720 - 32
+            Layout.alignment: Qt.AlignHCenter
+            leftPadding: 12
             text: ({ on: "Online", all: "All friends", pend: "Pending", blk: "Blocked" })[r.tab] + "  ·  " + r.list.length
             color: Th.tx2
             font.pixelSize: Th.fsS
             font.weight: Font.DemiBold
+            bottomPadding: 4
         }
         ListView {
             id: lv
             Layout.fillWidth: true
+            Layout.maximumWidth: 720
+            Layout.alignment: Qt.AlignHCenter
             Layout.fillHeight: true
             Layout.topMargin: 8
             clip: true
@@ -102,9 +110,9 @@ Rectangle {
                 property string uid: f.usr.id ? S.ridOf(f.usr.id) : ""
                 property var p: S.pres[uid] || null
                 property bool off: !p || p.st === "Off"
-                x: 12
-                width: lv.width - 24
-                height: 52
+                x: 0
+                width: lv.width
+                height: 56
                 radius: Th.rs
                 color: ma.containsMouse || dots.containsMouse ? Th.hov : "transparent"
                 Rectangle { width: parent.width - 16; x: 8; height: 1; color: Th.ln; visible: index > 0 && !ma.containsMouse }
@@ -136,7 +144,7 @@ Rectangle {
                         width: parent.width
                         text: row.f.k === "In" ? "Incoming request" : row.f.k === "Out" ? "Outgoing request" : row.f.k === "Block" ? "Blocked" : row.p && row.p.act ? row.p.act : row.p ? ({ On: "Online", Idle: "Idle", Dnd: "Do not disturb", Off: "Offline" })[row.p.st] : "Offline"
                         color: Th.tx3
-                        font.pixelSize: Th.fsS
+                        font.pixelSize: 12
                     }
                 }
                 Row {

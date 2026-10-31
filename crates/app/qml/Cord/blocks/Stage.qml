@@ -47,10 +47,11 @@ Rectangle {
                 Image {
                     anchors.fill: parent
                     fillMode: Image.PreserveAspectFit
-                    source: "image://cordv/" + r.foc + "?" + fr
+                    readonly property bool fx: typeof S.frame === "function"
+                    source: fx ? S.frame(r.foc) : "image://cordv/" + r.foc + "?" + fr
                     cache: false
                     property int fr: 0
-                    Timer { interval: 16; repeat: true; running: true; onTriggered: parent.fr++ }
+                    Timer { interval: 16; repeat: true; running: !parent.fx; onTriggered: parent.fr++ }
                 }
                 IBtn { anchors.right: parent.right; anchors.margins: 8; y: 8; n: "x"; onClicked: { S.c.watch(r.foc, false); r.foc = "" } }
             }

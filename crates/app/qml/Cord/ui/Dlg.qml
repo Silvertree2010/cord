@@ -16,7 +16,7 @@ Popup {
     padding: 20
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     onAboutToShow: U.reg(r)
-    onOpened: cb.forceActiveFocus()
+    onOpened: (r.danger ? cb : okb).forceActiveFocus()
     onClosed: U.unreg(r)
     Overlay.modal: Rectangle { color: "#99000000" }
     function show(o) {
@@ -38,16 +38,15 @@ Popup {
     }
     contentItem: Column {
         spacing: 12
-        Keys.onReturnPressed: r.go()
-        Keys.onEnterPressed: r.go()
+        Keys.onEscapePressed: r.close()
         Lbl { width: parent.width; text: r.title; font.pixelSize: Th.fsL; font.weight: Font.DemiBold }
         Lbl { width: parent.width; visible: r.body !== ""; text: r.body; color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone }
         Item { width: 1; height: 4 }
         Row {
             anchors.right: parent.right
             spacing: 8
-            Btn { id: cb; text: "Cancel"; enter: false; onClicked: r.close() }
-            Btn { text: r.ok; pri: !r.danger; dng: r.danger; onClicked: r.go() }
+            Btn { id: cb; text: "Cancel"; out: true; onClicked: r.close() }
+            Btn { id: okb; text: r.ok; pri: !r.danger; dng: r.danger; onClicked: r.go() }
         }
     }
 }

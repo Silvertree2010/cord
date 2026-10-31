@@ -7,6 +7,7 @@ Item {
     property real sz: 14
     property color ring: Th.bg2
     property bool txt: false
+    property real rw: Math.max(1.5, sz * 0.12)
     readonly property string k: sv === "Mx" || sv === "mx" ? "mx" : sv === "St" || sv === "st" ? "st" : "dc"
     width: txt ? lb2.implicitWidth + 10 : sz
     height: txt ? 16 : sz
@@ -35,7 +36,7 @@ Item {
         radius: r.k === "dc" ? width / 2 : r.k === "mx" ? r.sz * 0.24 : 2
         color: Th.svcCol(r.sv)
         border.color: r.ring
-        border.width: Math.max(1.5, r.sz * 0.12)
+        border.width: r.rw
     }
     Text {
         visible: !r.txt

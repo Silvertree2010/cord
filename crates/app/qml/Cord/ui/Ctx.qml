@@ -11,7 +11,15 @@ Popup {
     property int cur: -1
     readonly property var rows: {
         const src = view ? [{ back: true, text: "Back" }].concat(view) : model
-        return src.filter(x => x && x.when !== false)
+        const f = src.filter(x => x && x.when !== false)
+        const o = []
+        for (const x of f) {
+            if (x.danger && o.length && !o[o.length - 1].sep) o.push({ sep: true })
+            if (x.sep && (!o.length || o[o.length - 1].sep)) continue
+            o.push(x)
+        }
+        while (o.length && o[o.length - 1].sep) o.pop()
+        return o
     }
     parent: Overlay.overlay
     padding: 4
@@ -88,10 +96,10 @@ Popup {
                 Rectangle {
                     visible: !modelData.sep && !modelData.slider
                     anchors.fill: parent
-                    radius: Th.rs
+                    radius: 4
                     color: index === r.cur || ma.containsMouse ? Th.sel : "transparent"
                     Lbl {
-                        x: 10
+                        x: 8
                         width: parent.width - 36
                         anchors.verticalCenter: parent.verticalCenter
                         text: (modelData.back ? "‹  " : "") + modelData.text

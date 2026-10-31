@@ -78,12 +78,13 @@ Rectangle {
             width: r.hz ? r.isz + 24 : lv.width
             height: r.hz ? lv.height : r.isz + 24
             Ic {
+                id: addIc
                 x: r.hz ? 12 : (parent.width - r.isz) / 2
                 y: r.hz ? (parent.height - r.isz) / 2 : 12
                 gid: "add"
-                name: "Add account"
+                name: "Add"
                 ico: "plus"
-                onPick: { S.setPage = "accounts"; S.showSet = true }
+                onPick: r.hz ? addM.show(addIc, 0, addIc.height + 4) : addM.show(addIc, addIc.width + 4, 0)
             }
         }
         ScrollBar.vertical: Scr {}
@@ -110,6 +111,46 @@ Rectangle {
             name: "Settings  (Ctrl+,)"
             ico: "cog"
             onPick: S.showSet = true
+        }
+    }
+
+    readonly property bool canJoin: typeof S.c.join_invite === "function"
+    Ctx {
+        id: addM
+        model: [
+            { text: "Add account", run: () => { S.setPage = "accounts"; S.showSet = true } },
+            { text: "Join server", when: r.canJoin, run: () => joinP.show() }
+        ]
+    }
+    Popup {
+        id: joinP
+        parent: Overlay.overlay
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: 400
+        padding: 20
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        onAboutToShow: U.reg(joinP)
+        onOpened: jf.forceActiveFocus()
+        onClosed: U.unreg(joinP)
+        Overlay.modal: Rectangle { color: "#80000000" }
+        function show() { jf.text = ""; open() }
+        function go() {
+            if (!jf.text.trim()) return
+            S.c.join_invite(jf.text.trim())
+            close()
+        }
+        background: Rectangle { color: Th.bg3; radius: Th.r; border.color: Th.ln }
+        contentItem: Column {
+            spacing: 12
+            Lbl { width: parent.width; text: "Join a Discord server"; font.pixelSize: Th.fsL; font.weight: Font.DemiBold }
+            Fld { id: jf; width: parent.width; placeholderText: "Invite link or code"; onAccepted: joinP.go() }
+            Row {
+                anchors.right: parent.right
+                spacing: 8
+                Btn { text: "Cancel"; out: true; onClicked: joinP.close() }
+                Btn { text: "Join"; pri: true; on: jf.text.trim() !== ""; onClicked: joinP.go() }
+            }
         }
     }
 
@@ -190,11 +231,13 @@ Rectangle {
         Badge {
             visible: ic.sv !== "" && S.ui.badges !== false
             sv: ic.sv
-            sz: 20
+            sz: 14
+            rw: 2
             ring: Th.bg
             anchors.left: parent.left
             anchors.bottom: parent.bottom
-            anchors.margins: -5
+            anchors.leftMargin: -3
+            anchors.bottomMargin: -3
         }
         Rectangle {
             visible: ic.ment > 0

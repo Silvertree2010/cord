@@ -15,6 +15,16 @@ Rectangle {
     ]
     readonly property var cur: pages.find(p => p[0] === S.setPage) || pages[0]
     property string pasteErr: ""
+    function tcols(t) {
+        if (t.id === "caelestia") {
+            const x = S.pj(S.c.scheme(), {})
+            const c = x.colours
+            if (c) return ["#" + (c.surfaceContainerLowest || c.background), "#" + c.surfaceContainer, "#" + c.primary]
+            return [Th.bg, Th.bg3, Th.ac]
+        }
+        const j = S.pj(t.path ? S.c.rdf(t.path) : "", {})
+        return [j.bg || Th.bg, j.bg3 || Th.bg3, j.ac || Th.ac]
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -94,6 +104,7 @@ Rectangle {
         id: op
         property string t
         property string d
+        property string tag: ""
         property alias on: tg.on
         signal tog(bool v)
         width: parent ? parent.width : 400
@@ -105,8 +116,20 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width - 70
             spacing: 2
-            Lbl { text: op.t; font.weight: Font.Medium }
-            Lbl { visible: op.d !== ""; text: op.d; color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone; width: parent.width }
+            Row {
+                spacing: 8
+                Lbl { text: op.t; font.weight: Font.Medium; anchors.verticalCenter: parent.verticalCenter }
+                Rectangle {
+                    visible: op.tag !== ""
+                    width: tgl.implicitWidth + 10
+                    height: 16
+                    radius: 3
+                    color: Th.a(Th.err, 0.16)
+                    anchors.verticalCenter: parent.verticalCenter
+                    Lbl { id: tgl; anchors.centerIn: parent; text: op.tag; color: Th.err; font.pixelSize: 10; font.weight: Font.DemiBold }
+                }
+            }
+            Lbl { visible: op.d !== ""; text: op.d; color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.WrapAtWordBoundaryOrAnywhere; elide: Text.ElideNone; width: parent.width }
         }
         Tog { id: tg; label: op.t; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; onToggled: v => op.tog(v) }
     }
@@ -164,7 +187,7 @@ Rectangle {
                         anchors.rightMargin: 14
                         anchors.verticalCenter: parent.verticalCenter
                         text: modelData.base === "demo" ? "Remove" : "Log out"
-                        tc: Th.err
+                        gh: true
                         onClicked: U.ask({
                             title: modelData.base === "demo" ? "Remove demo account" : "Log out",
                             body: (modelData.base === "demo" ? "Remove " : "Log out of ") + ar.who + " on " + Th.svcName(S.tag(modelData.svc)) + "?",
@@ -175,13 +198,14 @@ Rectangle {
                     }
                 }
             }
+            Item { visible: S.cfgAccs.some(a => a.base === "demo"); width: 1; height: 8 }
             Btn {
                 visible: S.cfgAccs.some(a => a.base === "demo")
                 text: "Exit demo"
                 onClicked: U.exitDemo()
             }
             Sub { text: "Add account" }
-            AccAdd {}
+            AccAdd { onDone: U.flash("Account added") }
         }
     }
 
@@ -277,17 +301,39 @@ Rectangle {
                     model: S.themes()
                     Rectangle {
                         width: 150
-                        height: 64
+                        height: 72
                         radius: Th.r
                         color: Th.bg2
-                        border.color: (S.ui.theme || "graphite") === modelData.id || activeFocus ? Th.ac : tm.containsMouse ? Th.tx3 : Th.ln
-                        border.width: (S.ui.theme || "graphite") === modelData.id || activeFocus ? 2 : 1
+                        property var cs: r.tcols(modelData)
+                        border.color: (S.ui.theme || "graphite") === modelData.id ? Th.ac : tm.containsMouse ? Th.tx3 : Th.ln
+                        border.width: 1
                         activeFocusOnTab: true
                         Accessible.role: Accessible.Button
                         Accessible.name: modelData.id
                         Keys.onReturnPressed: { S.setUi("theme", modelData.id); S.loadTheme() }
                         Keys.onSpacePressed: { S.setUi("theme", modelData.id); S.loadTheme() }
-                        Lbl { anchors.centerIn: parent; text: modelData.id.charAt(0).toUpperCase() + modelData.id.slice(1) }
+                        Lbl { x: 12; y: 12; width: parent.width - 24; text: modelData.id.charAt(0).toUpperCase() + modelData.id.slice(1) }
+                        Row {
+                            x: 12
+                            y: 44
+                            width: parent.width - 24
+                            height: 14
+                            Repeater {
+                                model: parent.parent.cs
+                                Rectangle {
+                                    width: (parent.width) / 3
+                                    height: 14
+                                    color: modelData
+                                    topLeftRadius: index === 0 ? 4 : 0
+                                    bottomLeftRadius: index === 0 ? 4 : 0
+                                    topRightRadius: index === 2 ? 4 : 0
+                                    bottomRightRadius: index === 2 ? 4 : 0
+                                    border.color: Th.ln
+                                    border.width: 0
+                                }
+                            }
+                        }
+                        Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: Th.ac; border.width: 2; visible: parent.activeFocus }
                         MouseArea { id: tm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { S.setUi("theme", modelData.id); S.loadTheme() } }
                     }
                 }
@@ -297,7 +343,7 @@ Rectangle {
             Row {
                 spacing: 6
                 Repeater {
-                    model: ["#8fb3ff", "#6ea8fe", "#5fc4d6", "#7dd3c0", "#9aa7ff", "#b69cff", "#d98fd6", "#e6e6e6"]
+                    model: ["#8fb3ff", "#6ea8fe", "#5fc4d6", "#7dd3c0", "#9aa7ff", "#b69cff"]
                     Rectangle {
                         id: sw
                         readonly property bool on: String(Th.ac).toLowerCase() === modelData
@@ -333,10 +379,11 @@ Rectangle {
         id: featP
         Column {
             spacing: 0
-            Lbl { text: "Built-in client mods. Each one can be turned off."; color: Th.tx2; bottomPadding: 10 }
+            Lbl { width: parent.width; text: "Built-in client mods. Each one can be turned off."; color: Th.tx2; bottomPadding: 4 }
+            Lbl { width: parent.width; text: "Client mods on Discord can get an account banned, see the Ban risk tags."; color: Th.tx3; font.pixelSize: Th.fsS; bottomPadding: 10 }
             Repeater {
                 model: S.featDefs
-                Opt { t: modelData.n; d: modelData.d; on: S.f(modelData.k); onTog: v => S.setF(modelData.k, v) }
+                Opt { t: modelData.n; d: modelData.d; tag: modelData.risk === "ban" ? "Ban risk" : ""; on: S.f(modelData.k); onTog: v => S.setF(modelData.k, v) }
             }
         }
     }
@@ -397,7 +444,7 @@ Rectangle {
                 model: S.mods
                 Opt {
                     t: modelData.id
-                    d: modelData.url.replace("file://", "")
+                    d: modelData.url.replace("file://", "").replace(/\/main\.qml$/, "")
                     on: modelData.on
                     onTog: v => { const m = Object.assign({}, S.ui.mods || {}); m[modelData.id] = v; S.setUi("mods", m); S.scanMods() }
                 }

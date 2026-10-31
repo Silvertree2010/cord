@@ -85,14 +85,6 @@ Item {
         color: Th.stCol(r.st)
         border.color: r.ring
         border.width: Math.max(2, r.sz * 0.07)
-        Rectangle {
-            visible: r.st === "Idle"
-            anchors.centerIn: parent
-            width: Math.max(2, parent.width - parent.border.width * 2 - 3)
-            height: width
-            radius: width / 2
-            color: r.ring
-        }
     }
     Badge {
         visible: r.sv !== ""

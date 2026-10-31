@@ -9,6 +9,7 @@ Rectangle {
     implicitHeight: 28
     implicitWidth: rw.implicitWidth + 2
     width: implicitWidth
+    height: 28
     radius: Th.rs
     color: Th.bg3
     border.color: Th.ln
@@ -32,7 +33,7 @@ Rectangle {
                 Accessible.name: modelData[1]
                 Keys.onReturnPressed: sg.pick(modelData[0])
                 Keys.onSpacePressed: sg.pick(modelData[0])
-                Lbl { id: sl; anchors.centerIn: parent; text: modelData[1]; color: it.on ? Th.tx : Th.tx2; font.pixelSize: Th.fsS }
+                Lbl { id: sl; anchors.centerIn: parent; text: modelData[1]; color: it.on ? Th.tx : Th.tx2; font.pixelSize: 12 }
                 Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: Th.ac; border.width: 2; visible: it.activeFocus }
                 MouseArea { id: sm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: sg.pick(modelData[0]) }
             }

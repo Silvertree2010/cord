@@ -5,6 +5,7 @@ import Cord
 Popup {
     id: r
     property var u: null
+    objectName: "prof"
     property string uid: u && u.id ? S.ridOf(u.id) : ""
     property var p: S.pres[uid] || null
     width: 300
@@ -38,7 +39,17 @@ Popup {
                 spacing: 8
                 width: parent.width
                 Lbl { width: Math.min(implicitWidth, parent.width - bg.width - 8); text: r.u ? (r.u.disp || r.u.name) : ""; font.pixelSize: Th.fsL; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
-                Badge { id: bg; sv: S.svc(r.uid); txt: true; ring: Th.bg3; anchors.verticalCenter: parent.verticalCenter }
+                Rectangle {
+                    id: bg
+                    width: bl.implicitWidth + 12
+                    height: 18
+                    radius: 4
+                    color: "transparent"
+                    border.color: Th.ln
+                    visible: S.ui.badges !== false
+                    anchors.verticalCenter: parent.verticalCenter
+                    Lbl { id: bl; anchors.centerIn: parent; text: Th.svcName(S.svc(r.uid)); color: Th.tx2; font.pixelSize: 11; font.weight: Font.Medium }
+                }
             }
             Lbl { width: parent.width; visible: !!(r.u && r.u.disp && r.u.disp !== r.u.name); text: r.u ? r.u.name : ""; color: Th.tx2 }
             Lbl { visible: !!(r.p && r.p.act); width: parent.width; text: r.p && r.p.act ? r.p.act : ""; color: Th.tx2; font.pixelSize: Th.fsS; topPadding: 4 }

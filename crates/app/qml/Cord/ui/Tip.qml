@@ -7,12 +7,13 @@ Item {
     property string text: ""
     property bool hov: false
     property string side: "b"
+    property Item edge: null
     width: 0
     height: 0
     Timer {
         id: t
         interval: 400
-        onTriggered: if (r.hov) U.showTip(r.tgt, r.text, r.side)
+        onTriggered: if (r.hov) U.showTip(r.tgt, r.text, r.side, r.edge)
     }
     onHovChanged: {
         if (hov) t.restart()

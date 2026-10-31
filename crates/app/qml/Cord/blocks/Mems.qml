@@ -18,6 +18,10 @@ Rectangle {
     property int total: 0
 
     function key(u) { return u && u.id ? S.ridOf(u.id) : "" }
+    function pr(k, u) {
+        if (S.isMe(u, S.acc(ch ? ch.rid : ""))) return { st: S.ui.st || "On" }
+        return S.pres[k] || null
+    }
 
     function reset() {
         byId = ({})
@@ -46,6 +50,7 @@ Rectangle {
             regroup.restart()
         }
         function onPresChanged() { regroup.restart() }
+        function onUiChanged() { regroup.restart() }
     }
 
     Timer {
@@ -54,7 +59,7 @@ Rectangle {
         onTriggered: {
             const on = [], off = []
             for (const k in r.byId) {
-                const p = S.pres[k]
+                const p = r.pr(k, r.byId[k].usr)
                 const e = { m: r.byId[k], uid: k }
                 if (p && p.st !== "Off") on.push(e); else off.push(e)
             }
@@ -100,7 +105,7 @@ Rectangle {
         id: row
         Rectangle {
             id: rw
-            property var p: S.pres[it.uid] || null
+            property var p: r.pr(it.uid, it.m.usr)
             property bool onl: !!p && p.st !== "Off"
             height: 42 * Th.dens
             x: 8

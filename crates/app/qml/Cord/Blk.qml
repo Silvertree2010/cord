@@ -8,7 +8,7 @@ Item {
     property var p: []
     readonly property real strip: 24
     implicitWidth: Math.max(ld.item ? ld.item.implicitWidth : 0, S.edit ? 72 : 0)
-    implicitHeight: (ld.item ? ld.item.implicitHeight : 0) + (S.edit ? strip : 0) + (S.edit && ld.item && ld.item.implicitHeight < 40 ? 16 : 0)
+    implicitHeight: S.edit ? Math.max(ld.item ? ld.item.implicitHeight : 0, 40) + strip : (ld.item ? ld.item.implicitHeight : 0)
     property bool shown: S.edit || !ld.item || ld.item.shown !== false
     property string nm: (S.allBlks().find(b => b.id === r.n.b) || { name: r.n.b }).name
     property bool canRm: !(r.n.b === "chat" && U.cnt("chat") <= 1)
@@ -28,6 +28,14 @@ Item {
         anchors.fill: parent
         visible: S.edit
         z: 20
+
+        Lbl {
+            visible: !ld.item || ld.item.shown === false || ld.item.implicitHeight < 8
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: r.strip + (parent.height - r.strip - height) / 2
+            text: r.nm
+            color: Th.tx3
+        }
 
         Rectangle {
             id: hl
@@ -66,7 +74,7 @@ Item {
                 onPressed: U.hideTip()
                 onReleased: px.Drag.drop()
             }
-            Ico { id: gi; n: "drag"; sz: 14; col: Th.tx2; x: 6; anchors.verticalCenter: parent.verticalCenter }
+            Ico { id: gi; n: "drag"; sz: 14; col: Th.tx3; x: 6; anchors.verticalCenter: parent.verticalCenter }
             Lbl {
                 visible: r.width >= 120
                 anchors.left: gi.right

@@ -22,8 +22,8 @@ QtObject {
     property color err: "#e5605a"
     property color ment: "#268fb3ff"
     property color dc: "#5865f2"
-    property color mx: "#0dbd8b"
-    property color st: "#d05cb0"
+    property color mx: "#2fa585"
+    property color st: "#c0689f"
     property real r: 10
     property real rs: 6
     property string font: "Inter"

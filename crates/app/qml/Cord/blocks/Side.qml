@@ -117,7 +117,8 @@ Rectangle {
                 id: gm
                 model: [
                     { text: "Mark server as read", run: () => { for (const c of S.chList(S.sel)) if (S.unr[c.rid]) S.c.ack(c.rid) } },
-                    { text: "Copy server ID", run: () => S.copy(S.raw(S.sel)) }
+                    { text: "Copy server ID", run: () => S.copy(S.raw(S.sel)) },
+                    { text: "Leave server", danger: true, when: typeof S.c.leave_gld === "function", run: () => { const g = S.sel; U.ask({ title: "Leave server", body: "Leave " + (r.g ? r.g.name : "this server") + "? You need a new invite to join again.", ok: "Leave", danger: true, run: () => S.c.leave_gld(g) }) } }
                 ]
             }
         }
@@ -293,7 +294,7 @@ Rectangle {
                         { text: "Open in second chat", run: () => S.open(ch.rid, 1) },
                         { text: "Copy", items: [
                             { text: "Channel ID", run: () => S.copy(S.raw(ch.rid)) },
-                            { text: "Link", when: S.svc(ch.rid) === "dc", run: () => S.copy("https://discord.com/channels/" + S.raw(ch.grid) + "/" + S.raw(ch.rid)) }
+                            { text: "Link", when: !!ch.permalink, run: () => S.copy(ch.permalink) }
                         ] }
                     ]
                 }
@@ -430,7 +431,7 @@ Rectangle {
                         S.ver++
                     } },
                     { text: "Mark as read", run: () => S.c.ack(ch.rid) },
-                    { text: "Call", when: S.svc(ch.rid) === "dc", run: () => S.c.join(ch.rid) },
+                    { text: "Call", when: S.caps(ch.rid).call, run: () => S.c.join(ch.rid) },
                     { text: "Copy user ID", run: () => S.copy(usr && usr.id ? usr.id.raw : "") }
                 ]
             }

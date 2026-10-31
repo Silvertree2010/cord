@@ -112,11 +112,33 @@ ApplicationWindow {
             id: er
             anchors.centerIn: parent
             spacing: 8
-            Btn { id: ab; text: "Add block"; ico: "plus"; height: 32; onClicked: addM.show(ab, 0, ab.height + 4) }
-            Btn { text: "Undo"; ico: "undo"; height: 32; on: U.undo.length > 0; onClicked: U.undoLay() }
-            Btn { text: "Reset layout"; height: 32; onClicked: U.resetLay() }
-            Btn { text: "Cancel"; height: 32; onClicked: U.cancelEdit() }
-            Btn { text: "Done"; pri: true; height: 32; onClicked: S.edit = false }
+            Btn { id: ab; text: "Add block"; ico: "plus"; height: 28; onClicked: addM.show(ab, 0, ab.height + 4) }
+            Btn { text: "Undo"; ico: "undo"; height: 28; on: U.undo.length > 0; onClicked: U.undoLay() }
+            Btn { text: "Reset layout"; out: true; height: 28; onClicked: U.resetLay() }
+            Btn { text: "Cancel"; out: true; height: 28; onClicked: U.cancelEdit() }
+            Btn { text: "Done"; pri: true; height: 28; onClicked: S.edit = false }
+        }
+    }
+
+    Rectangle {
+        id: emptyV
+        visible: !S.setup && S.cfgAccs.length === 0 && !S.edit && !S.showSet
+        anchors.fill: parent
+        color: Th.bg
+        z: 60
+        Column {
+            anchors.centerIn: parent
+            spacing: 12
+            width: Math.min(360, parent.width - 32)
+            Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "No accounts yet"; font.pixelSize: Th.fsXL; font.weight: Font.Bold }
+            Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "Add an account to see your servers and messages, or look around with demo data."; color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone }
+            Item { width: 1; height: 4 }
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 8
+                Btn { text: "Add account"; pri: true; height: 36; onClicked: { S.setPage = "accounts"; S.showSet = true } }
+                Btn { text: "Try demo"; height: 36; onClicked: { S.c.add("dc", '{"demo":true}'); S.c.add("mx", '{"demo":true}'); S.c.add("st", '{"demo":true}') } }
+            }
         }
     }
 
@@ -156,7 +178,7 @@ ApplicationWindow {
                 height: Math.max(40, tx.implicitHeight + 20)
                 radius: Th.rs
                 color: Th.bg3
-                border.color: Th.err
+                border.color: modelData.ok ? Th.ln : Th.err
                 Lbl {
                     id: tx
                     x: 12
@@ -198,7 +220,7 @@ ApplicationWindow {
 
     Rectangle {
         id: tipR
-        visible: U.tipText !== "" && U.tipOk
+        visible: U.tipText !== "" && U.tipOk && !!U.tipItem && U.tipItem.visible
         z: 300
         width: tt.implicitWidth + 16
         height: 26
@@ -206,8 +228,8 @@ ApplicationWindow {
         color: Th.bg4
         border.color: Th.ln
         readonly property bool rt: U.tipSide === "r"
-        x: rt ? U.tipBox.x + U.tipBox.w + 8 : Math.max(4, Math.min(win.width - width - 4, U.tipBox.x + U.tipBox.w / 2 - width / 2))
-        y: rt ? Math.max(4, Math.min(win.height - height - 4, U.tipBox.y + U.tipBox.h / 2 - height / 2)) : U.tipBox.y + U.tipBox.h + 6 + height > win.height - 4 ? U.tipBox.y - height - 6 : U.tipBox.y + U.tipBox.h + 6
+        x: rt ? (U.tipBox.ex >= 0 ? U.tipBox.ex + 4 : U.tipBox.x + U.tipBox.w + 4) : Math.max(4, Math.min(win.width - width - 4, U.tipBox.x + U.tipBox.w / 2 - width / 2))
+        y: rt ? Math.max(4, Math.min(win.height - height - 4, U.tipBox.y + U.tipBox.h / 2 - height / 2)) : U.tipBox.y + U.tipBox.h + 6 + height > win.height - 4 ? Math.max(52, U.tipBox.y - height - 6) : Math.max(U.tipBox.y < 48 ? 52 : 4, U.tipBox.y + U.tipBox.h + 6)
         Lbl { id: tt; anchors.centerIn: parent; text: U.tipText; color: Th.tx; font.pixelSize: Th.fsS; elide: Text.ElideNone }
     }
 
@@ -218,7 +240,7 @@ ApplicationWindow {
             emoP.q = ""
             const p = at.mapToItem(win.contentItem, 0, 0)
             emoP.x = Math.max(8, Math.min(win.width - emoP.width - 8, p.x - emoP.width + at.width))
-            emoP.y = Math.max(8, p.y - emoP.height - 8)
+            emoP.y = p.y - emoP.height - 8 >= 8 ? p.y - emoP.height - 8 : Math.min(win.height - emoP.height - 8, p.y + at.height + 8)
             emoP.open()
         }
         function onProfReq(u, at) {
@@ -267,7 +289,7 @@ ApplicationWindow {
         Keys.onReleased: e => { if (e.key === Qt.Key_QuoteLeft && !e.isAutoRepeat) S.c.ptt(false) }
     }
     Shortcut { sequence: "Ctrl+K"; context: Qt.ApplicationShortcut; onActivated: { if (!S.setup) S.qk = !S.qk } }
-    Shortcut { sequence: "Ctrl+,"; context: Qt.ApplicationShortcut; onActivated: { if (!S.setup) { if (S.edit) U.cancelEdit(); S.showSet = !S.showSet } } }
+    Shortcut { sequence: "Ctrl+,"; context: Qt.ApplicationShortcut; onActivated: { if (!S.setup) { if (S.edit) U.cancelEdit(() => { S.showSet = true }); else S.showSet = !S.showSet } } }
     Shortcut { sequence: "Ctrl+E"; context: Qt.ApplicationShortcut; onActivated: { if (S.setup) return; if (S.edit) S.edit = false; else { S.showSet = false; S.edit = true } } }
     Shortcut { sequence: "Escape"; context: Qt.ApplicationShortcut; onActivated: win.esc() }
     Shortcut { sequence: "Shift+Escape"; context: Qt.ApplicationShortcut; onActivated: S.c.ack(S.selC) }

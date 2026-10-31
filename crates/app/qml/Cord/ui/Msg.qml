@@ -29,8 +29,22 @@ Item {
         anchors.leftMargin: 8
         anchors.rightMargin: 8
         radius: Th.rs
-        color: r.m.del ? Th.a(Th.err, 0.08) : r.ment ? Th.ment : r.hov ? Th.hov : "transparent"
+        color: r.ment ? Th.ment : r.hov ? Th.hov : "transparent"
         Rectangle { visible: r.ment && !r.m.del; width: 2; height: parent.height - 8; y: 4; x: 0; radius: 1; color: Th.ac }
+        Rectangle { visible: !!r.m.del; width: 2; height: parent.height - 8; y: 4; x: 0; radius: 1; color: Th.a(Th.err, 0.6) }
+    }
+    function usrOf(id) {
+        const c = S.chans[r.cid]
+        const hit = u => u && u.id && u.id.raw === id
+        if (r.m.auth && hit(r.m.auth)) return r.m.auth
+        if (c && c.grid) {
+            const g = U.memC[c.grid] || {}
+            for (const k in g) if (hit(g[k].usr)) return g[k].usr
+        }
+        for (const u of (c && c.rcp) || []) if (hit(u)) return u
+        for (const x of S.rels) if (hit(x.usr)) return x.usr
+        const sv = S.svc(r.cid)
+        return { id: { svc: sv === "mx" ? "Mx" : sv === "st" ? "St" : "Dc", acc: S.acc(r.cid), raw: id }, name: S.names[id] || id }
     }
     function askDel(skip) {
         const go = () => S.c.del(r.cid, S.ridOf(r.m.id))
@@ -147,12 +161,14 @@ Item {
                     font.pixelSize: 11
                     y: 4
                 }
-                Lbl {
+                Rectangle {
                     visible: !!r.m.del
-                    text: "deleted"
-                    color: Th.err
-                    font.pixelSize: 11
-                    y: 4
+                    width: dt.implicitWidth + 10
+                    height: 15
+                    radius: 3
+                    color: Th.bg4
+                    anchors.verticalCenter: parent.verticalCenter
+                    Lbl { id: dt; anchors.centerIn: parent; text: "deleted"; color: Th.tx2; font.pixelSize: 10 }
                 }
             }
             Column {
@@ -170,7 +186,8 @@ Item {
                     selectByMouse: true
                     wrapMode: TextEdit.Wrap
                     textFormat: TextEdit.RichText
-                    color: r.m.del ? Th.err : r.m.sys ? Th.tx3 : Th.tx
+                    color: r.m.del || r.m.sys ? Th.tx3 : Th.tx
+                    font.strikeout: !!r.m.del
                     font.family: Th.font
                     font.pixelSize: F.onlyEmoji(r.m.body) ? Th.fs * 2.4 : Th.fs
                     font.italic: !!r.m.sys
@@ -181,7 +198,7 @@ Item {
                     onLinkActivated: l => {
                         if (l === "cord:spoil") { spoil = true; return }
                         if (l.startsWith("cord:chan/")) { const id = l.slice(10); const c = Object.keys(S.chans).find(k => S.raw(k) === id); if (c) { S.sel = S.chans[c].grid || "home"; S.open(c) } return }
-                        if (l.startsWith("cord:usr/")) return
+                        if (l.startsWith("cord:usr/")) { const u = r.usrOf(l.slice(9)); if (u) S.prof(u, tx); return }
                         Qt.openUrlExternally(l)
                     }
                     HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.IBeamCursor }
@@ -225,9 +242,9 @@ Item {
                     Repeater {
                         model: r.m.reacts || []
                         Rectangle {
-                            height: 26
-                            width: rr.implicitWidth + 14
-                            radius: 8
+                            height: 24
+                            width: rr.implicitWidth + 16
+                            radius: 12
                             color: modelData.me ? Th.a(Th.ac, 0.2) : Th.bg3
                             border.color: modelData.me ? Th.ac : rm.containsMouse ? Th.tx3 : Th.ln
                             border.width: 1
@@ -310,7 +327,7 @@ Item {
     Rectangle {
         id: bar
         property bool hov: bm.containsMouse
-        visible: r.hov && !r.m.del
+        visible: r.hov && !r.m.del && !(U.pop && U.pop.objectName === "prof")
         anchors.right: parent.right
         anchors.rightMargin: 8
         y: r.ListView.view && r.y - r.ListView.view.contentY < 18 ? 2 : -14
@@ -346,17 +363,17 @@ Item {
     Ctx {
         id: menu
         model: [
-            { text: "Reply", run: () => S.reply = S.ridOf(r.m.id) },
-            { text: "Edit", when: r.mine, run: () => S.editing = S.ridOf(r.m.id) },
+            { text: "Reply", when: !r.m.del, run: () => S.reply = S.ridOf(r.m.id) },
+            { text: "Edit", when: r.mine && !r.m.del, run: () => S.editing = S.ridOf(r.m.id) },
             { text: "Copy", items: [
                 { text: "Text", run: () => S.copy(tx.getText(0, tx.length)) },
                 { text: "Raw text", when: S.f("copyraw"), run: () => S.copy(r.m.body) },
                 { text: "Message ID", run: () => S.copy(r.m.id.raw) },
-                { text: "Link", when: S.svc(r.cid) === "dc", run: () => { const c = S.chans[r.cid]; S.copy("https://discord.com/channels/" + (c && c.grid ? S.raw(c.grid) : "@me") + "/" + S.raw(r.cid) + "/" + r.m.id.raw) } }
+                { text: "Link", when: !!r.m.permalink, run: () => S.copy(r.m.permalink) }
             ] },
             { text: "Translate", when: S.f("translate"), run: () => Qt.openUrlExternally("https://translate.google.com/?sl=auto&tl=" + Qt.locale().name.split("_")[0] + "&text=" + encodeURIComponent(r.m.body)) },
-            { sep: true, when: r.mine },
-            { text: "Delete", danger: true, when: r.mine, run: () => r.askDel(!!(menu.mods & Qt.ShiftModifier)) }
+            { sep: true, when: r.mine && !r.m.del },
+            { text: "Delete", danger: true, when: r.mine && !r.m.del, run: () => r.askDel(!!(menu.mods & Qt.ShiftModifier)) }
         ]
     }
 }

@@ -8,12 +8,12 @@ Popup {
     property var cb: null
     width: 380
     height: 420
-    padding: 10
+    padding: 12
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     onAboutToShow: { U.reg(r); ef.text = "" }
     onOpened: ef.forceActiveFocus()
     onClosed: U.unreg(r)
-    background: Rectangle { color: Th.bg3; radius: Th.r; border.color: Th.ln }
+    background: Rectangle { color: Th.bg3; radius: Th.r; border.color: Th.ln; border.width: 1 }
     property string q: ""
     property var cust: {
         const out = []
@@ -72,6 +72,9 @@ Popup {
             clip: true
             cellWidth: 40
             cellHeight: 40
+            topMargin: 8
+            bottomMargin: 8
+            leftMargin: 0
             model: r.items
             ScrollBar.vertical: Scr {}
             delegate: Rectangle {

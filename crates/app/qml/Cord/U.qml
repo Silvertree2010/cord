@@ -12,7 +12,7 @@ QtObject {
     property var undo: []
     property string tipText: ""
     property var tipItem: null
-    property var tipBox: ({ x: 0, y: 0, w: 0, h: 0 })
+    property var tipBox: ({ x: 0, y: 0, w: 0, h: 0, ex: -1 })
     property string tipSide: "b"
     readonly property bool demo: S.cfgAccs.some(a => a.base === "demo")
     property real callT0: 0
@@ -43,7 +43,7 @@ QtObject {
         running: u.toasts.length > 0
         onTriggered: {
             const n = Date.now()
-            const k = u.toasts.filter(t => t.keep || n - t.at < 8000)
+            const k = u.toasts.filter(t => t.keep || n - t.at < (t.ok ? 3000 : 8000))
             if (k.length !== u.toasts.length) u.toasts = k
         }
     }
@@ -56,11 +56,12 @@ QtObject {
     function unreg(p) { if (pop === p) pop = null }
     function closePop() { if (pop) pop.close() }
 
-    function showTip(item, text, side) {
+    function showTip(item, text, side, edge) {
         if (!tipOk || !item || !text) return
         tipSide = side || "b"
         const p = item.mapToItem(null, 0, 0)
-        tipBox = { x: p.x, y: p.y, w: item.width, h: item.height }
+        const e = edge ? edge.mapToItem(null, edge.width, 0).x : -1
+        tipBox = { x: p.x, y: p.y, w: item.width, h: item.height, ex: e }
         tipItem = item
         tipText = text
     }
@@ -68,6 +69,36 @@ QtObject {
         if (item && tipItem !== item) return
         tipText = ""
         tipItem = null
+    }
+
+    property var memC: ({})
+    property var memAsked: ({})
+    property Connections memCn: Connections {
+        target: S
+        function onMems(g, list) {
+            const o = Object.assign({}, u.memC)
+            const m = Object.assign({}, o[g] || {})
+            for (const x of list) {
+                const k = x.usr && x.usr.id ? S.ridOf(x.usr.id) : ""
+                if (k) m[k] = x
+            }
+            o[g] = m
+            u.memC = o
+        }
+    }
+    function memList(cid) {
+        const ch = S.chans[cid]
+        if (!ch) return []
+        if (ch.grid) {
+            if (!memAsked[ch.grid]) {
+                const a = Object.assign({}, memAsked)
+                a[ch.grid] = true
+                memAsked = a
+                S.c.load_mems(ch.grid)
+            }
+            return Object.values(memC[ch.grid] || {}).map(m => ({ usr: m.usr, name: m.nick || m.usr.disp || m.usr.name }))
+        }
+        return (ch.rcp || []).map(x => ({ usr: x, name: x.disp || x.name }))
     }
 
     function ask(o) { askReq(o) }
@@ -91,7 +122,12 @@ QtObject {
         const pre = a ? Th.svcName(S.tag(a.svc)) + (me ? " " + (me.disp || me.name) : "") + ": " : ""
         const msg = pre + d.msg
         const k = toasts.filter(t => t.msg !== msg)
-        k.push({ msg: msg, at: Date.now(), keep: d.ctx === "send", id: Date.now() + Math.random(), retry: d.retry || null })
+        k.push({ msg: msg, at: Date.now(), keep: false, id: Date.now() + Math.random(), retry: d.retry || null })
+        toasts = k.slice(-5)
+    }
+    function flash(msg) {
+        const k = toasts.filter(t => t.msg !== msg)
+        k.push({ msg: msg, at: Date.now(), keep: false, ok: true, id: Date.now() + Math.random(), retry: null })
         toasts = k.slice(-5)
     }
     function dismiss(id) { toasts = toasts.filter(t => t.id !== id) }
@@ -137,9 +173,19 @@ QtObject {
         S.setLay(l)
     }
     function resetLay() { setLay(L.cp(L.presets.classic)) }
-    function cancelEdit() {
+    function doCancel() {
         if (snap) S.setLay(snap)
         S.edit = false
+    }
+    function cancelEdit(then) {
+        if (!S.edit) { if (then) then(); return }
+        if (undo.length === 0) { doCancel(); if (then) then(); return }
+        ask({ title: "Discard layout changes?", body: "Your changes to the layout are lost.", ok: "Discard", danger: true, run: () => { doCancel(); if (then) then() } })
+    }
+    function recent(cid) {
+        if (!cid) return
+        const l = [cid].concat((S.ui.rec || []).filter(x => x !== cid)).slice(0, 12)
+        S.setUi("rec", l)
     }
     function addBlk(b, side) {
         const c = L.find(S.lay, "chat")

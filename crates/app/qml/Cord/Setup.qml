@@ -93,7 +93,7 @@ Rectangle {
                         }
                     }
                 }
-                AccAdd { Layout.alignment: Qt.AlignTop }
+                AccAdd { Layout.alignment: Qt.AlignTop; onDone: U.flash("Account added") }
                 Row {
                     spacing: 8
                     Btn {
