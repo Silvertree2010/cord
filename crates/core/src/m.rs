@@ -22,6 +22,8 @@ pub struct Acc {
     pub id: u32,
     pub svc: crate::Svc,
     pub me: Usr,
+    #[serde(default)]
+    pub demo: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

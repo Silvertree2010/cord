@@ -6,13 +6,14 @@ pub struct Demo {
     a: u32,
     sv: Svc,
     n: AtomicU64,
+    run: u64,
     tx: tokio::sync::OnceCell<Tx>,
     jh: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
 }
 
 impl Demo {
     pub fn new(a: u32, sv: Svc) -> Self {
-        Self { a, sv, n: AtomicU64::new(1000), tx: Default::default(), jh: Default::default() }
+        Self { a, sv, n: AtomicU64::new(1000), run: Self::now() as u64, tx: Default::default(), jh: Default::default() }
     }
     fn r(&self, s: impl Into<String>) -> Rid {
         Rid::new(self.sv, self.a, s.into())
@@ -44,7 +45,7 @@ impl Demo {
             "brb",
         ];
         Msg {
-            id: self.r(format!("m{i}")),
+            id: self.r(format!("m{}_{i}", self.run)),
             chan: c.clone(),
             auth: self.u((i % 5) as u32),
             body: bs[i as usize % bs.len()].into(),
@@ -78,7 +79,7 @@ impl Bk for Demo {
     async fn start(&self, tx: Tx) -> Res<()> {
         let _ = self.tx.set(tx.clone());
         let me = self.u(7);
-        tx.send(Ev::Ready(Acc { id: self.a, svc: self.sv, me }))?;
+        tx.send(Ev::Ready(Acc { id: self.a, svc: self.sv, me, demo: true }))?;
         tx.send(Ev::Conn { acc: self.a, up: true })?;
         let gs: &[(&str, &[&str])] = match self.sv {
             Svc::Dc => &[("Rust Lounge", &["general", "help", "showcase"]), ("Gaming", &["general", "clips", "lfg"])],
@@ -108,7 +109,7 @@ impl Bk for Demo {
             }
         }
         let c = self.r("g0c0");
-        let s = Self { a: self.a, sv: self.sv, n: AtomicU64::new(0), tx: Default::default(), jh: Default::default() };
+        let s = Self { a: self.a, sv: self.sv, n: AtomicU64::new(0), run: self.run, tx: Default::default(), jh: Default::default() };
         let jh = tokio::spawn(async move {
             loop {
                 tokio::time::sleep(std::time::Duration::from_secs(9 + s.a as u64 * 4)).await;
@@ -127,6 +128,9 @@ impl Bk for Demo {
         }
         Ok(())
     }
+    fn demo(&self) -> bool {
+        true
+    }
     async fn stop(&self) {
         if let Some(j) = self.jh.lock().ok().and_then(|mut g| g.take()) {
             j.abort();
@@ -142,7 +146,7 @@ impl Bk for Demo {
         Ok(c)
     }
     async fn hist(&self, chan: &Rid, before: Option<&Rid>, n: u32) -> Res<Vec<Msg>> {
-        let b: u64 = before.and_then(|r| r.raw.trim_start_matches('m').parse().ok()).unwrap_or(200);
+        let b: u64 = before.and_then(|r| r.raw.rsplit('_').next().and_then(|n| n.parse().ok())).unwrap_or(200);
         let t = Self::now() - 60_000;
         Ok((b.saturating_sub(n as u64)..b).map(|i| self.m(chan, i, t - (b - i) as i64 * 97_000)).collect())
     }
