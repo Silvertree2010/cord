@@ -205,6 +205,7 @@ QtObject {
         if (dirtyC) { chans = Object.assign({}, chans); dirtyC = false; ver++ }
         if (dirtyG) { gmap = Object.assign({}, gmap); sortG(); dirtyG = false; ver++ }
         if (dirtyN) { names = Object.assign({}, nm); dirtyN = false; nver++ }
+        if (sel !== "home" && !selC && gmap[sel]) pick(sel)
     }
     function mark(c_, g_, n_) {
         if (c_) dirtyC = true
