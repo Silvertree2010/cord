@@ -77,13 +77,61 @@ function ins(root, p, side, node) {
     return norm({ t: ax, ch: pre ? [node, root] : [root, node] })
 }
 
+function findMk(n, p) {
+    p = p || []
+    if (n._mk) return p
+    for (let i = 0; n.ch && i < n.ch.length; i++) {
+        const r = findMk(n.ch[i], p.concat([i]))
+        if (r) return r
+    }
+    return null
+}
+
+function strip(n) {
+    delete n._mk
+    for (const c of n.ch || []) strip(c)
+    return n
+}
+
+function inside(n, x) {
+    if (n === x) return true
+    return (n.ch || []).some(c => inside(c, x))
+}
+
 function move(root, from, to, side) {
-    if (JSON.stringify(from) === JSON.stringify(to)) return root
-    const tp = at(root, to)
-    const r = rm(root, from)
-    const np = path(r.root, tp)
+    if (!from.length || JSON.stringify(from) === JSON.stringify(to)) return root
+    const c = cp(root)
+    const tgt = at(c, to)
+    const par = at(c, from.slice(0, -1))
+    const [node] = par.ch.splice(from[from.length - 1], 1)
+    if (!node || inside(node, tgt)) return root
+    tgt._mk = true
+    const r = norm(c)
+    const np = findMk(r)
     if (!np) return root
-    return ins(r.root, np, side, r.node)
+    return strip(ins(r, np, side, node))
+}
+
+const known = ["rail", "side", "chat", "mems", "me", "call", "stage", "inbox", "player"]
+
+function valid(n, ids, d) {
+    d = d || 0
+    if (!n || typeof n !== "object" || Array.isArray(n) || d > 12) return false
+    if (n.b !== undefined) {
+        if (typeof n.b !== "string" || n.ch) return false
+        if (ids && ids.indexOf(n.b) < 0) return false
+    } else {
+        if (["row", "col", "tabs"].indexOf(n.t) < 0) return false
+        if (!Array.isArray(n.ch) || !n.ch.length) return false
+        if (!n.ch.every(c => valid(c, ids, d + 1))) return false
+    }
+    for (const k of ["w", "h"]) if (n[k] !== undefined && typeof n[k] !== "number") return false
+    return true
+}
+
+function safe(l, ids) {
+    if (valid(l, ids) && has(l, "chat")) return l
+    return cp(presets.classic)
 }
 
 function path(n, ref, p) {
