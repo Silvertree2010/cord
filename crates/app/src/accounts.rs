@@ -49,21 +49,52 @@ pub async fn add(h: Arc<Hub>, e: Em, sv: Svc, v: Value) -> Res<()> {
     finish(&h, &e, ac, sec).await
 }
 
-pub async fn qr(h: Arc<Hub>, e: Em) -> Res<()> {
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+static QR: parking_lot::Mutex<Option<tokio::task::JoinHandle<()>>> = parking_lot::Mutex::new(None);
+
+pub fn qr_cancel() {
+    if let Some(j) = QR.lock().take() {
+        j.abort();
+    }
+}
+
+pub fn qr(h: Arc<Hub>, e: Em) {
     let e2 = e.clone();
-    tokio::spawn(async move {
-        while let Some(r) = rx.recv().await {
-            match r {
-                cord_dc::ra::Ra::Qr(u) => e2.s(&Out::Qr(u)),
-                cord_dc::ra::Ra::Usr(u) => e2.s(&Out::QrUsr { name: u.name, id: u.id }),
-            }
+    let j = crate::rt::rt().spawn(async move {
+        if let Err(x) = qr_run(h, e2.clone()).await {
+            e2.err(0, "login", x);
         }
     });
-    let tok = cord_dc::ra::login(tx).await?;
-    let id = reserve().await?;
-    let ac = acc::Ac { id, svc: Svc::Dc, lbl: String::new(), base: String::new(), on: true, sec: None };
-    finish(&h, &e, ac, tok).await
+    if let Some(o) = QR.lock().replace(j) {
+        o.abort();
+    }
+}
+
+fn fwd(e: &Em, r: cord_dc::ra::Ra) {
+    match r {
+        cord_dc::ra::Ra::Qr(u) => e.s(&Out::Qr(u)),
+        cord_dc::ra::Ra::Usr(u) => e.s(&Out::QrUsr { name: u.name, id: u.id }),
+    }
+}
+
+async fn qr_run(h: Arc<Hub>, e: Em) -> Res<()> {
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    let login = cord_dc::ra::login(tx);
+    tokio::pin!(login);
+    let tok = loop {
+        tokio::select! {
+            r = &mut login => break r?,
+            Some(r) = rx.recv() => fwd(&e, r),
+        }
+    };
+    while let Ok(r) = rx.try_recv() {
+        fwd(&e, r);
+    }
+    let fin = tokio::spawn(async move {
+        let id = reserve().await?;
+        let ac = acc::Ac { id, svc: Svc::Dc, lbl: String::new(), base: String::new(), on: true, sec: None };
+        finish(&h, &e, ac, tok).await
+    });
+    fin.await?
 }
 
 pub async fn remove(h: Arc<Hub>, e: Em, id: u32) -> Res<()> {

@@ -65,10 +65,10 @@ pub struct Rest {
 }
 
 impl Rest {
-    pub fn new(tok: String) -> Self {
-        let c = Client::builder().user_agent(UA).build().expect("http client");
+    pub fn new(tok: String) -> Res<Self> {
+        let c = Client::builder().user_agent(UA).build().map_err(|e| anyhow::anyhow!("http client: {e}"))?;
         let sp = B64.encode(props().to_string());
-        Self { c, tok, sp, bk: Mutex::new(HashMap::new()) }
+        Ok(Self { c, tok, sp, bk: Mutex::new(HashMap::new()) })
     }
 
     async fn wt(&self, k: &str) {
@@ -158,10 +158,10 @@ impl Rest {
         self.call(&k, |c| {
             let mut f = multipart::Form::new().part(
                 "payload_json",
-                multipart::Part::text(js.clone()).mime_str("application/json").unwrap(),
+                multipart::Part::text(js.clone()).mime_str("application/json").unwrap_or_else(|_| multipart::Part::text(js.clone())),
             );
             for (i, (n, d, mt)) in fs.iter().enumerate() {
-                let pt = multipart::Part::bytes(d.clone()).file_name(n.clone()).mime_str(mt).unwrap();
+                let pt = multipart::Part::bytes(d.clone()).file_name(n.clone()).mime_str(mt).unwrap_or_else(|_| multipart::Part::bytes(d.clone()).file_name(n.clone()));
                 f = f.part(format!("files[{i}]"), pt);
             }
             c.post(&u).multipart(f)

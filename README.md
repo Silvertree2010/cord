@@ -65,6 +65,19 @@ Everything lives in `~/.config/cord`:
 - `mods/<name>/main.qml`: mods
 - `blocks/<id>.qml`: overrides for built-in blocks
 
+## Local cache
+
+Cord keeps a cache of recent messages in `~/.local/share/cord/cache.db` (or `$CORD_HOME/data/cache.db`) so channels open instantly. It stores:
+
+- the last messages of every channel you opened, including direct messages and group chats, as plaintext JSON
+- message logger entries: edit history and the text of messages that were deleted, while the message logger is enabled
+
+The file is created with mode `0600`. It is capped at 500 messages per channel and about 20000 rows overall; when the global cap is hit the least recently used channels are dropped first. Matrix encrypted rooms are never cached, and neither are demo accounts. Removing an account deletes its cached rows.
+
+To clear it, quit cord and delete `cache.db` together with `cache.db-wal` and `cache.db-shm`, or remove the account in the settings.
+
+Only one cord instance can run per profile; a second launch prints a message and exits.
+
 ## Mods
 
 A mod is a directory with a `main.qml` under `mods/`.
@@ -100,6 +113,10 @@ A theme is a JSON object with the keys `bg`, `bg2`, `bg3`, `bg4`, `hov`, `sel`, 
 ## Disclaimer
 
 Using third party clients on Discord is against Discord's Terms of Service and may get your account suspended. Use at your own risk. Matrix and Stoat explicitly allow third party clients.
+
+Some built-in features deviate from what the official Discord client does and carry a higher ban risk. They are tagged `ban` in the feature list: silent typing, no read receipts, hidden channels, emoji and sticker passthrough, and stream quality unlock.
+
+Discord REST calls are rate limited by Discord. Cord honours `X-RateLimit-*`, `Retry-After` and global limits per route bucket and waits instead of retrying blindly, but heavy automation from mods can still get an account flagged.
 
 ## License
 

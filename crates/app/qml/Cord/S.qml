@@ -9,7 +9,7 @@ QtObject {
     readonly property int api: 1
 
     property Core c: Core {
-        onDl: d => s.on(JSON.parse(d))
+        onDl: d => s.onBatch(d)
         onFrameTick: (k, n) => s.tick(k, n)
     }
 
@@ -36,6 +36,10 @@ QtObject {
     property int uver: 0
     property int dver: 0
     property int nver: 0
+    property real snapSeq: 0
+    property real lastSeq: 0
+    property var hookFails: ({})
+    property var hookOff: ({})
 
     property string sel: "home"
     property string selC: ""
@@ -71,6 +75,7 @@ QtObject {
     signal sent(string chan, bool ok, string err)
     signal dmOpened(string usr, string chan, bool ok, string err)
     signal fs(string path)
+    signal resync()
 
     function f(k) {
         if (k in feats) return feats[k]
@@ -88,8 +93,8 @@ QtObject {
     function acc(id) { return id ? parseInt(id.split(":")[1]) : 0 }
     function raw(id) { return id ? id.split(":").slice(2).join(":") : "" }
     function rid(sv, a, r) { return sv + ":" + a + ":" + r }
-    function ridOf(o) { return o ? (o.rid || (o.svc === "Mx" ? "mx" : o.svc === "St" ? "st" : "dc") + ":" + o.acc + ":" + o.raw) : "" }
-    function tag(sv) { return sv === "Mx" ? "mx" : sv === "St" ? "st" : "dc" }
+    function ridOf(o) { return o ? (o.rid || tag(o.svc) + ":" + o.acc + ":" + o.raw) : "" }
+    function tag(sv) { const t = String(sv || "").toLowerCase(); return t === "mx" || t === "st" ? t : "dc" }
 
     readonly property var noCaps: ({ call: false, permalink: "", fakeEmoji: false, threads: false })
     function caps(id) {
@@ -133,6 +138,8 @@ QtObject {
         secretBackend = c.secretBackend()
         scanMods()
     }
+
+    function secretOf(a) { return c.secretOf(a) }
 
     function reloadUi() {
         const u = pj(c.cget("ui.json"), null)
@@ -240,13 +247,22 @@ QtObject {
         nm[raw(ch.rid)] = ch.name
         mark(true, false, true)
     }
+    function dropChanState(k) {
+        if (selC === k) selC = ""
+        if (selC2 === k) selC2 = ""
+        if (typing[k]) { delete typing[k]; typingChanged() }
+        if (unr[k]) { delete unr[k]; unrChanged(); uver++ }
+    }
     function delChan(id) {
+        dropChanState(id)
         delete chans[id]
         mark(true, false, false)
     }
 
     function bootSnap() {
         const j = pj(c.snap(), {})
+        snapSeq = j.seq || 0
+        lastSeq = snapSeq
         const am = {}
         for (const a of j.accs || []) am[a.id] = a
         accs = am
@@ -289,7 +305,13 @@ QtObject {
     property var rcache: ({})
     property int rcount: 0
     function rsig(m) {
+        if (m.rev !== undefined) return "r" + m.rev
         let n = 0
+        const a = m.auth || {}
+        const ea = JSON.stringify(m.embs || []).length + ":" + JSON.stringify(m.atts || []).length
+        return (a.id ? a.id.raw : "") + "|" + a.name + "|" + (a.disp || "") + "|" + (a.av || "") + "|" + ea + "|" + rsig0(m, n)
+    }
+    function rsig0(m, n) {
         for (const r of m.reacts || []) n += r.n + (r.me ? 1000 : 0)
         return (m.ed || 0) + "|" + (m.body || "").length + "|" + n + "|" + (m.atts || []).length + "|" + (m.embs || []).length + "|" + (m.hist || []).length + "|" + (m.del ? 1 : 0) + (m.pin ? 1 : 0)
     }
@@ -391,16 +413,48 @@ QtObject {
     property Timer ackT: Timer {
         interval: 400
         onTriggered: {
+            if (Qt.application.state !== Qt.ApplicationActive) {
+                if (Object.keys(s.ackQ).length) restart()
+                return
+            }
             const q = s.ackQ
             s.ackQ = {}
-            if (Qt.application.state !== Qt.ApplicationActive) return
             for (const k in q) if (s.unr[k]) s.c.ack(k)
+        }
+    }
+    property Connections appCon: Connections {
+        target: Qt.application
+        function onStateChanged() {
+            if (Qt.application.state !== Qt.ApplicationActive) return
+            for (const cid of [s.selC, s.selC2]) if (cid && s.unr[cid] && s.visible(cid)) s.ackReq(cid)
+            if (Object.keys(s.ackQ).length) s.ackT.restart()
         }
     }
     function ackReq(cid) {
         if (!cid) return
         ackQ[cid] = true
         ackT.restart()
+    }
+
+    function onBatch(txt) {
+        let v
+        try { v = JSON.parse(txt) } catch (e) { console.warn("cord: bad batch", e); return }
+        if (Array.isArray(v)) for (const d of v) feed(d)
+        else feed(v)
+    }
+    function feed(d) {
+        const q = d.seq || 0
+        if (q) {
+            if (q <= snapSeq) return
+            if ((d.from || q) !== lastSeq + 1) {
+                console.warn("cord: stream gap, resnapshot", lastSeq, d.from || q)
+                bootSnap()
+                resync()
+                return
+            }
+            lastSeq = q
+        }
+        on(d)
     }
 
     function on(d) {
@@ -437,8 +491,9 @@ QtObject {
             const g = gmap[p]
             if (g && f("relnotif") && accs[acc(p)]) c.notify("Server removed", "You are no longer in " + g.name)
             delete gmap[p]
-            for (const k in chans) if (chans[k].grid === p) delete chans[k]
+            for (const k in chans) if (chans[k].grid === p) { dropChanState(k); delete chans[k] }
             mark(true, true, false)
+            if (sel === p) pick("home")
             break
         }
         case "Chan": putChan(p); break
@@ -503,7 +558,21 @@ QtObject {
         }
         }
         ev(d)
-        for (const h of hooks.ev) try { h.fn(d) } catch (e) { console.warn(e) }
+        for (const h of hooks.ev) {
+            if (hookOff[h.owner]) continue
+            try { h.fn(d) } catch (e) { hookErr(h, e) }
+        }
+    }
+    function hookErr(h, e) {
+        console.warn("cord: hook failed", h.owner, e)
+        if (h.owner === "core") return
+        const n = (hookFails[h.owner] || 0) + 1
+        hookFails[h.owner] = n
+        if (n >= 5) {
+            hookOff[h.owner] = true
+            unhook(h.owner)
+            pushErr("mod", "Mod " + h.owner + " was disabled after " + n + " failed hook calls: " + e, 0)
+        }
     }
     property var speaking: ({})
 
@@ -531,7 +600,10 @@ QtObject {
 
     function run(k, v) {
         if (k === "render" && v && v._r) return v
-        for (const h of hooks[k] || []) try { const r = h.fn(v); if (r !== undefined) v = r } catch (e) { console.warn(e) }
+        for (const h of hooks[k] || []) {
+            if (hookOff[h.owner]) continue
+            try { const r = h.fn(v); if (r !== undefined) v = r } catch (e) { hookErr(h, e) }
+        }
         return v
     }
     function hook(k, fn, owner, name) {
@@ -549,6 +621,8 @@ QtObject {
         const h = Object.assign({}, hooks)
         h[k] = cur.concat([{ fn: fn, owner: owner, name: key }])
         hooks = h
+        rcache = {}
+        rcount = 0
     }
     function unhook(owner) {
         const h = {}
@@ -562,6 +636,8 @@ QtObject {
         blks = {}
         rcache = {}
         rcount = 0
+        hookFails = {}
+        hookOff = {}
     }
     function regBlk(id, url, name, opt) {
         const b = Object.assign({}, blks)
@@ -626,7 +702,7 @@ QtObject {
             lastC = l
         }
         sel = g
-        if (g === "home") { open(lastC.home || ""); return }
+        if (g === "home") { open(lastC.home && chans[lastC.home] ? lastC.home : ""); return }
         const last = lastC[g]
         if (last && chans[last]) { open(last); return }
         const cs = chList(g).filter(x => x.k === "Txt" || x.k === "Ann" || x.k === "Forum")

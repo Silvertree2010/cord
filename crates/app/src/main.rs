@@ -15,7 +15,22 @@ mod rt;
 
 use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QString, QUrl};
 
+fn single() -> Option<std::fs::File> {
+    let f = std::fs::OpenOptions::new().create(true).write(true).truncate(false).open(cfg::data().join("cord.lock")).ok()?;
+    match f.try_lock() {
+        Ok(()) => Some(f),
+        Err(std::fs::TryLockError::WouldBlock) => {
+            let m = "cord is already running for this profile; close the other window first";
+            eprintln!("{m}");
+            let _ = notify_rust::Notification::new().appname("cord").summary("cord is already running").body(m).show();
+            std::process::exit(1);
+        }
+        Err(_) => Some(f),
+    }
+}
+
 fn main() {
+    let _lock = single();
     let _ = rustls::crypto::ring::default_provider().install_default();
     rt::init();
     let mut app = QGuiApplication::new();

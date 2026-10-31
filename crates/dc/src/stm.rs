@@ -429,7 +429,7 @@ mod tests {
     }
 
     fn mk() -> (Arc<Sh>, tokio::sync::mpsc::UnboundedReceiver<String>) {
-        let dc = crate::Dc::new(1, "t".into());
+        let dc = crate::Dc::new(1, "t".into()).unwrap();
         let sh = dc.0.clone();
         *sh.me.lock() = "100".into();
         let (t, r) = unbounded_channel();

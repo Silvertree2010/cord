@@ -78,13 +78,30 @@ pub async fn set_status(h: Arc<Hub>, s: St, a: Option<String>) {
     }
 }
 
+pub fn risk(k: &str) -> &'static str {
+    match k {
+        "silenttyping" | "noread" | "hidden" | "fakenitro" | "streamq" => "ban",
+        _ => "",
+    }
+}
+
 pub fn list() -> Value {
-    Value::Array(feat::FEATS.iter().map(|f| json!({"k": f.k, "n": f.n, "d": f.d, "on": f.on})).collect())
+    Value::Array(feat::FEATS.iter().map(|f| json!({"k": f.k, "n": f.n, "d": f.d, "on": f.on, "risk": risk(f.k)})).collect())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn risk_tags() {
+        let v = list();
+        let r = |k: &str| v.as_array().unwrap().iter().find(|f| f["k"] == k).unwrap()["risk"].clone();
+        for k in ["silenttyping", "noread", "hidden", "fakenitro", "streamq"] {
+            assert_eq!(r(k), "ban");
+        }
+        assert_eq!(r("msglog"), "");
+    }
 
     #[test]
     fn status_words() {

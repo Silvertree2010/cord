@@ -108,19 +108,11 @@ fn ent(id: u32) -> keyring::Result<keyring::Entry> {
 }
 
 pub fn write_secret_file(p: &Path, s: &str) -> std::io::Result<()> {
-    use std::io::Write;
-    let t = p.with_extension("sec.tmp");
-    let mut o = std::fs::OpenOptions::new();
-    o.write(true).create(true).truncate(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        o.mode(0o600);
-    }
-    let mut f = o.open(&t)?;
-    f.write_all(s.as_bytes())?;
-    f.sync_all()?;
-    std::fs::rename(t, p)
+    crate::cfg::atomic_write(p, s.as_bytes(), "sec.tmp", true)
+}
+
+pub fn secret_of(id: u32) -> String {
+    load().into_iter().find(|a| a.id == id).and_then(|a| a.sec).unwrap_or_default()
 }
 
 #[derive(Debug)]
