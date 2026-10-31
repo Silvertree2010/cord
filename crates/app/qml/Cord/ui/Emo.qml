@@ -68,7 +68,7 @@ Popup {
         }
         GridView {
             width: parent.width
-            height: parent.height - y
+            height: Math.floor((parent.height - y) / 40) * 40
             clip: true
             cellWidth: 40
             cellHeight: 40
