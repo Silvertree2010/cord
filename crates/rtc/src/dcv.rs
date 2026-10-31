@@ -3,13 +3,14 @@ use crate::{
     eng::{Eng, Pkt},
     mix::FR,
     rtp::{self, Cry, Hdr, Mode},
+    vrtp::{self, Codec, Fb, Q, Unp},
 };
 use futures::{SinkExt, StreamExt};
 use serde_json::{Value, json};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     sync::Arc,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use tokio::{
     net::UdpSocket,
@@ -46,6 +47,48 @@ pub enum VEv {
     Gone { uid: String },
 }
 
+#[derive(Clone, Debug)]
+pub enum Media {
+    Video { data: Vec<u8>, pts_us: u64 },
+    Audio { data: Vec<u8>, pts_us: u64 },
+}
+
+#[derive(Clone, Debug)]
+pub enum SEv {
+    Key,
+    Frame { uid: String, cod: Codec, data: Vec<u8>, key: bool },
+    Pli,
+}
+
+pub struct Sio {
+    pub media: UnboundedReceiver<Media>,
+    pub ev: UnboundedSender<SEv>,
+    pub q: Option<Q>,
+    pub cod: Codec,
+}
+
+struct Sent {
+    seq: u16,
+    ts: u32,
+    marker: bool,
+    pl: Vec<u8>,
+}
+
+struct St {
+    ev: UnboundedSender<SEv>,
+    q: Option<Q>,
+    cod: Codec,
+    vss: u32,
+    rss: u32,
+    vseq: u16,
+    xseq: u16,
+    ring: VecDeque<Sent>,
+    vusers: HashMap<u32, String>,
+    unp: HashMap<String, Unp>,
+    vmain: HashMap<String, u32>,
+    pli: Option<Instant>,
+}
+
 pub struct Vc {
     stop: Option<oneshot::Sender<()>>,
     task: Option<tokio::task::JoinHandle<()>>,
@@ -53,8 +96,16 @@ pub struct Vc {
 
 impl Vc {
     pub fn start(cfg: Cfg, eng: Eng, ev: UnboundedSender<VEv>) -> Vc {
+        Vc::start_with(cfg, eng, ev, None)
+    }
+
+    pub fn start_stream(cfg: Cfg, eng: Eng, ev: UnboundedSender<VEv>, sio: Sio) -> Vc {
+        Vc::start_with(cfg, eng, ev, Some(sio))
+    }
+
+    fn start_with(cfg: Cfg, eng: Eng, ev: UnboundedSender<VEv>, sio: Option<Sio>) -> Vc {
         let (st, sr) = oneshot::channel();
-        let task = tokio::spawn(run(cfg, eng, ev, sr));
+        let task = tokio::spawn(run(cfg, eng, ev, sio, sr));
         Vc { stop: Some(st), task: Some(task) }
     }
 
@@ -102,6 +153,7 @@ pub struct Conn {
     resume: bool,
     fatal: Option<String>,
     sent: u64,
+    stm: Option<St>,
 }
 
 fn now() -> u64 {
@@ -118,7 +170,12 @@ fn num(v: &Value) -> Option<u64> {
 
 impl Conn {
     pub fn new(cfg: Cfg, eng: Eng, ev: UnboundedSender<VEv>) -> Conn {
+        Conn::with(cfg, eng, ev, None)
+    }
+
+    fn with(cfg: Cfg, eng: Eng, ev: UnboundedSender<VEv>, sio: Option<(UnboundedSender<SEv>, Option<Q>, Codec)>) -> Conn {
         Conn {
+            stm: sio.map(|(ev, q, cod)| St { ev, q, cod, vss: 0, rss: 0, vseq: rand::random(), xseq: rand::random(), ring: VecDeque::new(), vusers: HashMap::new(), unp: HashMap::new(), vmain: HashMap::new(), pli: None }),
             cfg,
             eng,
             ev,
@@ -172,7 +229,12 @@ impl Conn {
         if self.resume {
             txt(json!({"op": 7, "d": {"server_id": c.server, "session_id": c.session, "token": c.token, "seq_ack": self.seq}}))
         } else {
-            txt(json!({"op": 0, "d": {"server_id": c.server, "user_id": c.user, "session_id": c.session, "token": c.token, "max_dave_protocol_version": MAXV}}))
+            let mut d = json!({"server_id": c.server, "user_id": c.user, "session_id": c.session, "token": c.token, "max_dave_protocol_version": MAXV});
+            if self.stm.is_some() {
+                d["video"] = json!(true);
+                d["streams"] = vrtp::ident_streams();
+            }
+            txt(json!({"op": 0, "d": d}))
         }
     }
 
@@ -223,7 +285,14 @@ impl Conn {
                 if self.dv.is_none() {
                     self.dv = Dv::new(MAXV, self.me(), self.cfg.chan.parse().unwrap_or(0));
                 }
-                o.push(txt(json!({"op": 1, "d": {"protocol": "udp", "data": {"address": addr, "port": p, "mode": m.name()}}})));
+                let mut sel = json!({"protocol": "udp", "data": {"address": addr, "port": p, "mode": m.name()}});
+                if let Some(t) = &mut self.stm {
+                    sel["codecs"] = vrtp::codecs();
+                    let st = d["streams"].as_array().and_then(|a| a.first());
+                    t.vss = st.and_then(|x| x["ssrc"].as_u64()).map(|x| x as u32).unwrap_or(self.ssrc.wrapping_add(1));
+                    t.rss = st.and_then(|x| x["rtx_ssrc"].as_u64()).map(|x| x as u32).unwrap_or(self.ssrc.wrapping_add(2));
+                }
+                o.push(txt(json!({"op": 1, "d": sel})));
             }
             4 => {
                 let key: Vec<u8> = d["secret_key"].as_array().map(|a| a.iter().filter_map(|x| x.as_u64().map(|x| x as u8)).collect()).unwrap_or_default();
@@ -240,12 +309,17 @@ impl Conn {
                     self.dv = Dv::new(dv, self.me(), self.cfg.chan.parse().unwrap_or(0));
                 }
                 self.ready = true;
-                self.eng.reset();
+                if self.stm.is_none() {
+                    self.eng.reset();
+                }
                 self.emit(|c| {
                     c.up = true;
                     c.err = None;
                 });
                 self.e2ee();
+                if let Some(t) = &self.stm {
+                    o.push(txt(vrtp::video_op(self.ssrc, t.vss, t.rss, t.q)));
+                }
             }
             9 => {
                 self.ready = true;
@@ -268,6 +342,28 @@ impl Conn {
                 let _ = self.ev.send(VEv::Speak { ssrc: s as u32, uid, on });
             }
             12 => {
+                if let (Some(t), Some(u)) = (&mut self.stm, num(&d["user_id"])) {
+                    for k in ["video_ssrc", "rtx_ssrc"] {
+                        if let Some(s) = d[k].as_u64().filter(|&s| s != 0) {
+                            t.vusers.insert(s as u32, u.to_string());
+                            if k == "video_ssrc" {
+                                t.vmain.insert(u.to_string(), s as u32);
+                            }
+                        }
+                    }
+                    if let Some(a) = d["streams"].as_array() {
+                        for x in a {
+                            for k in ["ssrc", "rtx_ssrc"] {
+                                if let Some(s) = x[k].as_u64().filter(|&s| s != 0) {
+                                    t.vusers.insert(s as u32, u.to_string());
+                                    if k == "ssrc" {
+                                        t.vmain.entry(u.to_string()).or_insert(s as u32);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 if let (Some(s), Some(u)) = (d["audio_ssrc"].as_u64(), num(&d["user_id"]))
                     && s != 0
                 {
@@ -278,6 +374,11 @@ impl Conn {
             13 => {
                 if let Some(u) = num(&d["user_id"]) {
                     let uid = u.to_string();
+                    if let Some(t) = &mut self.stm {
+                        t.vusers.retain(|_, x| *x != uid);
+                        t.vmain.remove(&uid);
+                        t.unp.remove(&uid);
+                    }
                     let gone: Vec<u32> = self.users.iter().filter(|(_, x)| **x == uid).map(|(s, _)| *s).collect();
                     for s in gone {
                         self.users.remove(&s);
@@ -310,20 +411,120 @@ impl Conn {
         o
     }
 
-    pub fn inbound(&mut self, b: &[u8]) {
-        let Some(c) = &self.cry else { return };
-        let Some((h, mut pl)) = c.open(b) else { return };
-        if h.pt != rtp::PT & 0x7f {
-            return;
+    pub fn inbound(&mut self, b: &[u8]) -> Vec<Vec<u8>> {
+        let mut out = vec![];
+        if b.len() < 12 {
+            return out;
         }
-        if let Some(dv) = &mut self.dv {
-            let Some(uid) = self.users.get(&h.ssrc).and_then(|u| u.parse::<u64>().ok()) else { return };
-            match dv.dec(uid, &pl) {
-                Some(p) => pl = p,
-                None => return,
+        if (192..=223).contains(&b[1]) {
+            self.rtcp(b, &mut out);
+            return out;
+        }
+        let Some(c) = &self.cry else { return out };
+        let Some((h, mut pl)) = c.open(b) else { return out };
+        if h.pt == rtp::PT & 0x7f {
+            if let Some(dv) = &mut self.dv {
+                let Some(uid) = self.users.get(&h.ssrc).and_then(|u| u.parse::<u64>().ok()) else { return out };
+                match dv.dec(uid, &pl) {
+                    Some(p) => pl = p,
+                    None => return out,
+                }
+            }
+            self.eng.rx(h.ssrc, h.seq, pl);
+            return out;
+        }
+        let Some(t) = &mut self.stm else { return out };
+        let Some((cod, rtx)) = Codec::by_pt(h.pt) else { return out };
+        let (mut seq, ssrc) = (h.seq, h.ssrc);
+        if rtx {
+            if pl.len() < 2 {
+                return out;
+            }
+            seq = u16::from_be_bytes([pl[0], pl[1]]);
+            pl.drain(..2);
+        }
+        let Some(uid) = t.vusers.get(&ssrc).cloned() else { return out };
+        let media = t.vmain.get(&uid).copied().unwrap_or(ssrc);
+        let marker = b[1] & 0x80 != 0;
+        let r = t.unp.entry(uid.clone()).or_insert_with(|| Unp::new(cod)).push(seq, h.ts, marker, &pl);
+        let mut want = r.lost;
+        if let Some((au, k)) = r.au {
+            let au = match (&mut self.dv, uid.parse::<u64>()) {
+                (Some(dv), Ok(u)) => dv.decv(u, &au),
+                _ => Some(au),
+            };
+            match au {
+                Some(data) => {
+                    let _ = t.ev.send(SEv::Frame { uid, cod, data, key: k });
+                }
+                None => want = true,
             }
         }
-        self.eng.rx(h.ssrc, h.seq, pl);
+        if want && t.pli.is_none_or(|p| p.elapsed() > Duration::from_millis(700)) {
+            t.pli = Some(Instant::now());
+            let p = vrtp::pli(self.ssrc, media);
+            if let Some(c) = &mut self.cry {
+                out.push(c.seal_rtcp(&p));
+            }
+            let _ = t.ev.send(SEv::Pli);
+        }
+        out
+    }
+
+    fn rtcp(&mut self, b: &[u8], out: &mut Vec<Vec<u8>>) {
+        let Some(c) = &self.cry else { return };
+        let Some(p) = c.open_rtcp(b) else { return };
+        let Some(t) = &mut self.stm else { return };
+        for f in vrtp::parse_fb(&p) {
+            match f {
+                Fb::Pli(m) | Fb::Fir(m) if m == t.vss => {
+                    let _ = t.ev.send(SEv::Key);
+                }
+                Fb::Nack(m, seqs) if m == t.vss => {
+                    for s in seqs {
+                        let Some(x) = t.ring.iter().find(|x| x.seq == s) else { continue };
+                        let mut pl = s.to_be_bytes().to_vec();
+                        pl.extend_from_slice(&x.pl);
+                        t.xseq = t.xseq.wrapping_add(1);
+                        let h = Hdr::pack_ex(t.cod.rtx(), x.marker, t.xseq, x.ts, t.rss);
+                        if let Some(c) = &mut self.cry {
+                            out.push(c.seal(&h, &pl));
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    pub fn vwire(&mut self, au: &[u8], pts_us: u64) -> Vec<Vec<u8>> {
+        let mut o = vec![];
+        let (Some(t), Some(c)) = (&mut self.stm, &mut self.cry) else { return o };
+        let ts = vrtp::ts90(pts_us);
+        let au = match t.cod {
+            Codec::H264 => vrtp::norm4(au),
+            _ => au.to_vec(),
+        };
+        let au = match &mut self.dv {
+            Some(d) => d.encv(t.cod, &au),
+            None => au,
+        };
+        let ps = match t.cod {
+            Codec::H264 => vrtp::pack_h264(&au),
+            _ => return o,
+        };
+        let n = ps.len();
+        for (i, pl) in ps.into_iter().enumerate() {
+            t.vseq = t.vseq.wrapping_add(1);
+            let marker = i + 1 == n;
+            let h = Hdr::pack_ex(t.cod.pt(), marker, t.vseq, ts, t.vss);
+            o.push(c.seal(&h, &pl));
+            t.ring.push_back(Sent { seq: t.vseq, ts, marker, pl });
+            if t.ring.len() > 1024 {
+                t.ring.pop_front();
+            }
+        }
+        o
     }
 
     pub fn wire(&mut self, p: &Pkt) -> (Option<Vec<u8>>, Vec<Message>) {
@@ -369,7 +570,14 @@ async fn urecv(u: &Option<Arc<UdpSocket>>, b: &mut [u8]) -> std::io::Result<usiz
     }
 }
 
-async fn sess(c: &mut Conn, rx: &mut UnboundedReceiver<Pkt>, stop: &mut oneshot::Receiver<()>) -> Fin {
+async fn mrecv(m: &mut Option<UnboundedReceiver<Media>>) -> Option<Media> {
+    match m {
+        Some(r) => r.recv().await,
+        None => std::future::pending().await,
+    }
+}
+
+async fn sess(c: &mut Conn, rx: &mut UnboundedReceiver<Pkt>, md: &mut Option<UnboundedReceiver<Media>>, stop: &mut oneshot::Receiver<()>) -> Fin {
     let ep = c.cfg.endpoint.trim_start_matches("wss://").trim_end_matches('/').to_string();
     let ws = match connect_async(format!("wss://{ep}/?v=8")).await {
         Ok((w, _)) => w,
@@ -417,7 +625,29 @@ async fn sess(c: &mut Conn, rx: &mut UnboundedReceiver<Pkt>, stop: &mut oneshot:
             }
             r = urecv(&udp, &mut ub) => {
                 if let Ok(n) = r {
-                    c.inbound(&ub[..n]);
+                    let o = c.inbound(&ub[..n]);
+                    if let Some(u) = &udp {
+                        for p in o {
+                            let _ = u.send(&p).await;
+                        }
+                    }
+                }
+            }
+            Some(m) = mrecv(md) => {
+                let Some(u) = &udp else { continue };
+                match m {
+                    Media::Video { data, pts_us } => {
+                        for p in c.vwire(&data, pts_us) {
+                            let _ = u.send(&p).await;
+                        }
+                    }
+                    Media::Audio { data, .. } => {
+                        let (pk, m) = c.wire(&Pkt { data, skip: 0, last: false });
+                        out.extend(m);
+                        if let Some(pk) = pk {
+                            let _ = u.send(&pk).await;
+                        }
+                    }
                 }
             }
             Some(p) = rx.recv() => {
@@ -445,17 +675,30 @@ async fn sess(c: &mut Conn, rx: &mut UnboundedReceiver<Pkt>, stop: &mut oneshot:
     }
 }
 
-async fn run(cfg: Cfg, eng: Eng, ev: UnboundedSender<VEv>, mut stop: oneshot::Receiver<()>) {
-    let Some(mut rx) = eng.tx_frames() else {
-        let _ = ev.send(VEv::Call(Cs { err: Some("audio frames already taken".into()), ..Default::default() }));
-        return;
+async fn run(cfg: Cfg, eng: Eng, ev: UnboundedSender<VEv>, sio: Option<Sio>, mut stop: oneshot::Receiver<()>) {
+    let (_keep, dummy) = tokio::sync::mpsc::unbounded_channel::<Pkt>();
+    let is_st = sio.is_some();
+    let mut rx = if is_st {
+        dummy
+    } else {
+        match eng.tx_frames() {
+            Some(r) => r,
+            None => {
+                let _ = ev.send(VEv::Call(Cs { err: Some("audio frames already taken".into()), ..Default::default() }));
+                return;
+            }
+        }
     };
-    let mut c = Conn::new(cfg, eng.clone(), ev.clone());
+    let (mut md, sx) = match sio {
+        Some(s) => (Some(s.media), Some((s.ev, s.q, s.cod))),
+        None => (None, None),
+    };
+    let mut c = Conn::with(cfg, eng.clone(), ev.clone(), sx);
     let _ = ev.send(VEv::Call(Cs::default()));
     let mut n = 0u32;
     loop {
         c.resume = c.ready;
-        match sess(&mut c, &mut rx, &mut stop).await {
+        match sess(&mut c, &mut rx, &mut md, &mut stop).await {
             Fin::Stop => break,
             Fin::Fatal(m) => {
                 c.emit(|s| {
@@ -491,8 +734,10 @@ async fn run(cfg: Cfg, eng: Eng, ev: UnboundedSender<VEv>, mut stop: oneshot::Re
             _ = &mut stop => break,
         }
     }
-    eng.reset();
-    eng.give_frames(rx);
+    if !is_st {
+        eng.reset();
+        eng.give_frames(rx);
+    }
 }
 
 #[cfg(test)]
@@ -565,5 +810,94 @@ mod tests {
         let m = ca.bin(&[0, 7, 25, 1]);
         assert!(m.is_empty());
         assert_eq!(ca.seq, 7);
+    }
+
+    fn vpair() -> (Conn, Conn, tokio::sync::mpsc::UnboundedReceiver<SEv>, tokio::sync::mpsc::UnboundedReceiver<SEv>) {
+        let cfg = Cfg { endpoint: String::new(), token: "t".into(), session: "s".into(), server: "1".into(), chan: "2".into(), user: "3".into() };
+        let q = Q { w: 1280, h: 720, fps: 30, kbps: 3000 };
+        let (ea, ra) = unbounded_channel();
+        let (eb, rb) = unbounded_channel();
+        let mut a = Conn::with(cfg.clone(), Eng::new(), unbounded_channel().0, Some((ea, Some(q), Codec::H264)));
+        let mut b = Conn::with(cfg, Eng::new(), unbounded_channel().0, Some((eb, None, Codec::H264)));
+        a.ssrc = 70;
+        a.stm.as_mut().unwrap().vss = 71;
+        a.stm.as_mut().unwrap().rss = 72;
+        b.ssrc = 80;
+        a.cry = Cry::new(Mode::Xcha, &[5; 32]);
+        b.cry = Cry::new(Mode::Xcha, &[5; 32]);
+        b.stm.as_mut().unwrap().vusers.insert(71, "9".into());
+        b.stm.as_mut().unwrap().vmain.insert("9".into(), 71);
+        (a, b, ra, rb)
+    }
+
+    #[tokio::test]
+    async fn video_roundtrip_nack_pli() {
+        let (mut a, mut b, mut ra, mut rb) = vpair();
+        let mut au = vec![];
+        for (ty, n) in [(7u8, 20usize), (8, 6), (5, 4000)] {
+            au.extend_from_slice(&[0, 0, 0, 1, 0x60 | ty]);
+            au.extend((0..n).map(|k| (k % 200) as u8 + 1));
+        }
+        let pk = a.vwire(&au, 1_000_000);
+        assert!(pk.len() > 3);
+        let (h0, _) = Hdr::parse(&pk[0]).unwrap();
+        assert_eq!((h0.pt, h0.ts, h0.ssrc), (101, 90_000, 71));
+        assert_eq!(pk[0][1] & 0x80, 0);
+        assert_eq!(pk.last().unwrap()[1] & 0x80, 0x80);
+        for p in &pk {
+            b.inbound(p);
+        }
+        match rb.try_recv() {
+            Ok(SEv::Frame { uid, data, key, .. }) => {
+                assert_eq!(uid, "9");
+                assert!(key);
+                assert_eq!(data, au);
+            }
+            o => panic!("{o:?}"),
+        }
+        let seq1 = Hdr::parse(&pk[1]).unwrap().0.seq;
+        let nk = vrtp::nack(80, 71, &[seq1]);
+        let sealed = b.cry.as_mut().unwrap().seal_rtcp(&nk);
+        let out = a.inbound(&sealed);
+        assert_eq!(out.len(), 1);
+        let (h, pl) = b.cry.as_ref().unwrap().open(&out[0]).unwrap();
+        assert_eq!((h.pt, h.ssrc), (102, 72));
+        assert_eq!(u16::from_be_bytes([pl[0], pl[1]]), seq1);
+        let sealed = b.cry.as_mut().unwrap().seal_rtcp(&vrtp::pli(80, 71));
+        a.inbound(&sealed);
+        assert!(matches!(ra.try_recv(), Ok(SEv::Key)));
+        let sealed = b.cry.as_mut().unwrap().seal_rtcp(&vrtp::fir(80, 71, 1));
+        a.inbound(&sealed);
+        assert!(matches!(ra.try_recv(), Ok(SEv::Key)));
+    }
+
+    #[tokio::test]
+    async fn video_loss_requests_pli() {
+        let (mut a, mut b, _ra, mut rb) = vpair();
+        let mut au = vec![0, 0, 0, 1, 0x65];
+        au.extend((0..4000).map(|k| (k % 200) as u8 + 1));
+        let pk = a.vwire(&au, 5);
+        let mut plis = vec![];
+        for (i, p) in pk.iter().enumerate() {
+            if i == 2 {
+                continue;
+            }
+            plis.extend(b.inbound(p));
+        }
+        assert_eq!(plis.len(), 1);
+        assert!(matches!(rb.try_recv(), Ok(SEv::Pli)));
+        let r = a.cry.as_ref().unwrap().open_rtcp(&plis[0]).unwrap();
+        assert_eq!(vrtp::parse_fb(&r), vec![Fb::Pli(71)]);
+    }
+
+    #[test]
+    fn ident_has_video() {
+        let (a, _, _, _) = vpair();
+        let mut a = a;
+        let m = a.hello();
+        let Message::Text(t) = m else { panic!() };
+        let v: Value = serde_json::from_str(&t).unwrap();
+        assert_eq!(v["d"]["video"], true);
+        assert_eq!(v["d"]["streams"][0]["type"], "screen");
     }
 }

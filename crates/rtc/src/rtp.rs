@@ -30,6 +30,12 @@ impl Hdr {
         h
     }
 
+    pub fn pack_ex(pt: u8, marker: bool, seq: u16, ts: u32, ssrc: u32) -> [u8; HL] {
+        let mut h = Hdr::pack(seq, ts, ssrc);
+        h[1] = (pt & 0x7f) | if marker { 0x80 } else { 0 };
+        h
+    }
+
     pub fn parse(b: &[u8]) -> Option<(Hdr, usize)> {
         if b.len() < HL || b[0] >> 6 != 2 {
             return None;
@@ -141,6 +147,29 @@ impl Cry {
         o.extend_from_slice(&ct);
         o.extend_from_slice(&ctr);
         o
+    }
+
+    pub fn seal_rtcp(&mut self, pkt: &[u8]) -> Vec<u8> {
+        let ctr = self.ctr.to_be_bytes();
+        self.ctr = self.ctr.wrapping_add(1);
+        let ct = self.run(true, ctr, &pkt[..8], &pkt[8..]).unwrap_or_default();
+        let mut o = Vec::with_capacity(8 + ct.len() + CTR);
+        o.extend_from_slice(&pkt[..8]);
+        o.extend_from_slice(&ct);
+        o.extend_from_slice(&ctr);
+        o
+    }
+
+    pub fn open_rtcp(&self, pkt: &[u8]) -> Option<Vec<u8>> {
+        if pkt.len() < 8 + TAG + CTR {
+            return None;
+        }
+        let e = pkt.len() - CTR;
+        let ctr: [u8; CTR] = pkt[e..].try_into().ok()?;
+        let pl = self.run(false, ctr, &pkt[..8], &pkt[8..e])?;
+        let mut o = pkt[..8].to_vec();
+        o.extend_from_slice(&pl);
+        Some(o)
     }
 
     pub fn open(&self, pkt: &[u8]) -> Option<(Hdr, Vec<u8>)> {
@@ -272,6 +301,27 @@ mod tests {
         pk.extend_from_slice(&ctr);
         let (_, out) = tx.open(&pk).unwrap();
         assert_eq!(out, b"opus");
+    }
+
+    #[test]
+    fn rtcp_round() {
+        let mut tx = Cry::new(Mode::Aes, &[4; 32]).unwrap();
+        let rx = Cry::new(Mode::Aes, &[4; 32]).unwrap();
+        let p = [0x81, 206, 0, 2, 0, 0, 0, 1, 0, 0, 0, 2];
+        let s = tx.seal_rtcp(&p);
+        assert_eq!(&s[..8], &p[..8]);
+        assert_eq!(rx.open_rtcp(&s).unwrap(), p);
+        let mut t = s.clone();
+        t[3] ^= 1;
+        assert!(rx.open_rtcp(&t).is_none());
+    }
+
+    #[test]
+    fn marker_bit() {
+        let h = Hdr::pack_ex(101, true, 1, 2, 3);
+        assert_eq!(h[1], 0x80 | 101);
+        let (p, _) = Hdr::parse(&h).unwrap();
+        assert_eq!(p.pt, 101);
     }
 
     #[test]
