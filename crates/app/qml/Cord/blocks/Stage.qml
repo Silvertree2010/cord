@@ -1,0 +1,118 @@
+import QtQuick
+import QtQuick.Controls
+import Cord
+
+Rectangle {
+    id: r
+    property var o: ({})
+    implicitWidth: 600
+    implicitHeight: 400
+    color: Th.bg
+    property var cs: S.call || ({})
+    property string cid: cs.chan ? S.ridOf(cs.chan) : (S.chans[S.selC] && (S.chans[S.selC].k === "Voice" || S.chans[S.selC].k === "Stage") ? S.selC : "")
+    property var ppl: cid ? S.vsIn(cid) : []
+    property string focus: ""
+    Lbl {
+        anchors.centerIn: parent
+        visible: !r.cid
+        text: "Join a voice channel to see the call here"
+        color: Th.tx3
+    }
+    Item {
+        anchors.fill: parent
+        anchors.margins: 16
+        anchors.bottomMargin: 72
+        visible: !!r.cid
+        Loader {
+            anchors.fill: parent
+            active: r.focus !== ""
+            sourceComponent: Rectangle {
+                color: "#000"
+                radius: Th.r
+                Image {
+                    anchors.fill: parent
+                    fillMode: Image.PreserveAspectFit
+                    source: "image://cordv/" + r.focus + "?" + fr
+                    cache: false
+                    property int fr: 0
+                    Timer { interval: 16; repeat: true; running: true; onTriggered: parent.fr++ }
+                }
+                IBtn { anchors.right: parent.right; anchors.margins: 8; y: 8; n: "x"; onClicked: { S.c.watch(r.focus, false); r.focus = "" } }
+            }
+        }
+        Grid {
+            id: gr
+            visible: r.focus === ""
+            anchors.centerIn: parent
+            property int n: Math.max(1, r.ppl.length)
+            columns: Math.ceil(Math.sqrt(n))
+            spacing: 8
+            property real tw: Math.min((parent.width - (columns - 1) * spacing) / columns, ((parent.height - (Math.ceil(n / columns) - 1) * spacing) / Math.ceil(n / columns)) * 16 / 9)
+            Repeater {
+                model: r.ppl
+                Rectangle {
+                    property string uid: modelData.usr.id ? S.ridOf(modelData.usr.id) : ""
+                    width: gr.tw
+                    height: gr.tw * 9 / 16
+                    radius: Th.r
+                    color: Th.bg3
+                    border.color: S.speaking[uid] ? Th.ok : "transparent"
+                    border.width: 2
+                    Av { anchors.centerIn: parent; sz: Math.min(96, parent.height * 0.4); src: modelData.usr.av || ""; name: modelData.usr.name }
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.bottom: parent.bottom
+                        anchors.margins: 8
+                        width: nl.implicitWidth + 16
+                        height: 24
+                        radius: 6
+                        color: "#000000aa"
+                        Row {
+                            id: nl
+                            anchors.centerIn: parent
+                            spacing: 4
+                            Lbl { text: modelData.usr.disp || modelData.usr.name; color: "#fff"; font.pixelSize: Th.fsS }
+                            Ico { visible: modelData.mute || modelData.smute; n: "micoff"; sz: 13; col: "#fff" }
+                        }
+                    }
+                    Btn {
+                        visible: modelData.stream
+                        anchors.centerIn: parent
+                        anchors.verticalCenterOffset: parent.height * 0.3
+                        text: "Watch stream"
+                        pri: true
+                        onClicked: { S.c.watch(parent.uid, true); r.focus = parent.uid }
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        z: -1
+                        acceptedButtons: Qt.RightButton
+                        onClicked: vm.popup()
+                    }
+                    Menu {
+                        id: vm
+                        MenuItem {
+                            contentItem: Column {
+                                spacing: 4
+                                Lbl { text: "User volume"; font.pixelSize: Th.fsS }
+                                Slider { from: 0; to: 2; value: 1; onMoved: S.c.vol(uid, value) }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Row {
+        visible: !!r.cid
+        anchors.bottom: parent.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottomMargin: 16
+        spacing: 10
+        IBtn { sz: 44; n: r.cs.mute ? "micoff" : "mic"; red: !!r.cs.mute; onClicked: S.c.vset(!r.cs.mute, !!r.cs.deaf) }
+        IBtn { sz: 44; n: r.cs.deaf ? "headoff" : "head"; red: !!r.cs.deaf; onClicked: S.c.vset(!!r.cs.mute, !r.cs.deaf) }
+        IBtn { sz: 44; n: "screen"; act: !!r.cs.live; tip: "Share screen"; onClicked: r.cs.live ? S.c.golive(false, "{}") : S.goLive() }
+        IBtn { visible: !r.cs.chan; sz: 44; n: "phone"; tip: "Join"; onClicked: S.c.join(r.cid) }
+        IBtn { visible: !!r.cs.chan; sz: 44; n: "hang"; red: true; tip: "Leave"; onClicked: S.c.leave() }
+    }
+}
