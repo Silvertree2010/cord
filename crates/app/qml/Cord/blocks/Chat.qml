@@ -18,6 +18,7 @@ Rectangle {
     property string markId: ""
     property int below: 0
     property var arr: []
+    readonly property var nil: ({ auth: { name: "", bot: false }, body: "", ts: 0, atts: [], embs: [], reacts: [], hist: [], stks: [] })
     implicitWidth: 600
     implicitHeight: 400
     color: Th.bg2
@@ -35,18 +36,20 @@ Rectangle {
     function entry(w, sec) { return { mid: w.mid, rev: 0, sec: sec } }
     function fill(list, stick) {
         const rows = []
+        const secs = []
         let p = null
         let seen = false
         if (!r.markId && r.mark > 0 && r.mark < list.length) r.markId = S.ridOf(list[list.length - r.mark].id)
-        mm.clear()
         for (const m of list) {
             const w = mk(m, p)
             if (w.mid === r.markId) seen = true
             rows.push(w)
-            mm.append(entry(w, seen ? "1" : "0"))
+            secs.push(seen ? "1" : "0")
             p = w
         }
+        mm.clear()
         arr = rows
+        for (let i = 0; i < rows.length; i++) mm.append(entry(rows[i], secs[i]))
         if (stick) Qt.callLater(() => lv.positionViewAtEnd())
     }
     function prepend(list) {
@@ -147,7 +150,7 @@ Rectangle {
                 return
             }
             if (!isNew) return
-            const end = lv.atYEnd
+            const end = lv.nearEnd
             const w = r.mk(m, r.arr.length ? r.arr[r.arr.length - 1] : null)
             r.arr.push(w)
             mm.append(r.entry(w, r.markId ? "1" : "0"))
@@ -179,7 +182,7 @@ Rectangle {
             r.failed = false
             if (n < 50) r.more = false
             if (mr) r.prepend(list)
-            else if (list.length) r.fill(list, lv.atYEnd)
+            else if (list.length) r.fill(list, lv.nearEnd)
         }
         function onUpChanged() {
             if (!r.cid || r.cid === "inbox" || r.loading || S.up.indexOf(S.acc(r.cid)) < 0) return
@@ -286,7 +289,7 @@ Rectangle {
                 required property int index
                 required property int rev
                 readonly property var x_: { void rev; return r.arr[index] || null }
-                m: x_ ? x_.m : ({})
+                m: x_ ? x_.m : r.nil
                 grp: x_ ? x_.g : false
                 day: x_ ? x_.d : false
                 cid: r.cid
@@ -296,7 +299,8 @@ Rectangle {
             onContentYChanged: {
                 if ((moving || dragging) && contentY - originY < 400) r.more_()
             }
-            onAtYEndChanged: if (atYEnd) r.below = 0
+            readonly property bool nearEnd: atYEnd || (originY + contentHeight + bottomMargin - height - contentY) < 30
+            onNearEndChanged: if (nearEnd) r.below = 0
         }
 
         Item {
@@ -304,7 +308,7 @@ Rectangle {
             Layout.preferredHeight: 0
             z: 5
             Rectangle {
-                visible: !lv.atYEnd && r.arr.length > 0
+                visible: !lv.nearEnd && r.arr.length > 0
                 anchors.bottom: parent.bottom
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottomMargin: 12
