@@ -430,8 +430,11 @@ impl Sta {
         if add.len() > room {
             add.drain(..add.len() - room);
         }
-        for m in add.iter().rev() {
-            q.push_front(m.clone());
+        if !add.is_empty() {
+            let mut all: Vec<Msg> = q.drain(..).collect();
+            all.extend(add.iter().cloned());
+            all.sort_by_key(|m| m.ts);
+            q.extend(all);
         }
         if let (Some(f), Some(t)) = (q.back(), self.lts.get(chan)) {
             if f.ts > *t {

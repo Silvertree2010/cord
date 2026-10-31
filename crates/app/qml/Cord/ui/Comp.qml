@@ -7,24 +7,72 @@ import Cord
 Item {
     id: r
     property string cid: ""
+    property int slot: 0
     property var ch: null
     property var fnd: null
     property var lastMine: null
     property var files: []
     property real lastTy: 0
-    property var rep: S.reply && fnd ? fnd(S.reply) : null
+    property bool prog: false
+    property bool pending: false
+    property string sentTxt: ""
+    property string errMsg: ""
+    property string saved: ""
+    property string st_reply: S.slot(slot).reply || ""
+    property string st_edit: S.slot(slot).editing || ""
+    property var rep: st_reply && fnd ? fnd(st_reply) : null
     implicitHeight: cl.implicitHeight + 8
+
+    function setText(t) {
+        prog = true
+        ta.text = t
+        prog = false
+    }
+    function clearMode() {
+        if (S.slot(slot).editing) setText(saved)
+        saved = ""
+        S.setSlot(slot, "editing", "")
+        S.setSlot(slot, "reply", "")
+    }
+
+    onSt_editChanged: {
+        if (!st_edit || !r.fnd) return
+        const m = r.fnd(st_edit)
+        if (!m) return
+        if (!saved) saved = ta.text
+        setText(m.body)
+        ta.cursorPosition = ta.length
+        ta.forceActiveFocus()
+    }
+    onSt_replyChanged: if (st_reply) ta.forceActiveFocus()
 
     Connections {
         target: S
-        function onEditingChanged() {
-            if (!S.editing || !r.fnd) return
-            const m = r.fnd(S.editing)
-            if (m) { ta.text = m.body; ta.cursorPosition = ta.length; ta.forceActiveFocus() }
+        function onSent(chan, ok, err) {
+            if (chan !== r.cid || !r.pending) return
+            r.pending = false
+            if (!ok) { r.errMsg = err || "Could not send"; return }
+            r.errMsg = ""
+            const wasEdit = !!S.slot(r.slot).editing
+            if (ta.text.trim() === r.sentTxt) r.setText(wasEdit ? r.saved : "")
+            else if (wasEdit) r.saved = ""
+            r.saved = ""
+            r.files = []
+            S.setSlot(r.slot, "editing", "")
+            S.setSlot(r.slot, "reply", "")
+            const d = Object.assign({}, S.drafts)
+            delete d[r.cid]
+            S.drafts = d
         }
-        function onReplyChanged() { if (S.reply) ta.forceActiveFocus() }
     }
-    onCidChanged: { ta.text = S.drafts[cid] || ""; files = []; ta.forceActiveFocus() }
+    onCidChanged: {
+        pending = false
+        errMsg = ""
+        saved = ""
+        setText(S.drafts[cid] || "")
+        files = []
+        ta.forceActiveFocus()
+    }
 
     Column {
         id: cl
@@ -33,7 +81,7 @@ Item {
         spacing: 0
 
         Rectangle {
-            visible: !!S.reply || !!S.editing
+            visible: !!r.st_reply || !!r.st_edit
             width: parent.width
             height: 34
             radius: Th.r
@@ -43,11 +91,11 @@ Item {
                 x: 14
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - 60
-                text: S.editing ? "Editing message" : "Replying to " + (r.rep ? (r.rep.auth.disp || r.rep.auth.name) : "")
+                text: r.st_edit ? "Editing message" : "Replying to " + (r.rep ? (r.rep.auth.disp || r.rep.auth.name) : "")
                 color: Th.tx2
                 font.pixelSize: Th.fsS
             }
-            IBtn { anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter; n: "x"; sz: 24; isz: 14; onClicked: { if (S.editing) ta.text = ""; S.reply = ""; S.editing = "" } }
+            IBtn { anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter; n: "x"; sz: 24; isz: 14; onClicked: r.clearMode() }
         }
 
         Flow {
@@ -118,26 +166,33 @@ Item {
                         topPadding: 13
                         bottomPadding: 13
                         enabled: !(r.ch && r.ch.hidden)
+                        Keys.onShortcutOverride: e => {
+                            if ((e.modifiers & Qt.ControlModifier) && (e.key === Qt.Key_K || e.key === Qt.Key_Comma || e.key === Qt.Key_E)) e.accepted = false
+                        }
                         onTextChanged: {
-                            const d = Object.assign({}, S.drafts)
-                            d[r.cid] = text
-                            S.drafts = d
-                            if (text.length && !S.f("silenttyping") && Date.now() - r.lastTy > 8000 && !S.editing) {
+                            if (r.prog) return
+                            if (!r.st_edit) {
+                                const d = Object.assign({}, S.drafts)
+                                d[r.cid] = text
+                                S.drafts = d
+                            }
+                            if (text.length && !S.f("silenttyping") && Date.now() - r.lastTy > 8000 && !r.st_edit) {
                                 r.lastTy = Date.now()
                                 S.c.typing(r.cid)
                             }
                         }
                         Keys.onPressed: e => {
-                            if ((e.key === Qt.Key_Return || e.key === Qt.Key_Enter) && !(e.modifiers & Qt.ShiftModifier)) {
+                            if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_K) { S.qk = !S.qk; e.accepted = true }
+                            else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_Comma) { S.showSet = !S.showSet; e.accepted = true }
+                            else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_E) { S.edit = !S.edit; e.accepted = true }
+                            else if ((e.key === Qt.Key_Return || e.key === Qt.Key_Enter) && !(e.modifiers & Qt.ShiftModifier)) {
                                 e.accepted = true
                                 r.go()
                             } else if (e.key === Qt.Key_Up && text === "" && r.lastMine) {
                                 const m = r.lastMine()
-                                if (m) { S.editing = S.ridOf(m.id); e.accepted = true }
-                            } else if (e.key === Qt.Key_Escape && (S.editing || S.reply)) {
-                                if (S.editing) text = ""
-                                S.editing = ""
-                                S.reply = ""
+                                if (m) { S.setSlot(r.slot, "editing", S.ridOf(m.id)); e.accepted = true }
+                            } else if (e.key === Qt.Key_Escape && (r.st_edit || r.st_reply)) {
+                                r.clearMode()
                                 e.accepted = true
                             }
                         }
@@ -148,7 +203,7 @@ Item {
             }
             DropArea {
                 anchors.fill: parent
-                onDropped: d => { if (d.hasUrls) r.files = r.files.concat(d.urls.map(u => u.toString())) }
+                onDropped: d => { if (d.hasUrls) r.files = r.files.concat(d.urls.map(u => u.toString()).filter(u => u.startsWith("file:"))) }
             }
         }
 
@@ -162,6 +217,14 @@ Item {
                 x: 4
                 text: parent.ty.length > 3 ? "Several people are typing…" : parent.ty.map(t => t.n).join(", ") + (parent.ty.length > 1 ? " are typing…" : " is typing…")
                 color: Th.tx2
+                font.pixelSize: 11
+            }
+            Lbl {
+                visible: !!r.errMsg
+                anchors.verticalCenter: parent.verticalCenter
+                x: 4
+                text: r.errMsg
+                color: Th.warn
                 font.pixelSize: 11
             }
             Lbl {
@@ -181,10 +244,11 @@ Item {
     }
 
     function go() {
+        if (pending) return
         const t = ta.text.trim()
         if (!t && !files.length) return
-        S.send(cid, t, files.map(f => decodeURIComponent(f)))
-        ta.text = ""
-        files = []
+        errMsg = ""
+        sentTxt = t
+        pending = S.send(cid, t, files.map(f => decodeURIComponent(f)), slot)
     }
 }
