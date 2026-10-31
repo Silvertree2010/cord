@@ -130,10 +130,11 @@ impl Enc {
     }
 
     pub fn key(&self) {
-        let ev = gstreamer_video::UpstreamForceKeyUnitEvent::builder().all_headers(true).build();
-        if let Some(p) = self.sink.static_pad("sink") {
-            p.push_event(ev);
-        }
+        self.keyer().key();
+    }
+
+    pub fn keyer(&self) -> Keyer {
+        Keyer(self.sink.clone())
     }
 
     pub fn bitrate(&self, kbps: u32) {
@@ -150,6 +151,18 @@ impl Enc {
             }
         }
         None
+    }
+}
+
+#[derive(Clone)]
+pub struct Keyer(gst::Element);
+
+impl Keyer {
+    pub fn key(&self) {
+        let ev = gstreamer_video::UpstreamForceKeyUnitEvent::builder().all_headers(true).build();
+        if let Some(p) = self.0.static_pad("sink") {
+            p.push_event(ev);
+        }
     }
 }
 

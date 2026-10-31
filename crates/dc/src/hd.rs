@@ -253,6 +253,7 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
         "READY_SUPPLEMENTAL" => supp(sh, tx, &d),
         "VOICE_STATE_UPDATE" => crate::vc::vsu(sh, tx, &d),
         "VOICE_SERVER_UPDATE" => crate::vc::vsv(sh, &d),
+        "STREAM_CREATE" | "STREAM_SERVER_UPDATE" | "STREAM_DELETE" => sh.st.on(sh, t, &d),
         "CALL_CREATE" | "CALL_UPDATE" => crate::vc::call(sh, tx, &d),
         "RESUMED" => {
             let _ = tx.send(Ev::Conn { acc: a, up: true });

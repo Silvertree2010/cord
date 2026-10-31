@@ -39,7 +39,35 @@ impl Default for Vo {
     }
 }
 
+#[derive(Clone)]
+pub struct Live(Arc<Mutex<In>>);
+
+impl Live {
+    pub fn set(&self, on: bool) {
+        let mut i = self.0.lock().unwrap();
+        if i.cs.live != on {
+            i.cs.live = on;
+            if let Some(t) = &i.tx {
+                let _ = t.send(Ev::Call(i.cs.clone()));
+            }
+        }
+    }
+}
+
 impl Vo {
+    pub fn live_handle(&self) -> Live {
+        Live(self.i.clone())
+    }
+
+    pub fn live(&self, on: bool) {
+        self.live_handle().set(on);
+    }
+
+    pub fn info(&self) -> Option<(String, Option<String>, Option<String>)> {
+        let i = self.i.lock().unwrap();
+        Some((i.chan.clone()?, i.gld.clone(), i.sess.clone()))
+    }
+
     pub fn set_tx(&self, tx: Tx) {
         self.i.lock().unwrap().tx = Some(tx);
     }
@@ -167,6 +195,7 @@ pub fn vsu(sh: &Sh, tx: &Tx, d: &Value) {
     match s(d, "channel_id") {
         None => {
             drop(i);
+            sh.st.stop_all(sh);
             sh.vo.end();
         }
         Some(c) => {

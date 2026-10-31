@@ -668,6 +668,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "base64 0.22.1",
+ "cord-cap",
  "cord-core",
  "cord-rtc",
  "flate2",

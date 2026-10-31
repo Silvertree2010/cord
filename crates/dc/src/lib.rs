@@ -4,6 +4,7 @@ pub mod map;
 pub mod perm;
 pub mod ra;
 pub mod rest;
+pub mod stm;
 pub mod vc;
 pub mod zl;
 
@@ -44,6 +45,7 @@ pub struct Sh {
     pub ss: Mutex<Sess>,
     pub gt: Mutex<Option<tokio::sync::mpsc::UnboundedSender<String>>>,
     pub vo: vc::Vo,
+    pub st: stm::Stm,
 }
 
 pub struct Dc(Arc<Sh>);
@@ -64,7 +66,16 @@ impl Dc {
             ss: Default::default(),
             gt: Default::default(),
             vo: Default::default(),
+            st: Default::default(),
         }))
+    }
+
+    pub fn frames(&self, usr: &Rid) -> tokio::sync::watch::Receiver<Option<Arc<cord_cap::Frame>>> {
+        self.0.st.frames(&usr.raw)
+    }
+
+    pub fn pause(&self, on: bool) -> Res<()> {
+        self.0.st.pause(&self.0, on)
     }
 
     fn gsend(&self, v: Value) -> Res<()> {
@@ -218,6 +229,7 @@ impl Bk for Dc {
     }
 
     async fn leave(&self) -> Res<()> {
+        self.0.st.stop_all(&self.0);
         let g = self.0.vo.gld();
         let (m, d) = self.0.vo.end();
         self.gsend(vc::op4(None, g.as_deref(), m, d))
@@ -236,6 +248,14 @@ impl Bk for Dc {
     async fn vol(&self, usr: &Rid, v: f32) -> Res<()> {
         self.0.vo.vol(&usr.raw, v);
         Ok(())
+    }
+
+    async fn golive(&self, on: bool, q: Lq) -> Res<()> {
+        self.0.st.golive(&self.0, on, q).await
+    }
+
+    async fn watch(&self, usr: &Rid, on: bool) -> Res<()> {
+        self.0.st.watch(&self.0, &usr.raw, on)
     }
 
     async fn set_st(&self, st: St, act: Option<String>) -> Res<()> {

@@ -67,9 +67,11 @@ impl Dec {
         Ok(Dec { pl, src, name })
     }
 
-    pub fn push(&self, data: Vec<u8>, pts_us: u64) {
+    pub fn push(&self, data: Vec<u8>, pts_us: Option<u64>) {
         let mut b = gst::Buffer::from_mut_slice(data);
-        b.get_mut().unwrap().set_pts(gst::ClockTime::from_useconds(pts_us));
+        if let Some(p) = pts_us {
+            b.get_mut().unwrap().set_pts(gst::ClockTime::from_useconds(p));
+        }
         let _ = self.src.push_buffer(b);
     }
 
