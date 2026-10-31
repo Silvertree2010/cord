@@ -4,3 +4,19 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+cord-core = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+reqwest = { workspace = true }
+tokio-tungstenite = { workspace = true }
+futures = { workspace = true }
+flate2 = "1.1"
+base64 = "0.22"
+rsa = "0.9"
+sha2 = "0.10"
+rand = "0.8"
+percent-encoding = "2"
