@@ -182,3 +182,28 @@ pub struct Out {
     pub silent: bool,
     pub stks: Vec<Rid>,
 }
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct Vs {
+    pub usr: Usr,
+    pub chan: Option<Rid>,
+    pub gld: Option<Rid>,
+    pub mute: bool,
+    pub deaf: bool,
+    pub smute: bool,
+    pub sdeaf: bool,
+    pub stream: bool,
+    pub vid: bool,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct CallSt {
+    pub chan: Option<Rid>,
+    pub up: bool,
+    pub mute: bool,
+    pub deaf: bool,
+    pub ping: Option<u32>,
+    pub e2ee: bool,
+    pub live: bool,
+    pub err: Option<String>,
+}

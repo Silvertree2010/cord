@@ -29,6 +29,8 @@ pub struct Sta {
     pub unr: HashMap<Rid, Unr>,
     pub mems: HashMap<Rid, HashMap<Rid, Mem>>,
     pub usrs: HashMap<Rid, Usr>,
+    pub vs: HashMap<Rid, Vs>,
+    pub call: CallSt,
     pub cfg: Cfg,
 }
 
@@ -49,6 +51,9 @@ pub enum Dl {
     Unr { chan: String, u: Unr },
     Mems(String),
     Err { acc: u32, msg: String },
+    Vs(Vs),
+    Speak { chan: String, usr: String, on: bool },
+    Call(CallSt),
 }
 
 impl Sta {
@@ -179,6 +184,21 @@ impl Sta {
                 o.push(Dl::Unr { chan: chan.to_string(), u: Unr::default() });
             }
             Ev::Err { acc, msg } => o.push(Dl::Err { acc, msg }),
+            Ev::Vs(v) => {
+                if let Some(id) = v.usr.id.clone() {
+                    if v.chan.is_some() {
+                        self.vs.insert(id, v.clone());
+                    } else {
+                        self.vs.remove(&id);
+                    }
+                }
+                o.push(Dl::Vs(v));
+            }
+            Ev::Speak { chan, usr, on } => o.push(Dl::Speak { chan: chan.to_string(), usr: usr.to_string(), on }),
+            Ev::Call(c) => {
+                self.call = c.clone();
+                o.push(Dl::Call(c));
+            }
         }
         o
     }

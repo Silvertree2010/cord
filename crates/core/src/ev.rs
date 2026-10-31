@@ -18,6 +18,9 @@ pub enum Ev {
     Mem(Mem),
     Unread { chan: Rid, n: u32, ment: u32 },
     Ack { chan: Rid },
+    Vs(Vs),
+    Speak { chan: Rid, usr: Rid, on: bool },
+    Call(CallSt),
     Conn { acc: u32, up: bool },
     Err { acc: u32, msg: String },
 }
