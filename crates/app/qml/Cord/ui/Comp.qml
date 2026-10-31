@@ -22,6 +22,8 @@ Item {
     property string st_edit: S.slot(slot).editing || ""
     property var rep: st_reply && fnd ? fnd(st_reply) : null
     implicitHeight: cl.implicitHeight + 8
+    readonly property real pad: Math.max(8, (48 - fm.height) / 2)
+    FontMetrics { id: fm; font: ta.font }
 
     function setText(t) {
         prog = true
@@ -140,15 +142,17 @@ Item {
 
         Rectangle {
             width: parent.width
-            height: Math.max(46, Math.min(ta.implicitHeight + 16, 300))
+            height: Math.max(48, Math.min(ta.contentHeight + r.pad * 2, 300))
             radius: Th.r
             color: Th.bg3
+            border.color: Th.ln
+            border.width: 1
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 6
-                anchors.rightMargin: 6
+                anchors.leftMargin: 7
+                anchors.rightMargin: 7
                 spacing: 2
-                IBtn { n: "plus"; tip: "Upload a file"; Layout.alignment: Qt.AlignTop; Layout.topMargin: 7; onClicked: fd.open() }
+                IBtn { n: "plus"; tip: "Upload a file"; Layout.alignment: Qt.AlignTop; Layout.topMargin: 8; onClicked: fd.open() }
                 ScrollView {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -163,14 +167,19 @@ Item {
                         selectionColor: Th.ac
                         selectedTextColor: Th.acTx
                         background: null
-                        topPadding: 13
-                        bottomPadding: 13
+                        topPadding: r.pad
+                        bottomPadding: r.pad
                         enabled: !(r.ch && r.ch.hidden)
                         Keys.onShortcutOverride: e => {
                             if ((e.modifiers & Qt.ControlModifier) && (e.key === Qt.Key_K || e.key === Qt.Key_Comma || e.key === Qt.Key_E)) e.accepted = false
+                            else if (e.key === Qt.Key_Escape && (r.st_edit || r.st_reply)) e.accepted = true
+                        }
+                        Keys.onReleased: e => {
+                            if (e.key === Qt.Key_QuoteLeft && !e.isAutoRepeat) { S.c.ptt(false); e.accepted = true }
                         }
                         onTextChanged: {
                             if (r.prog) return
+                            r.errMsg = ""
                             if (!r.st_edit) {
                                 const d = Object.assign({}, S.drafts)
                                 d[r.cid] = text
@@ -182,7 +191,8 @@ Item {
                             }
                         }
                         Keys.onPressed: e => {
-                            if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_K) { S.qk = !S.qk; e.accepted = true }
+                            if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_QuoteLeft) { if (!e.isAutoRepeat) S.c.ptt(true); e.accepted = true }
+                            else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_K) { S.qk = !S.qk; e.accepted = true }
                             else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_Comma) { S.showSet = !S.showSet; e.accepted = true }
                             else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_E) { S.edit = !S.edit; e.accepted = true }
                             else if ((e.key === Qt.Key_Return || e.key === Qt.Key_Enter) && !(e.modifiers & Qt.ShiftModifier)) {
@@ -198,8 +208,8 @@ Item {
                         }
                     }
                 }
-                IBtn { n: "smile"; tip: "Emoji"; Layout.alignment: Qt.AlignTop; Layout.topMargin: 7; onClicked: S.emoji(this, e => { ta.insert(ta.cursorPosition, e.id ? "<" + (e.anim ? "a" : "") + ":" + e.name + ":" + e.id.raw + ">" : e.name); ta.forceActiveFocus() }) }
-                IBtn { n: "send"; tip: "Send"; visible: ta.text.length > 0 || r.files.length > 0; Layout.alignment: Qt.AlignTop; Layout.topMargin: 7; onClicked: r.go() }
+                IBtn { n: "smile"; tip: "Emoji"; Layout.alignment: Qt.AlignTop; Layout.topMargin: 8; onClicked: S.emoji(this, e => { ta.insert(ta.cursorPosition, e.id ? "<" + (e.anim ? "a" : "") + ":" + e.name + ":" + e.id.raw + ">" : e.name); ta.forceActiveFocus() }) }
+                IBtn { n: "send"; tip: "Send"; visible: ta.text.length > 0 || r.files.length > 0; Layout.alignment: Qt.AlignTop; Layout.topMargin: 8; onClicked: r.go() }
             }
             DropArea {
                 anchors.fill: parent
@@ -209,30 +219,30 @@ Item {
 
         Item {
             width: parent.width
-            height: 22
+            height: 18
             property var ty: Object.values(S.typing[r.cid] || {})
+            property bool hid: !!(r.ch && r.ch.hidden)
             Lbl {
-                visible: parent.ty.length > 0
+                id: sl
                 anchors.verticalCenter: parent.verticalCenter
                 x: 4
-                text: parent.ty.length > 3 ? "Several people are typing…" : parent.ty.map(t => t.n).join(", ") + (parent.ty.length > 1 ? " are typing…" : " is typing…")
-                color: Th.tx2
-                font.pixelSize: 11
+                width: parent.width - 8 - (r.errMsg ? rb.width + 8 : 0)
+                text: r.errMsg ? r.errMsg : parent.hid ? "You do not have access to this channel" : parent.ty.length === 0 ? "" : parent.ty.length > 3 ? "Several people are typing…" : parent.ty.map(t => t.n).join(", ") + (parent.ty.length > 1 ? " are typing…" : " is typing…")
+                color: r.errMsg ? Th.err : parent.hid ? Th.tx3 : Th.tx2
+                font.pixelSize: 12
+                elide: Text.ElideRight
             }
             Lbl {
+                id: rb
                 visible: !!r.errMsg
                 anchors.verticalCenter: parent.verticalCenter
-                x: 4
-                text: r.errMsg
-                color: Th.warn
-                font.pixelSize: 11
-            }
-            Lbl {
-                visible: !!(r.ch && r.ch.hidden)
-                anchors.verticalCenter: parent.verticalCenter
-                text: "You do not have access to this channel"
-                color: Th.tx3
-                font.pixelSize: 11
+                anchors.right: parent.right
+                anchors.rightMargin: 4
+                text: "Retry"
+                color: Th.ac
+                font.pixelSize: 12
+                font.weight: Font.DemiBold
+                MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: r.go() }
             }
         }
     }

@@ -133,26 +133,32 @@ Rectangle {
         Keys.onSpacePressed: ic.pick()
         onPick: S.pick(gid)
         Rectangle {
-            visible: !r.hz && (ic.cur || ma.containsMouse)
-            width: 4
-            height: ic.cur ? r.isz * 0.6 : r.isz * 0.3
-            radius: 2
-            color: Th.tx
+            visible: !r.hz && ic.cur
+            width: 3
+            height: r.isz
+            color: Th.ac
             x: -((r.width - r.isz) / 2)
             anchors.verticalCenter: parent.verticalCenter
-            Behavior on height { NumberAnimation { duration: S.f("anim") ? 120 : 0 } }
+        }
+        Rectangle {
+            visible: r.hz && ic.cur
+            height: 3
+            width: r.isz
+            color: Th.ac
+            y: parent.height + 3
+            anchors.horizontalCenter: parent.horizontalCenter
         }
         Rectangle {
             anchors.fill: parent
             radius: Th.r * 1.4
-            color: ic.cur ? Th.ac : ma.containsMouse ? Th.bg4 : Th.bg3
+            color: ic.cur || ma.containsMouse ? Th.bg4 : Th.bg3
             visible: ic.ico !== "" || ic.img === ""
             Ico {
                 visible: ic.ico !== ""
                 anchors.centerIn: parent
                 n: ic.ico || "home"
                 sz: 22
-                col: ic.cur ? Th.acTx : Th.tx
+                col: ic.cur ? Th.ac : Th.tx
             }
             Lbl {
                 visible: ic.ico === ""
@@ -160,7 +166,7 @@ Rectangle {
                 width: parent.width - 6
                 horizontalAlignment: Text.AlignHCenter
                 text: ic.name.split(/\s+/).map(w => w.charAt(0)).join("").slice(0, 3)
-                color: ic.cur ? Th.acTx : Th.tx
+                color: Th.tx
                 font.pixelSize: Th.fs - 1
                 font.weight: Font.DemiBold
             }
@@ -179,16 +185,7 @@ Rectangle {
             color: "transparent"
             border.color: Th.ac
             border.width: 2
-            visible: ic.cur && ic.ico === "" || ic.activeFocus
-        }
-        Rectangle {
-            visible: ic.sv !== "" && S.ui.badges !== false
-            width: 3
-            height: parent.height * 0.5
-            radius: 1.5
-            x: 2
-            anchors.verticalCenter: parent.verticalCenter
-            color: Th.svcCol(ic.sv)
+            visible: ic.activeFocus
         }
         Badge {
             visible: ic.sv !== "" && S.ui.badges !== false
@@ -204,7 +201,7 @@ Rectangle {
             height: 16
             width: Math.max(16, mt.implicitWidth + 8)
             radius: 8
-            color: Th.err
+            color: Th.mr
             border.color: Th.bg
             border.width: 2
             anchors.right: parent.right
@@ -221,15 +218,13 @@ Rectangle {
         }
         Rectangle {
             visible: ic.ment === 0 && ic.dotN > 0 && !ic.cur
-            width: 10
-            height: 10
-            radius: 5
+            width: 8
+            height: 8
+            radius: 4
             color: Th.tx
-            border.color: Th.bg
-            border.width: 2
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.margins: -3
+            anchors.margins: -2
         }
         MouseArea {
             id: ma
@@ -243,7 +238,7 @@ Rectangle {
                 else ic.pick()
             }
         }
-        Tip { id: tp; text: ic.name + (ic.sv ? "  ·  " + Th.svcName(ic.sv) : ""); hov: ma.containsMouse }
+        Tip { id: tp; text: ic.name + (ic.sv ? "  ·  " + Th.svcName(ic.sv) : ""); hov: ma.containsMouse; side: r.hz ? "b" : "r" }
         Ctx {
             id: cm
             model: [

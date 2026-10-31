@@ -12,6 +12,7 @@ Rectangle {
     property string cid: cs.chan ? S.ridOf(cs.chan) : (S.chans[S.selC] && (S.chans[S.selC].k === "Voice" || S.chans[S.selC].k === "Stage") ? S.selC : "")
     property var ppl: cid ? S.vsIn(cid) : []
     property string foc: ""
+    property bool shown: U.inCall
     property var vcs: r.cid ? [] : S.chList(S.sel).filter(c => c.k === "Voice" || c.k === "Stage").slice(0, 5)
     Column {
         anchors.centerIn: parent

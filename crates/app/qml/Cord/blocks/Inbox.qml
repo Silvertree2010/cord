@@ -71,16 +71,15 @@ Rectangle {
                     Lbl { width: parent.width; text: (modelData.c.grid ? "#" : "@") + S.chName(modelData.c.rid); font.weight: Font.DemiBold }
                     Lbl { width: parent.width; text: modelData.c.grid && S.gmap[modelData.c.grid] ? S.gmap[modelData.c.grid].name : "Direct message"; color: Th.tx3; font.pixelSize: 11 }
                 }
-                Rectangle {
+                Lbl {
                     visible: modelData.u.ment > 0
                     anchors.right: parent.right
                     anchors.rightMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
-                    height: 16
-                    width: Math.max(16, ml.implicitWidth + 8)
-                    radius: 8
-                    color: Th.err
-                    Lbl { id: ml; anchors.centerIn: parent; text: modelData.u.ment; color: "#fff"; font.pixelSize: 10; font.weight: Font.Bold }
+                    text: modelData.u.ment
+                    color: Th.tx3
+                    font.pixelSize: Th.fsS
+                    font.weight: Font.DemiBold
                 }
                 MouseArea {
                     id: ma

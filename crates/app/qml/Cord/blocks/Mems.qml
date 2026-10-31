@@ -63,8 +63,8 @@ Rectangle {
             on.sort(cmp)
             off.sort(cmp)
             const out = []
-            if (on.length) { out.push({ h: "ONLINE  ·  " + on.length }); out.push(...on) }
-            if (off.length) { out.push({ h: "OFFLINE  ·  " + off.length }); out.push(...off) }
+            if (on.length) { out.push({ h: "Online  ·  " + on.length }); out.push(...on) }
+            if (off.length) { out.push({ h: "Offline  ·  " + off.length }); out.push(...off) }
             r.total = on.length + off.length
             r.grp = out
         }
@@ -77,18 +77,23 @@ Rectangle {
         clip: true
         model: r.grp
         ScrollBar.vertical: Scr {}
-        delegate: Loader {
+        delegate: Item {
             width: lv.width
-            property var it: modelData
-            sourceComponent: it.h ? hd : row
+            height: ld.height
+            Loader {
+                id: ld
+                property var it: modelData
+                sourceComponent: it.h ? hd : row
+            }
         }
         Lbl { anchors.centerIn: parent; visible: r.total === 0; text: "Loading members"; color: Th.tx3 }
     }
     Component {
         id: hd
         Item {
-            height: 36
-            Lbl { x: 16; y: 16; text: it.h; color: Th.tx3; font.pixelSize: 11; font.weight: Font.DemiBold }
+            width: lv.width
+            height: 32
+            Lbl { x: 16; y: 12; text: it.h; color: Th.tx3; font.pixelSize: 12; font.weight: Font.DemiBold }
         }
     }
     Component {
@@ -99,10 +104,9 @@ Rectangle {
             property bool onl: !!p && p.st !== "Off"
             height: 42 * Th.dens
             x: 8
-            width: lv.width - 28
+            width: lv.width - 20
             radius: Th.rs
             color: ma.containsMouse ? Th.hov : "transparent"
-            opacity: onl ? 1 : 0.45
             Av {
                 id: av
                 x: 8
@@ -111,6 +115,7 @@ Rectangle {
                 src: it.m.usr.av || ""
                 name: it.m.usr.name
                 st: rw.p ? rw.p.st : "Off"
+                gray: !rw.onl
             }
             Column {
                 anchors.left: av.right
@@ -120,7 +125,7 @@ Rectangle {
                 Lbl {
                     width: parent.width
                     text: it.m.nick || it.m.usr.disp || it.m.usr.name
-                    color: rw.onl && it.m.usr.col ? "#" + ("000000" + it.m.usr.col.toString(16)).slice(-6) : (rw.onl ? Th.tx : Th.tx2)
+                    color: !rw.onl ? Th.tx3 : it.m.usr.col ? Th.lift("#" + ("000000" + it.m.usr.col.toString(16)).slice(-6), Th.bg2, 4.5) : Th.tx
                     font.weight: Font.Medium
                 }
                 Lbl { visible: !!(rw.p && rw.p.act); width: parent.width; text: rw.p && rw.p.act ? rw.p.act : ""; color: Th.tx3; font.pixelSize: 11 }
@@ -129,7 +134,7 @@ Rectangle {
                 id: pl
                 visible: S.f("platform") && !!rw.p
                 anchors.right: parent.right
-                anchors.rightMargin: 10
+                anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 3
                 Ico { visible: !!(rw.p && rw.p.desk); n: "screen"; sz: 13; col: Th.tx3 }

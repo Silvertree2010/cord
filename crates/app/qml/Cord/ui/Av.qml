@@ -12,6 +12,7 @@ Item {
     property color ring: Th.bg2
     property string sv: ""
     property bool speak: false
+    property bool gray: false
     width: sz
     height: sz
     Rectangle {
@@ -21,7 +22,7 @@ Item {
         color: {
             let h = 0
             for (let i = 0; i < r.name.length; i++) h = (h * 31 + r.name.charCodeAt(i)) % 360
-            return Qt.hsla(h / 360, Th.dark ? 0.32 : 0.4, Th.dark ? 0.32 : 0.62, 1)
+            return Qt.hsla(h / 360, r.gray ? 0.04 : Th.dark ? 0.32 : 0.4, Th.dark ? 0.32 : 0.62, 1)
         }
         visible: img.status !== Image.Ready
         Text {
@@ -57,6 +58,7 @@ Item {
     MultiEffect {
         anchors.fill: parent
         source: img
+        saturation: r.gray ? -1 : 0
         maskEnabled: true
         maskSource: msk
         maskThresholdMin: 0.5

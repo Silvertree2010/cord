@@ -45,6 +45,7 @@ ApplicationWindow {
         id: root
         anchors.fill: parent
         anchors.bottomMargin: win.bar ? callBar.height : 0
+        anchors.topMargin: S.edit ? tb.height : 0
         n: S.lay
         p: []
         visible: !S.setup
@@ -99,21 +100,19 @@ ApplicationWindow {
     Rectangle {
         id: tb
         visible: S.edit
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: 16 + (win.bar ? callBar.height : 0)
-        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
         z: 50
-        width: er.implicitWidth + 24
         height: 48
-        radius: Th.r
-        color: Th.bg3
-        border.color: Th.ln
+        color: Th.bg2
+        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Th.ln }
+        Lbl { x: 16; anchors.verticalCenter: parent.verticalCenter; text: "Editing layout"; color: Th.tx2 }
         Row {
             id: er
             anchors.centerIn: parent
             spacing: 8
-            Lbl { text: "Editing layout"; color: Th.tx2; anchors.verticalCenter: parent.verticalCenter; rightPadding: 4 }
-            Btn { text: "Add block"; ico: "plus"; height: 32; onClicked: { addM.show(tb, 0, 0); addM.y = tb.mapToItem(null, 0, 0).y - addM.implicitHeight - 8 } }
+            Btn { id: ab; text: "Add block"; ico: "plus"; height: 32; onClicked: addM.show(ab, 0, ab.height + 4) }
             Btn { text: "Undo"; ico: "undo"; height: 32; on: U.undo.length > 0; onClicked: U.undoLay() }
             Btn { text: "Reset layout"; height: 32; onClicked: U.resetLay() }
             Btn { text: "Cancel"; height: 32; onClicked: U.cancelEdit() }
@@ -144,10 +143,10 @@ ApplicationWindow {
     }
 
     Column {
-        anchors.bottom: parent.bottom
+        anchors.top: parent.top
         anchors.right: parent.right
         anchors.margins: 16
-        anchors.bottomMargin: 16 + (win.bar ? callBar.height : 0)
+        anchors.topMargin: 56 + (S.edit ? tb.height : 0)
         spacing: 8
         z: 90
         Repeater {
@@ -162,11 +161,20 @@ ApplicationWindow {
                     id: tx
                     x: 12
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - 52
+                    width: parent.width - 52 - (modelData.retry ? 64 : 0)
                     text: modelData.msg
                     wrapMode: Text.Wrap
                     elide: Text.ElideNone
                     color: Th.tx
+                }
+                Btn {
+                    visible: !!modelData.retry
+                    anchors.right: parent.right
+                    anchors.rightMargin: 40
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 28
+                    text: "Retry"
+                    onClicked: { const f = modelData.retry; U.dismiss(modelData.id); f() }
                 }
                 IBtn {
                     anchors.right: parent.right
@@ -197,8 +205,9 @@ ApplicationWindow {
         radius: Th.rs
         color: Th.bg4
         border.color: Th.ln
-        x: Math.max(4, Math.min(win.width - width - 4, U.tipBox.x + U.tipBox.w / 2 - width / 2))
-        y: U.tipBox.y + U.tipBox.h + 6 + height > win.height - 4 ? U.tipBox.y - height - 6 : U.tipBox.y + U.tipBox.h + 6
+        readonly property bool rt: U.tipSide === "r"
+        x: rt ? U.tipBox.x + U.tipBox.w + 8 : Math.max(4, Math.min(win.width - width - 4, U.tipBox.x + U.tipBox.w / 2 - width / 2))
+        y: rt ? Math.max(4, Math.min(win.height - height - 4, U.tipBox.y + U.tipBox.h / 2 - height / 2)) : U.tipBox.y + U.tipBox.h + 6 + height > win.height - 4 ? U.tipBox.y - height - 6 : U.tipBox.y + U.tipBox.h + 6
         Lbl { id: tt; anchors.centerIn: parent; text: U.tipText; color: Th.tx; font.pixelSize: Th.fsS; elide: Text.ElideNone }
     }
 
@@ -206,6 +215,7 @@ ApplicationWindow {
         target: S
         function onEmoReq(at, cb) {
             emoP.cb = cb
+            emoP.q = ""
             const p = at.mapToItem(win.contentItem, 0, 0)
             emoP.x = Math.max(8, Math.min(win.width - emoP.width - 8, p.x - emoP.width + at.width))
             emoP.y = Math.max(8, p.y - emoP.height - 8)
@@ -215,9 +225,9 @@ ApplicationWindow {
             if (!u) return
             profP.u = u
             const p = at.mapToItem(win.contentItem, 0, 0)
-            const rx = p.x + at.width + 12
-            profP.x = rx + profP.width + 8 <= win.width ? rx : Math.max(8, p.x - profP.width - 12)
-            profP.y = Math.max(8, Math.min(win.height - 340, p.y - 36))
+            const rx = p.x + at.width + 8
+            profP.x = rx + profP.width + 8 <= win.width ? rx : Math.max(8, p.x - profP.width - 8)
+            profP.y = Math.max(8, Math.min(win.height - profP.height - 8, p.y))
             profP.open()
         }
         function onViewReq(u, v) { U.closePop(); viewP.vid = v; viewP.url = u }

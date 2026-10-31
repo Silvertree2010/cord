@@ -26,18 +26,34 @@ Item {
     Component {
         id: rowC
         RowLayout {
+            id: rl
             spacing: 0
+            property int lastV: -1
+            function recalc() {
+                let k = -1, g = 0
+                for (let i = 0; i < rp.count; i++) {
+                    const it = rp.itemAt(i)
+                    if (!it || !it.visible) continue
+                    k = i
+                    if (it.gr) g++
+                }
+                lastV = g > 0 ? -1 : k
+            }
             Repeater {
+                id: rp
                 model: r.n.ch || []
                 delegate: Loader {
                     required property var modelData
                     required property int index
                     property var p: r.p.concat([index])
-                    Component.onCompleted: setSource(Qt.resolvedUrl("Node.qml"), { n: modelData, p: p })
+                    property bool rail: modelData.b === "rail" && !(modelData.o && modelData.o.horiz)
+                    property bool gr: !!modelData.grow
+                    Component.onCompleted: { setSource(Qt.resolvedUrl("Node.qml"), { n: modelData, p: p }); Qt.callLater(rl.recalc) }
                     visible: item ? item.shown !== false : true
+                    onVisibleChanged: Qt.callLater(rl.recalc)
                     Layout.fillHeight: true
-                    Layout.fillWidth: !!modelData.grow
-                    Layout.preferredWidth: modelData.grow ? 200 : (modelData.w || (item ? item.implicitWidth : 0))
+                    Layout.fillWidth: !!modelData.grow || index === rl.lastV
+                    Layout.preferredWidth: rail ? 72 : modelData.grow ? 200 : (modelData.w || (item ? item.implicitWidth : 0))
                     Layout.minimumWidth: modelData.grow ? 240 : 0
                     Rectangle {
                         visible: index > 0 && parent.visible && parent.width > 0
@@ -47,7 +63,7 @@ Item {
                         z: 5
                     }
                     MouseArea {
-                        visible: !modelData.grow && !!modelData.w
+                        visible: !modelData.grow && !!modelData.w && !parent.rail
                         width: 6
                         height: parent.height
                         x: (r.n.ch.findIndex(c => c.grow) > index) ? parent.width - 3 : -3

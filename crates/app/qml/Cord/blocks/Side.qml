@@ -36,10 +36,14 @@ Rectangle {
             model: r.home ? S.dms() : S.chList(S.sel).filter(c => c.k === "Cat" || !r.col[c.prid])
             ScrollBar.vertical: Scr {}
             header: r.home ? frHd : null
-            delegate: Loader {
+            delegate: Item {
                 width: lv.width
-                property var ch: modelData
-                sourceComponent: modelData.k === "Cat" ? catD : r.home ? dmD : chD
+                height: ld.height
+                Loader {
+                    id: ld
+                    property var ch: modelData
+                    sourceComponent: modelData.k === "Cat" ? catD : r.home ? dmD : chD
+                }
             }
         }
     }
@@ -87,11 +91,22 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Lbl {
-                    width: parent.width - 60
+                    width: parent.width - 60 - (U.demo ? 56 : 0)
                     text: r.g ? r.g.name : ""
                     font.weight: Font.DemiBold
                     anchors.verticalCenter: parent.verticalCenter
                 }
+            }
+            Rectangle {
+                visible: U.demo
+                anchors.right: parent.right
+                anchors.rightMargin: 14
+                anchors.verticalCenter: parent.verticalCenter
+                width: dc.implicitWidth + 12
+                height: 18
+                radius: 4
+                color: Th.bg4
+                Lbl { id: dc; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: 11; font.weight: Font.DemiBold }
             }
             MouseArea {
                 anchors.fill: parent
@@ -241,12 +256,21 @@ Rectangle {
                         font.weight: Font.Bold
                     }
                     Rectangle {
-                        visible: u && u.ment > 0
+                        visible: !!u && u.ment > 0
                         height: 16
                         width: Math.max(16, mn.implicitWidth + 8)
                         radius: 8
-                        color: Th.err
+                        color: Th.mr
+                        anchors.verticalCenter: parent.verticalCenter
                         Lbl { id: mn; anchors.centerIn: parent; text: u ? u.ment : ""; color: "#fff"; font.pixelSize: 11; font.weight: Font.Bold }
+                    }
+                    Rectangle {
+                        visible: !!u && !!u.n && !(u.ment > 0) && !cur
+                        width: 6
+                        height: 6
+                        radius: 3
+                        color: Th.tx
+                        anchors.verticalCenter: parent.verticalCenter
                     }
                 }
                 MouseArea {
@@ -355,18 +379,28 @@ Rectangle {
                 }
             }
             Rectangle {
-                visible: u && u.ment > 0
+                visible: !!u && !!u.n && !(u.ment > 0) && !cur
+                width: 6
+                height: 6
+                radius: 3
+                color: Th.tx
+                anchors.right: parent.right
+                anchors.rightMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Rectangle {
+                visible: !!u && u.ment > 0
                 height: 16
                 width: Math.max(16, mn2.implicitWidth + 8)
                 radius: 8
-                color: Th.err
+                color: Th.mr
                 anchors.right: parent.right
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
                 Lbl { id: mn2; anchors.centerIn: parent; text: u ? u.ment : ""; color: "#fff"; font.pixelSize: 11; font.weight: Font.Bold }
             }
             Ico {
-                visible: (S.ui.pins || []).indexOf(ch.rid) >= 0 && !(u && u.ment)
+                visible: (S.ui.pins || []).indexOf(ch.rid) >= 0 && !(u && (u.ment || u.n))
                 n: "pin"
                 sz: 14
                 col: Th.tx3

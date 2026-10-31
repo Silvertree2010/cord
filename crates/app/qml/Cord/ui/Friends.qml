@@ -39,10 +39,7 @@ Rectangle {
     function dmOf(uid) {
         return S.dms().find(c => c.k === "Dm" && c.rcp && c.rcp[0] && c.rcp[0].id && S.ridOf(c.rcp[0].id) === uid)
     }
-    function msg(uid) {
-        const d = dmOf(uid)
-        if (d) { S.sel = "home"; S.open(d.rid) }
-    }
+    function msg(uid) { S.openDm(uid) }
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -122,6 +119,7 @@ Rectangle {
                     name: row.f.usr.name
                     st: row.p && row.f.k !== "In" && row.f.k !== "Out" ? row.p.st : ""
                     ring: row.color.a > 0 ? Th.bg3 : Th.bg2
+                    sv: S.svc(row.uid)
                 }
                 Column {
                     anchors.left: av.right
@@ -132,10 +130,6 @@ Rectangle {
                     Row {
                         spacing: 6
                         Lbl { text: modelData.name; font.weight: Font.DemiBold; color: row.off && r.tab === "all" ? Th.tx2 : Th.tx; anchors.verticalCenter: parent.verticalCenter }
-                        Repeater {
-                            model: modelData.items
-                            Badge { sv: S.svc(modelData.usr.id ? S.ridOf(modelData.usr.id) : ""); sz: 16; ring: row.color.a > 0 ? Th.bg3 : Th.bg2; anchors.verticalCenter: parent.verticalCenter }
-                        }
                         Lbl { text: row.f.usr.name; color: Th.tx3; visible: ma.containsMouse && row.f.usr.name !== modelData.name; anchors.verticalCenter: parent.verticalCenter }
                     }
                     Lbl {

@@ -32,7 +32,20 @@ Rectangle {
         Column {
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width - 44
-            Lbl { width: parent.width; text: r.a ? (r.a.me.disp || r.a.me.name) : "No account"; font.weight: Font.DemiBold; font.pixelSize: Th.fsS }
+            Row {
+                spacing: 6
+                width: parent.width
+                Lbl { width: parent.width - (U.demo ? 46 : 0); text: r.a ? (r.a.me.disp || r.a.me.name) : "No account"; font.weight: Font.DemiBold; font.pixelSize: Th.fsS; anchors.verticalCenter: parent.verticalCenter }
+                Rectangle {
+                    visible: U.demo
+                    width: dc.implicitWidth + 10
+                    height: 16
+                    radius: 4
+                    color: Th.bg4
+                    anchors.verticalCenter: parent.verticalCenter
+                    Lbl { id: dc; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: 10; font.weight: Font.DemiBold }
+                }
+            }
             Lbl {
                 width: parent.width
                 text: r.mu || r.de ? (r.de ? "Deafened" : "Muted") : (r.al.length > 1 ? r.al.length + " accounts" : (r.a ? r.a.me.name : ""))

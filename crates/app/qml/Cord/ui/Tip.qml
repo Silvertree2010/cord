@@ -6,12 +6,13 @@ Item {
     property Item tgt: parent
     property string text: ""
     property bool hov: false
+    property string side: "b"
     width: 0
     height: 0
     Timer {
         id: t
         interval: 400
-        onTriggered: if (r.hov) U.showTip(r.tgt, r.text)
+        onTriggered: if (r.hov) U.showTip(r.tgt, r.text, r.side)
     }
     onHovChanged: {
         if (hov) t.restart()

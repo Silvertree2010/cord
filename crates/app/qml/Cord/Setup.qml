@@ -57,7 +57,7 @@ Rectangle {
                         Keys.onReturnPressed: r.pre = modelData
                         Keys.onSpacePressed: r.pre = modelData
                         LayPrev { x: 10; y: 10; width: parent.width - 20; height: 74; n: L.presets[modelData] }
-                        Lbl { x: 12; y: 92; text: L.presets[modelData].name; font.pixelSize: Th.fsS; font.weight: Font.DemiBold }
+                        Lbl { x: 12; y: 92; text: L.presets[modelData].name; font.pixelSize: 12; font.weight: Font.DemiBold }
                         MouseArea { id: pm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: r.pre = modelData; onDoubleClicked: { r.pre = modelData; S.preset(r.pre); r.step = 1 } }
                     }
                 }
@@ -99,22 +99,20 @@ Rectangle {
                     Btn {
                         visible: !r.hasDemo
                         text: "Try with demo data"
-                        flat: true
                         height: 36
                         onClicked: { S.c.add("dc", '{"demo":true}'); S.c.add("mx", '{"demo":true}'); S.c.add("st", '{"demo":true}') }
                     }
                     Btn {
                         visible: r.hasDemo
                         text: "Exit demo"
-                        flat: true
                         height: 36
-                        onClicked: S.cfgAccs.filter(a => a.base === "demo").forEach(a => S.c.rm_acc(a.id))
+                        onClicked: U.exitDemo()
                     }
                 }
             }
             RowLayout {
                 Layout.fillWidth: true
-                Btn { visible: r.step === 1; text: "Back"; flat: true; height: 36; onClicked: r.step = 0 }
+                Btn { visible: r.step === 1; text: "Back"; height: 36; onClicked: r.step = 0 }
                 Item { Layout.fillWidth: true }
                 Btn {
                     text: r.step === 0 ? "Continue" : S.cfgAccs.length === 0 ? "Skip for now" : "Finish"

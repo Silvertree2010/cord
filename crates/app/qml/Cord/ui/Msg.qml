@@ -11,7 +11,13 @@ Item {
     property var rep: null
     property string cid: ""
     property bool mine: S.isMe(m.auth, S.acc(cid))
-    property bool hov: ma.containsMouse || bar.hov
+    property bool hov: ma.containsMouse || bar.hov || activeFocus
+    activeFocusOnTab: true
+    Accessible.role: Accessible.ListItem
+    Accessible.name: (r.m.auth ? (r.m.auth.disp || r.m.auth.name) : "") + ": " + (r.m.body || "")
+    Keys.onReturnPressed: menu.show(r, 80, 24)
+    Keys.onEnterPressed: menu.show(r, 80, 24)
+    Keys.onMenuPressed: menu.show(r, 80, 24)
     property bool showH: false
     signal jump(string id)
     width: ListView.view ? ListView.view.width : 400
@@ -120,7 +126,7 @@ Item {
                 height: visible ? 22 : 0
                 Lbl {
                     text: r.m.auth ? (r.m.auth.disp || r.m.auth.name) : ""
-                    color: r.m.auth && r.m.auth.col ? "#" + ("000000" + r.m.auth.col.toString(16)).slice(-6) : Th.tx
+                    color: r.m.auth && r.m.auth.col ? Th.lift("#" + ("000000" + r.m.auth.col.toString(16)).slice(-6), Th.bg2, 4.5) : Th.tx
                     font.weight: Font.DemiBold
                     anchors.baseline: tm.baseline
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: S.prof(r.m.auth, parent) }
@@ -223,7 +229,8 @@ Item {
                             width: rr.implicitWidth + 14
                             radius: 8
                             color: modelData.me ? Th.a(Th.ac, 0.2) : Th.bg3
-                            border.color: modelData.me ? Th.ac : rm.containsMouse ? Th.tx3 : "transparent"
+                            border.color: modelData.me ? Th.ac : rm.containsMouse ? Th.tx3 : Th.ln
+                            border.width: 1
                             Row {
                                 id: rr
                                 anchors.centerIn: parent
@@ -306,7 +313,7 @@ Item {
         visible: r.hov && !r.m.del
         anchors.right: parent.right
         anchors.rightMargin: 8
-        y: -14
+        y: r.ListView.view && r.y - r.ListView.view.contentY < 18 ? 2 : -14
         z: 10
         height: 32
         width: br.implicitWidth + 4
@@ -323,6 +330,17 @@ Item {
             IBtn { visible: r.mine; n: "trash"; sz: 28; isz: 16; tip: "Delete  (Shift+click skips confirm)"; onClicked: r.askDel(!!(mods & Qt.ShiftModifier)) }
             IBtn { id: dotB; n: "dots"; sz: 28; isz: 16; tip: "More"; onClicked: menu.show(dotB, 0, dotB.height + 4) }
         }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        anchors.leftMargin: 8
+        anchors.rightMargin: 8
+        radius: Th.rs
+        color: "transparent"
+        border.color: Th.ac
+        border.width: 2
+        visible: r.activeFocus
     }
 
     Ctx {

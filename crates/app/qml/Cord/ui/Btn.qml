@@ -9,6 +9,7 @@ Rectangle {
     property bool dng: false
     property bool flat: false
     property bool on: true
+    property bool enter: true
     property color tc: pri ? Th.acTx : dng ? "#fff" : Th.tx
     signal clicked
     implicitWidth: row.implicitWidth + 24
@@ -18,10 +19,12 @@ Rectangle {
     activeFocusOnTab: on
     Accessible.role: Accessible.Button
     Accessible.name: text
-    Keys.onReturnPressed: if (on) r.clicked()
-    Keys.onEnterPressed: if (on) r.clicked()
+    Keys.onReturnPressed: e => { if (on && enter) r.clicked(); else e.accepted = false }
+    Keys.onEnterPressed: e => { if (on && enter) r.clicked(); else e.accepted = false }
     Keys.onSpacePressed: if (on) r.clicked()
-    color: pri ? (ma.containsMouse ? Qt.lighter(Th.ac, 1.08) : Th.ac) : dng ? (ma.containsMouse ? Qt.lighter(Th.err, 1.1) : Th.err) : flat ? (ma.containsMouse ? Th.hov : "transparent") : (ma.containsMouse ? Th.bg4 : Th.bg3)
+    color: pri ? (ma.containsMouse ? Qt.lighter(Th.ac, 1.08) : Th.ac) : dng ? (ma.containsMouse ? Qt.lighter(Th.err, 1.1) : Th.err) : flat ? (ma.containsMouse ? Th.hov : "transparent") : (ma.containsMouse ? Qt.lighter(Th.bg4, 1.15) : Th.bg4)
+    border.color: pri || dng || flat ? "transparent" : Th.ln
+    border.width: 1
     Row {
         id: row
         anchors.centerIn: parent

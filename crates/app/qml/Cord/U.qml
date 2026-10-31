@@ -13,6 +13,8 @@ QtObject {
     property string tipText: ""
     property var tipItem: null
     property var tipBox: ({ x: 0, y: 0, w: 0, h: 0 })
+    property string tipSide: "b"
+    readonly property bool demo: S.cfgAccs.some(a => a.base === "demo")
     property real callT0: 0
     property string callEl: ""
     readonly property bool inCall: !!(S.call && S.call.chan)
@@ -54,8 +56,9 @@ QtObject {
     function unreg(p) { if (pop === p) pop = null }
     function closePop() { if (pop) pop.close() }
 
-    function showTip(item, text) {
+    function showTip(item, text, side) {
         if (!tipOk || !item || !text) return
+        tipSide = side || "b"
         const p = item.mapToItem(null, 0, 0)
         tipBox = { x: p.x, y: p.y, w: item.width, h: item.height }
         tipItem = item
@@ -68,6 +71,19 @@ QtObject {
     }
 
     function ask(o) { askReq(o) }
+    function rmDemo() { S.cfgAccs.filter(a => a.base === "demo").forEach(a => S.c.rm_acc(a.id)) }
+    function exitDemo() {
+        ask({ title: "Exit demo", body: "Demo accounts and their data are removed.", ok: "Exit demo", danger: true, run: rmDemo })
+    }
+    function guardDemo(fn) {
+        if (!demo) { fn(); return }
+        ask({ title: "Exit demo first", body: "Demo accounts are removed before a real account is added.", ok: "Exit demo and continue", danger: true, run: () => { rmDemo(); fn() } })
+    }
+    function pushEmo(e) {
+        const k = e.id ? "c" + e.id.raw : "u" + e.name
+        const l = [e].concat((S.ui.emor || []).filter(x => (x.id ? "c" + x.id.raw : "u" + x.name) !== k)).slice(0, 12)
+        S.setUi("emor", l)
+    }
 
     function err(d) {
         const a = d.acc ? S.cfgAccs.find(x => x.id === d.acc) : null
@@ -75,7 +91,7 @@ QtObject {
         const pre = a ? Th.svcName(S.tag(a.svc)) + (me ? " " + (me.disp || me.name) : "") + ": " : ""
         const msg = pre + d.msg
         const k = toasts.filter(t => t.msg !== msg)
-        k.push({ msg: msg, at: Date.now(), keep: d.ctx === "send", id: Date.now() + Math.random() })
+        k.push({ msg: msg, at: Date.now(), keep: d.ctx === "send", id: Date.now() + Math.random(), retry: d.retry || null })
         toasts = k.slice(-5)
     }
     function dismiss(id) { toasts = toasts.filter(t => t.id !== id) }
@@ -101,8 +117,17 @@ QtObject {
         undo = k
     }
     function setLay(l) {
-        push()
-        S.setLay(l)
+        const before = L.cp(S.lay)
+        const bj = JSON.stringify(before)
+        const ret = S.setLay(l)
+        const ch = JSON.stringify(S.lay) !== bj
+        const ok = ret === undefined ? ch || JSON.stringify(l) === bj : ret !== false
+        if (ch) {
+            const k = undo.slice(-30)
+            k.push(before)
+            undo = k
+        }
+        return ok
     }
     function undoLay() {
         if (!undo.length) return

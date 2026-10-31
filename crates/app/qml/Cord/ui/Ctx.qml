@@ -8,6 +8,7 @@ Popup {
     property var view: null
     property real w: 196
     property int mods: 0
+    property int cur: -1
     readonly property var rows: {
         const src = view ? [{ back: true, text: "Back" }].concat(view) : model
         return src.filter(x => x && x.when !== false)
@@ -16,12 +17,36 @@ Popup {
     padding: 4
     margins: 8
     width: w + 8
+    focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     onAboutToShow: U.reg(r)
-    onClosed: { U.unreg(r); view = null }
+    onClosed: { U.unreg(r); view = null; cur = -1 }
+    onViewChanged: cur = -1
+
+    function ok(i) {
+        const x = rows[i]
+        return !!x && !x.sep && !x.slider
+    }
+    function step(d) {
+        let i = cur
+        for (let k = 0; k < rows.length; k++) {
+            i = (i + d + rows.length) % rows.length
+            if (ok(i)) { cur = i; return }
+        }
+    }
+    function act(x) {
+        if (!x) return
+        if (x.back) view = null
+        else if (x.items) view = x.items
+        else {
+            close()
+            if (x.run) x.run()
+        }
+    }
 
     function show(item, mx, my, md) {
         view = null
+        cur = -1
         mods = md || 0
         const p = item.mapToItem(Overlay.overlay, mx || 0, my || 0)
         x = p.x
@@ -38,6 +63,15 @@ Popup {
 
     contentItem: Column {
         spacing: 0
+        focus: true
+        Keys.onPressed: e => {
+            if (e.key === Qt.Key_Down) { r.step(1); e.accepted = true }
+            else if (e.key === Qt.Key_Up) { r.step(-1); e.accepted = true }
+            else if (e.key === Qt.Key_Right) { if (r.ok(r.cur) && r.rows[r.cur].items) { r.act(r.rows[r.cur]); r.step(1) } e.accepted = true }
+            else if (e.key === Qt.Key_Left) { if (r.view) r.view = null; e.accepted = true }
+            else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Space) { if (r.ok(r.cur)) r.act(r.rows[r.cur]); e.accepted = true }
+            else if (e.key === Qt.Key_Escape) { r.close(); e.accepted = true }
+        }
         Repeater {
             model: r.rows
             delegate: Item {
@@ -55,7 +89,7 @@ Popup {
                     visible: !modelData.sep && !modelData.slider
                     anchors.fill: parent
                     radius: Th.rs
-                    color: ma.containsMouse ? Th.sel : "transparent"
+                    color: index === r.cur || ma.containsMouse ? Th.sel : "transparent"
                     Lbl {
                         x: 10
                         width: parent.width - 36
@@ -86,14 +120,10 @@ Popup {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
+                        onEntered: r.cur = index
                         onClicked: m => {
                             r.mods = m.modifiers
-                            if (modelData.back) r.view = null
-                            else if (modelData.items) r.view = modelData.items
-                            else {
-                                r.close()
-                                if (modelData.run) modelData.run()
-                            }
+                            r.act(modelData)
                         }
                     }
                 }

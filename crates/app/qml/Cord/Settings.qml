@@ -14,10 +14,7 @@ Rectangle {
         ["keys", "Shortcuts", "keyboard"], ["about", "About", "info"]
     ]
     readonly property var cur: pages.find(p => p[0] === S.setPage) || pages[0]
-    property string sec: ""
-    Component.onCompleted: {
-        try { if (typeof S.c.secretBackend === "function") sec = String(S.c.secretBackend()) } catch (e) { sec = "" }
-    }
+    property string pasteErr: ""
 
     RowLayout {
         anchors.fill: parent
@@ -119,7 +116,7 @@ Rectangle {
         Column {
             spacing: 8
             Rectangle {
-                visible: r.sec === "file"
+                visible: S.secretBackend === "file"
                 width: parent.width
                 height: sw.implicitHeight + 20
                 radius: Th.r
@@ -137,7 +134,7 @@ Rectangle {
                     color: Th.bg2
                     property var a: S.accs[modelData.id]
                     property string who: a ? (a.me.disp || a.me.name) : modelData.base === "demo" ? "Demo account" : "Not connected"
-                    Av { id: aa; x: 14; anchors.verticalCenter: parent.verticalCenter; sz: 38; src: parent.a ? (parent.a.me.av || "") : ""; name: parent.a ? parent.a.me.name : "?"; sv: S.tag(modelData.svc) }
+                    Av { id: aa; x: 14; anchors.verticalCenter: parent.verticalCenter; sz: 38; src: parent.a ? (parent.a.me.av || "") : ""; name: parent.a ? parent.a.me.name : "?" }
                     Column {
                         anchors.left: aa.right
                         anchors.leftMargin: 12
@@ -156,9 +153,10 @@ Rectangle {
                             }
                         }
                         Row {
-                            spacing: 6
-                            Badge { sv: modelData.svc; txt: true }
-                            Lbl { text: S.up.indexOf(modelData.id) >= 0 ? "Online" : "Offline"; color: S.up.indexOf(modelData.id) >= 0 ? Th.ok : Th.tx3; font.pixelSize: 11 }
+                            spacing: 8
+                            Badge { sv: modelData.svc; txt: true; anchors.verticalCenter: parent.verticalCenter }
+                            Rectangle { width: 8; height: 8; radius: 4; color: S.up.indexOf(modelData.id) >= 0 ? Th.ok : Th.tx3; anchors.verticalCenter: parent.verticalCenter }
+                            Lbl { text: S.up.indexOf(modelData.id) >= 0 ? "Online" : "Offline"; color: Th.tx3; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
                         }
                     }
                     Btn {
@@ -166,7 +164,6 @@ Rectangle {
                         anchors.rightMargin: 14
                         anchors.verticalCenter: parent.verticalCenter
                         text: modelData.base === "demo" ? "Remove" : "Log out"
-                        flat: true
                         tc: Th.err
                         onClicked: U.ask({
                             title: modelData.base === "demo" ? "Remove demo account" : "Log out",
@@ -181,8 +178,7 @@ Rectangle {
             Btn {
                 visible: S.cfgAccs.some(a => a.base === "demo")
                 text: "Exit demo"
-                flat: true
-                onClicked: S.cfgAccs.filter(a => a.base === "demo").forEach(a => S.c.rm_acc(a.id))
+                onClicked: U.exitDemo()
             }
             Sub { text: "Add account" }
             AccAdd {}
@@ -215,7 +211,7 @@ Rectangle {
                         Keys.onReturnPressed: S.preset(modelData)
                         Keys.onSpacePressed: S.preset(modelData)
                         LayPrev { x: 10; y: 10; width: parent.width - 20; height: 88; n: L.presets[modelData] }
-                        Lbl { x: 12; y: 106; text: L.presets[modelData].name; font.pixelSize: Th.fsS; font.weight: Font.DemiBold }
+                        Lbl { x: 12; y: 106; text: L.presets[modelData].name; font.pixelSize: 12; font.weight: Font.DemiBold }
                         MouseArea { id: pm2; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.preset(modelData) }
                     }
                 }
@@ -247,14 +243,24 @@ Rectangle {
                 spacing: 8
                 Btn { text: "Edit layout"; ico: "layout"; pri: true; onClicked: { S.showSet = false; S.edit = true } }
                 Btn { text: "Copy layout"; ico: "copy"; onClicked: S.copy(JSON.stringify(S.lay)) }
-                Btn { text: "Paste layout"; onClicked: pst.visible = !pst.visible }
+                Btn { text: "Paste layout"; onClicked: { pst.visible = !pst.visible; r.pasteErr = "" } }
             }
-            Row {
+            Column {
                 id: pst
                 visible: false
-                spacing: 8
-                Fld { id: pf; width: 480; placeholderText: "Paste a shared layout" }
-                Btn { text: "Apply"; pri: true; onClicked: { try { S.setLay(JSON.parse(pf.text)); pst.visible = false } catch (e) { } } }
+                spacing: 6
+                function apply() {
+                    let ok = false
+                    try { ok = U.setLay(JSON.parse(pf.text)) } catch (e) { ok = false }
+                    r.pasteErr = ok ? "" : "Invalid layout"
+                    if (ok) { pst.visible = false; pf.text = "" }
+                }
+                Row {
+                    spacing: 8
+                    Fld { id: pf; width: 480; placeholderText: "Paste a shared layout"; onTextChanged: r.pasteErr = ""; onAccepted: pst.apply() }
+                    Btn { text: "Apply"; pri: true; onClicked: pst.apply() }
+                }
+                Lbl { visible: r.pasteErr !== ""; text: r.pasteErr; color: Th.err; font.pixelSize: Th.fsS }
             }
         }
     }
@@ -289,39 +295,28 @@ Rectangle {
             Lbl { text: "Drop .json themes into " + S.c.home() + "/themes. Changes load live."; color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone; width: parent.width }
             Sub { text: "Accent" }
             Row {
-                spacing: 8
-                Rectangle {
-                    width: dfl.implicitWidth + 24
-                    height: 30
-                    radius: 15
-                    color: Th.bg3
-                    border.color: !S.ui.ac || activeFocus ? Th.ac : Th.ln
-                    border.width: 2
-                    activeFocusOnTab: true
-                    Accessible.role: Accessible.Button
-                    Accessible.name: "Default accent"
-                    Keys.onReturnPressed: { S.setUi("ac", ""); S.loadTheme() }
-                    Keys.onSpacePressed: { S.setUi("ac", ""); S.loadTheme() }
-                    Lbl { id: dfl; anchors.centerIn: parent; text: "Default"; font.pixelSize: Th.fsS }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { S.setUi("ac", ""); S.loadTheme() } }
-                }
+                spacing: 6
                 Repeater {
-                    model: ["#7dd3c0", "#6ea8fe", "#b69cff", "#d98fd6", "#ff8fa3", "#e6e6e6"]
+                    model: ["#8fb3ff", "#6ea8fe", "#5fc4d6", "#7dd3c0", "#9aa7ff", "#b69cff", "#d98fd6", "#e6e6e6"]
                     Rectangle {
-                        width: 30
-                        height: 30
-                        radius: 15
-                        color: modelData
-                        border.color: (S.ui.ac || "") === modelData || activeFocus ? Th.tx : Th.ln
+                        id: sw
+                        readonly property bool on: String(Th.ac).toLowerCase() === modelData
+                        width: 28
+                        height: 28
+                        radius: 14
+                        color: "transparent"
+                        border.color: on || activeFocus ? Th.tx : "transparent"
                         border.width: 2
                         activeFocusOnTab: true
                         Accessible.role: Accessible.Button
                         Accessible.name: "Accent " + modelData
                         Keys.onReturnPressed: { S.setUi("ac", modelData); S.loadTheme() }
                         Keys.onSpacePressed: { S.setUi("ac", modelData); S.loadTheme() }
+                        Rectangle { anchors.centerIn: parent; width: 20; height: 20; radius: 10; color: modelData }
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { S.setUi("ac", modelData); S.loadTheme() } }
                     }
                 }
+                Btn { visible: !!S.ui.ac; text: "Reset"; height: 28; flat: true; onClicked: { S.setUi("ac", ""); S.loadTheme() } }
             }
             Sub { text: "Text size" }
             Seg { opts: [["12", "12"], ["13", "13"], ["14", "14"], ["15", "15"], ["16", "16"], ["18", "18"]]; cur: String(S.ui.fs || 14); onPick: v => { S.setUi("fs", parseInt(v)); S.loadTheme() } }
@@ -355,6 +350,8 @@ Rectangle {
             Sub { text: "Input sensitivity" }
             Sld {
                 width: parent.width
+                lab: true
+                unit: " dB"
                 from: -80
                 to: -10
                 value: S.ui.vad || -50
