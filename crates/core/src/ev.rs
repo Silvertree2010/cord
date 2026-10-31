@@ -17,6 +17,7 @@ pub enum Ev {
     Rel(Rel),
     RelDel(Rid),
     Mem(Mem),
+    Mems(Vec<Mem>),
     Unread { chan: Rid, n: u32, ment: u32 },
     Ack { chan: Rid },
     Vs(Vs),

@@ -125,7 +125,18 @@ impl Rest {
         bail!("rate limited: {k}")
     }
 
+    fn blocked(p: &str) -> bool {
+        if !cord_core::feat::on("notrack") {
+            return false;
+        }
+        let path = p.split('?').next().unwrap_or(p);
+        path.split('/').any(|s| s == "science" || s == "track")
+    }
+
     pub async fn js(&self, m: Method, p: &str, b: Option<Value>) -> Res<Value> {
+        if Self::blocked(p) {
+            bail!("tracking request blocked: {p}");
+        }
         let k = rkey(&m, p);
         let u = format!("{API}{p}");
         self.call(&k, |c| {

@@ -10,35 +10,66 @@ Rectangle {
     color: Th.bg2
     property var ch: S.chans[S.selC] || null
     property string g: ch && ch.grid ? ch.grid : ""
-    property var ms: []
+    property string dm: !g && ch ? S.selC : ""
     property bool shown: !!ch && S.selC !== "inbox"
     visible: shown
-    function ld() {
-        if (!g) {
-            ms = ch && ch.rcp ? ch.rcp.map(u => ({ m: { usr: u, nick: null, roles: [] }, p: S.presOf(u.id) || { st: "Off" } })) : []
+    property var byId: ({})
+    property var grp: []
+    property int total: 0
+
+    function key(u) { return u && u.id ? S.ridOf(u.id) : "" }
+
+    function reset() {
+        byId = ({})
+        grp = []
+        total = 0
+        if (g) {
+            S.c.load_mems(g)
             return
         }
-        ms = JSON.parse(S.c.mems(g))
-        if (!ms.length && !asked[g]) {
-            asked[g] = true
-            S.c.load_mems(g)
-        }
+        const o = {}
+        if (ch && ch.rcp) for (const u of ch.rcp) { const k = key(u); if (k) o[k] = { usr: u, nick: null, roles: [] } }
+        byId = o
+        regroup.restart()
     }
-    property var asked: ({})
-    onGChanged: ld()
-    onChChanged: ld()
+    onGChanged: reset()
+    onDmChanged: if (!g) reset()
+    Component.onCompleted: reset()
+
     Connections {
         target: S
-        function onEv(d) { if (d.t === "Mems" && d.d === r.g) r.ld() }
+        function onMems(gld, list) {
+            if (gld !== r.g) return
+            const o = r.byId
+            for (const m of list) { const k = r.key(m.usr); if (k) o[k] = m }
+            r.byId = o
+            regroup.restart()
+        }
+        function onPresChanged() { regroup.restart() }
     }
-    property var grp: {
-        const on = ms.filter(x => x.p && x.p.st !== "Off")
-        const off = ms.filter(x => !x.p || x.p.st === "Off")
-        const out = []
-        if (on.length) { out.push({ h: "ONLINE  ·  " + on.length }); out.push(...on) }
-        if (off.length) { out.push({ h: "OFFLINE  ·  " + off.length }); out.push(...off) }
-        return out
+
+    Timer {
+        id: regroup
+        interval: 200
+        onTriggered: {
+            const on = [], off = []
+            for (const k in r.byId) {
+                const p = S.pres[k]
+                const e = { m: r.byId[k], uid: k }
+                if (p && p.st !== "Off") on.push(e); else off.push(e)
+            }
+            const nm = e => (e.m.nick || e.m.usr.disp || e.m.usr.name || "").toLowerCase()
+            const cmp = (a, b) => nm(a) < nm(b) ? -1 : nm(a) > nm(b) ? 1 : 0
+            on.sort(cmp)
+            off.sort(cmp)
+            const out = []
+            if (on.length) { out.push({ h: "ONLINE  ·  " + on.length }); out.push(...on) }
+            if (off.length) { out.push({ h: "OFFLINE  ·  " + off.length }); out.push(...off) }
+            r.total = on.length + off.length
+            r.grp = out
+        }
     }
+
     ListView {
         id: lv
         anchors.fill: parent
@@ -51,7 +82,7 @@ Rectangle {
             property var it: modelData
             sourceComponent: it.h ? hd : row
         }
-        Lbl { anchors.centerIn: parent; visible: r.ms.length === 0; text: "Loading members"; color: Th.tx3 }
+        Lbl { anchors.centerIn: parent; visible: r.total === 0; text: "Loading members"; color: Th.tx3 }
     }
     Component {
         id: hd
@@ -63,12 +94,15 @@ Rectangle {
     Component {
         id: row
         Rectangle {
+            id: rw
+            property var p: S.pres[it.uid] || null
+            property bool onl: !!p && p.st !== "Off"
             height: 42 * Th.dens
             x: 8
-            width: lv.width - 22
+            width: lv.width - 28
             radius: Th.rs
             color: ma.containsMouse ? Th.hov : "transparent"
-            opacity: it.p && it.p.st !== "Off" ? 1 : 0.5
+            opacity: onl ? 1 : 0.45
             Av {
                 id: av
                 x: 8
@@ -76,7 +110,7 @@ Rectangle {
                 sz: 32
                 src: it.m.usr.av || ""
                 name: it.m.usr.name
-                st: it.p ? it.p.st : "Off"
+                st: rw.p ? rw.p.st : "Off"
             }
             Column {
                 anchors.left: av.right
@@ -86,21 +120,21 @@ Rectangle {
                 Lbl {
                     width: parent.width
                     text: it.m.nick || it.m.usr.disp || it.m.usr.name
-                    color: it.m.usr.col ? "#" + ("000000" + it.m.usr.col.toString(16)).slice(-6) : Th.tx
+                    color: rw.onl && it.m.usr.col ? "#" + ("000000" + it.m.usr.col.toString(16)).slice(-6) : (rw.onl ? Th.tx : Th.tx2)
                     font.weight: Font.Medium
                 }
-                Lbl { visible: !!(it.p && it.p.act); width: parent.width; text: it.p && it.p.act ? it.p.act : ""; color: Th.tx3; font.pixelSize: 11 }
+                Lbl { visible: !!(rw.p && rw.p.act); width: parent.width; text: rw.p && rw.p.act ? rw.p.act : ""; color: Th.tx3; font.pixelSize: 11 }
             }
             Row {
                 id: pl
-                visible: S.f("platform") && !!it.p
+                visible: S.f("platform") && !!rw.p
                 anchors.right: parent.right
                 anchors.rightMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 3
-                Ico { visible: !!(it.p && it.p.desk); n: "screen"; sz: 13; col: Th.tx3 }
-                Ico { visible: !!(it.p && it.p.mob); n: "phone"; sz: 13; col: Th.tx3 }
-                Ico { visible: !!(it.p && it.p.web); n: "globe"; sz: 13; col: Th.tx3 }
+                Ico { visible: !!(rw.p && rw.p.desk); n: "screen"; sz: 13; col: Th.tx3 }
+                Ico { visible: !!(rw.p && rw.p.mob); n: "phone"; sz: 13; col: Th.tx3 }
+                Ico { visible: !!(rw.p && rw.p.web); n: "globe"; sz: 13; col: Th.tx3 }
             }
             MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.prof(it.m.usr, av) }
         }

@@ -18,6 +18,34 @@ pub struct Cfg {
     pub show_hid: bool,
 }
 
+#[derive(Clone, Debug, Serialize)]
+pub struct GldV {
+    #[serde(flatten)]
+    pub g: Gld,
+    pub rid: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ChanV {
+    #[serde(flatten)]
+    pub c: Chan,
+    pub rid: String,
+    pub grid: String,
+    pub prid: String,
+    #[serde(rename = "lastTs")]
+    pub last_ts: i64,
+    pub caps: Caps,
+    pub permalink: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct MsgV {
+    #[serde(flatten)]
+    pub m: Msg,
+    pub mid: String,
+    pub permalink: String,
+}
+
 #[derive(Default)]
 pub struct Sta {
     pub accs: BTreeMap<u32, Acc>,
@@ -31,6 +59,8 @@ pub struct Sta {
     pub mems: HashMap<Rid, HashMap<Rid, Mem>>,
     pub usrs: HashMap<Rid, Usr>,
     pub vs: HashMap<Rid, Vs>,
+    pub lts: HashMap<Rid, i64>,
+    pub hl: HashSet<Rid>,
     pub call: CallSt,
     pub cfg: Cfg,
 }
@@ -40,24 +70,92 @@ pub struct Sta {
 pub enum Dl {
     Acc(Acc),
     Conn { acc: u32, up: bool },
-    Gld(String),
+    Gld(GldV),
     GldDel(String),
-    Chan(String),
+    Chan(ChanV),
     ChanDel(String),
-    Msg { chan: String, m: Msg, new: bool },
+    Msg { chan: String, m: MsgV, new: bool },
     MsgDel { chan: String, id: String, gone: bool },
     Typing { chan: String, usr: Usr },
     Pres { usr: String, p: Pres },
-    Rels,
+    Rels(Vec<Rel>),
     Unr { chan: String, u: Unr },
-    Mems(String),
+    Mems { gld: String, list: Vec<Mem> },
     Err { acc: u32, msg: String },
     Vs(Vs),
     Speak { chan: String, usr: String, on: bool },
     Call(CallSt),
 }
 
+pub fn flake_ts(r: &str) -> i64 {
+    if r.len() >= 15 && r.bytes().all(|b| b.is_ascii_digit()) {
+        return r.parse::<u64>().map(|n| (n >> 22) as i64 + 1420070400000).unwrap_or(0);
+    }
+    if r.len() == 26 && r.bytes().all(|b| b.is_ascii_alphanumeric()) {
+        let a = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+        let mut t: u64 = 0;
+        for b in r.bytes().take(10) {
+            match a.iter().position(|x| *x == b.to_ascii_uppercase()) {
+                Some(i) => t = t.wrapping_mul(32).wrapping_add(i as u64),
+                None => return 0,
+            }
+        }
+        return t as i64;
+    }
+    0
+}
+
 impl Sta {
+    pub fn msg_v(&self, m: &Msg) -> MsgV {
+        let g = self.chans.get(&m.chan).and_then(|c| c.gld.clone());
+        MsgV { mid: m.id.to_string(), permalink: link(&m.chan, g.as_ref(), Some(&m.id)), m: m.clone() }
+    }
+
+    pub fn chan_v(&self, c: &Chan) -> ChanV {
+        let lt = self.lts.get(&c.id).copied().unwrap_or_else(|| c.last.as_ref().map(|l| flake_ts(&l.raw)).unwrap_or(0));
+        ChanV {
+            rid: c.id.to_string(),
+            grid: c.gld.as_ref().map(|g| g.to_string()).unwrap_or_default(),
+            prid: c.par.as_ref().map(|g| g.to_string()).unwrap_or_default(),
+            last_ts: lt,
+            caps: caps(c.id.svc),
+            permalink: link(&c.id, c.gld.as_ref(), None),
+            c: c.clone(),
+        }
+    }
+
+    pub fn gld_v(&self, g: &Gld) -> GldV {
+        GldV { rid: g.id.to_string(), g: g.clone() }
+    }
+
+    pub fn vis_chans(&self) -> Vec<ChanV> {
+        let show = self.cfg.show_hid;
+        self.chans.values().filter(|c| show || !c.hidden).map(|c| self.chan_v(c)).collect()
+    }
+
+    pub fn msgs_v(&self, chan: &Rid) -> Vec<MsgV> {
+        self.msgs.get(chan).map(|q| q.iter().map(|m| self.msg_v(m)).collect()).unwrap_or_default()
+    }
+
+    pub fn purge_acc(&mut self, a: u32) {
+        self.accs.remove(&a);
+        self.up.remove(&a);
+        self.glds.retain(|k, _| k.acc != a);
+        self.chans.retain(|k, _| k.acc != a);
+        self.msgs.retain(|k, _| k.acc != a);
+        self.rels.retain(|k, _| k.acc != a);
+        self.pres.retain(|k, _| k.acc != a);
+        self.unr.retain(|k, _| k.acc != a);
+        self.mems.retain(|k, _| k.acc != a);
+        self.usrs.retain(|k, _| k.acc != a);
+        self.vs.retain(|k, _| k.acc != a);
+        self.lts.retain(|k, _| k.acc != a);
+        self.hl.retain(|k| k.acc != a);
+        if self.call.chan.as_ref().is_some_and(|c| c.acc == a) {
+            self.call = CallSt::default();
+        }
+    }
+
     pub fn apply(&mut self, e: Ev) -> Vec<Dl> {
         let mut o = vec![];
         match e {
@@ -77,9 +175,9 @@ impl Sta {
                 o.push(Dl::Conn { acc, up });
             }
             Ev::Gld(g) => {
-                let k = g.id.to_string();
+                let v = self.gld_v(&g);
                 self.glds.insert(g.id.clone(), g);
-                o.push(Dl::Gld(k));
+                o.push(Dl::Gld(v));
             }
             Ev::GldDel(id) => {
                 self.glds.remove(&id);
@@ -88,24 +186,32 @@ impl Sta {
                     self.chans.remove(&k);
                     self.msgs.remove(&k);
                     self.unr.remove(&k);
+                    self.lts.remove(&k);
+                    self.hl.remove(&k);
                 }
                 self.mems.remove(&id);
                 o.push(Dl::GldDel(id.to_string()));
             }
             Ev::Chan(mut c) => {
-                let k = c.id.to_string();
                 if let Some(o) = self.chans.get(&c.id) {
                     if newer(o.last.as_ref(), c.last.as_ref()) {
                         c.last = o.last.clone();
                     }
                 }
+                if c.hidden && !self.cfg.show_hid {
+                    o.push(Dl::ChanDel(c.id.to_string()));
+                } else {
+                    let v = self.chan_v(&c);
+                    o.push(Dl::Chan(v));
+                }
                 self.chans.insert(c.id.clone(), c);
-                o.push(Dl::Chan(k));
             }
             Ev::ChanDel(id) => {
                 self.chans.remove(&id);
                 self.msgs.remove(&id);
                 self.unr.remove(&id);
+                self.lts.remove(&id);
+                self.hl.remove(&id);
                 o.push(Dl::ChanDel(id.to_string()));
             }
             Ev::Msg(m) => {
@@ -118,6 +224,11 @@ impl Sta {
                         c.last = Some(m.id.clone());
                     }
                 }
+                let lt = self.lts.entry(m.chan.clone()).or_insert(0);
+                if m.ts > *lt {
+                    *lt = m.ts;
+                }
+                let cap = if self.hl.contains(&m.chan) { HCAP } else { MCAP };
                 let q = self.msgs.entry(m.chan.clone()).or_default();
                 let new = match q.iter_mut().find(|x| x.id == m.id) {
                     Some(x) => {
@@ -129,13 +240,14 @@ impl Sta {
                     }
                     None => {
                         q.push_back(m.clone());
-                        while q.len() > MCAP {
+                        while q.len() > cap {
                             q.pop_front();
                         }
                         true
                     }
                 };
-                o.push(Dl::Msg { chan: ck, m, new });
+                let mv = self.msg_v(&m);
+                o.push(Dl::Msg { chan: ck, m: mv, new });
             }
             Ev::MsgUpd(mut m) => {
                 let ck = m.chan.to_string();
@@ -198,7 +310,8 @@ impl Sta {
                     }
                 }
                 if found || !part {
-                    o.push(Dl::Msg { chan: ck, m, new: false });
+                    let mv = self.msg_v(&m);
+                    o.push(Dl::Msg { chan: ck, m: mv, new: false });
                 }
             }
             Ev::MsgDel { chan, id } => {
@@ -219,7 +332,8 @@ impl Sta {
             Ev::Typing { chan, usr } => o.push(Dl::Typing { chan: chan.to_string(), usr }),
             Ev::React { chan, id, e, me, add } => {
                 if let Some(m) = self.react(&chan, &id, e, me, add) {
-                    o.push(Dl::Msg { chan: chan.to_string(), m, new: false });
+                    let mv = self.msg_v(&m);
+                    o.push(Dl::Msg { chan: chan.to_string(), m: mv, new: false });
                 }
             }
             Ev::Pres { usr, p } => {
@@ -230,19 +344,25 @@ impl Sta {
                 if let Some(id) = r.usr.id.clone() {
                     self.usrs.insert(id.clone(), r.usr.clone());
                     self.rels.insert(id, r);
-                    o.push(Dl::Rels);
+                    o.push(Dl::Rels(self.rels.values().cloned().collect()));
                 }
             }
             Ev::RelDel(id) => {
                 self.rels.remove(&id);
-                o.push(Dl::Rels);
+                o.push(Dl::Rels(self.rels.values().cloned().collect()));
             }
-            Ev::Mem(m) => {
-                let gk = m.gld.to_string();
-                if let Some(id) = m.usr.id.clone() {
-                    self.mems.entry(m.gld.clone()).or_default().insert(id, m);
+            Ev::Mem(m) => o.extend(self.apply(Ev::Mems(vec![m]))),
+            Ev::Mems(v) => {
+                let mut by: BTreeMap<Rid, Vec<Mem>> = BTreeMap::new();
+                for m in v {
+                    if let Some(id) = m.usr.id.clone() {
+                        self.mems.entry(m.gld.clone()).or_default().insert(id, m.clone());
+                        by.entry(m.gld.clone()).or_default().push(m);
+                    }
                 }
-                o.push(Dl::Mems(gk));
+                for (g, list) in by {
+                    o.push(Dl::Mems { gld: g.to_string(), list });
+                }
             }
             Ev::Unread { chan, n, ment } => {
                 let u = Unr { n, ment };
@@ -300,18 +420,28 @@ impl Sta {
         u.clone()
     }
 
-    pub fn prepend(&mut self, chan: &Rid, mut v: Vec<Msg>) {
+    pub fn prepend(&mut self, chan: &Rid, mut v: Vec<Msg>) -> Vec<Msg> {
         v.sort_by_key(|m| m.ts);
+        self.hl.insert(chan.clone());
         let q = self.msgs.entry(chan.clone()).or_default();
         let have: HashSet<Rid> = q.iter().map(|m| m.id.clone()).collect();
-        for m in v.into_iter().rev() {
-            if !have.contains(&m.id) {
-                q.push_front(m);
+        let mut add: Vec<Msg> = v.into_iter().filter(|m| !have.contains(&m.id)).collect();
+        let room = HCAP.saturating_sub(q.len());
+        if add.len() > room {
+            add.drain(..add.len() - room);
+        }
+        if !add.is_empty() {
+            let mut all: Vec<Msg> = q.drain(..).collect();
+            all.extend(add.iter().cloned());
+            all.sort_by_key(|m| m.ts);
+            q.extend(all);
+        }
+        if let (Some(f), Some(t)) = (q.back(), self.lts.get(chan)) {
+            if f.ts > *t {
+                self.lts.insert(chan.clone(), f.ts);
             }
         }
-        while q.len() > HCAP {
-            q.pop_back();
-        }
+        add
     }
 
     pub fn react(&mut self, chan: &Rid, id: &Rid, e: Emo, me: bool, add: bool) -> Option<Msg> {
@@ -492,5 +622,89 @@ mod tests {
         s.apply(Ev::React { chan: c.clone(), id: id.clone(), e: e.clone(), me: true, add: false });
         s.apply(Ev::React { chan: c.clone(), id: id.clone(), e, me: false, add: false });
         assert!(s.msgs[&c][0].reacts.is_empty());
+    }
+
+    #[test]
+    fn golden_chan_and_msg_entities() {
+        let mut s = sta();
+        let c = Chan { id: rid("c"), gld: Some(rid("g")), par: None, k: ChK::Txt, name: "gen".into(), topic: None, pos: 0, nsfw: false, hidden: false, last: None, rcp: vec![], icon: None };
+        let d = s.apply(Ev::Chan(c));
+        match &d[0] {
+            Dl::Chan(v) => {
+                assert_eq!(v.rid, "dc:1:c");
+                assert_eq!(v.grid, "dc:1:g");
+                assert_eq!(v.permalink, "https://discord.com/channels/g/c");
+                assert!(v.caps.call);
+            }
+            _ => panic!(),
+        }
+        let d = s.apply(Ev::Msg(msg("1000000000000000", "200", "x")));
+        match &d[0] {
+            Dl::Msg { m, new, .. } => {
+                assert!(*new);
+                assert_eq!(m.permalink, "https://discord.com/channels/g/c/1000000000000000");
+            }
+            _ => panic!(),
+        }
+        assert_eq!(s.lts[&rid("c")], 5);
+    }
+
+    #[test]
+    fn hidden_chan_emits_del() {
+        let mut s = sta();
+        let c = Chan { id: rid("h"), gld: None, par: None, k: ChK::Txt, name: "h".into(), topic: None, pos: 0, nsfw: false, hidden: true, last: None, rcp: vec![], icon: None };
+        assert!(matches!(s.apply(Ev::Chan(c.clone()))[0], Dl::ChanDel(_)));
+        s.cfg.show_hid = true;
+        assert!(matches!(s.apply(Ev::Chan(c))[0], Dl::Chan(_)));
+        assert_eq!(s.vis_chans().len(), 1);
+    }
+
+    #[test]
+    fn mem_batch_single_event() {
+        let mut s = sta();
+        let mk = |i: &str| Mem { usr: usr(i), gld: rid("g"), nick: None, roles: vec![] };
+        let d = s.apply(Ev::Mems(vec![mk("a"), mk("b"), mk("c")]));
+        assert_eq!(d.len(), 1);
+        assert!(matches!(&d[0], Dl::Mems { list, .. } if list.len() == 3));
+    }
+
+    #[test]
+    fn history_survives_live_trim() {
+        let mut s = sta();
+        let h: Vec<Msg> = (0..450).map(|i| { let mut m = msg(&format!("{}", 100 + i), "200", "h"); m.ts = i; m }).collect();
+        let added = s.prepend(&rid("c"), h);
+        assert_eq!(added.len(), 450);
+        for i in 0..20 {
+            let mut m = msg(&format!("{}", 9000 + i), "200", "live");
+            m.ts = 1000 + i;
+            s.apply(Ev::Msg(m));
+        }
+        assert_eq!(s.msgs[&rid("c")].len(), 470);
+        assert_eq!(&*s.msgs[&rid("c")][0].id.raw, "100");
+    }
+
+    #[test]
+    fn live_trim_without_history() {
+        let mut s = sta();
+        for i in 0..(MCAP + 5) {
+            s.apply(Ev::Msg(msg(&format!("{}", 100 + i), "200", "l")));
+        }
+        assert_eq!(s.msgs[&rid("c")].len(), MCAP);
+    }
+
+    #[test]
+    fn purge_removes_acc_state() {
+        let mut s = sta();
+        s.apply(Ev::Msg(msg("1", "200", "x")));
+        s.apply(Ev::Pres { usr: rid("200"), p: Pres::default() });
+        s.purge_acc(1);
+        assert!(s.msgs.is_empty() && s.pres.is_empty() && s.accs.is_empty() && s.unr.is_empty());
+    }
+
+    #[test]
+    fn ulid_and_flake() {
+        assert_eq!(flake_ts("4194304"), 0);
+        assert_eq!(flake_ts("175928847299117063"), 1462015105796);
+        assert!(flake_ts("01ARZ3NDEKTSV4RRFFQ69G5FAV") > 1_400_000_000_000);
     }
 }

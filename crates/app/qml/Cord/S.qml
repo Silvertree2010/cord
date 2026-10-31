@@ -6,6 +6,8 @@ import "Lay.js" as L
 QtObject {
     id: s
 
+    readonly property int api: 1
+
     property Core c: Core {
         onDl: d => s.on(JSON.parse(d))
     }
@@ -23,13 +25,19 @@ QtObject {
     property var names: ({})
     property var typing: ({})
     property var cfgAccs: []
+    property var services: []
+    property string secretBackend: ""
     property int ver: 0
     property int uver: 0
+    property int dver: 0
+    property int nver: 0
 
     property string sel: "home"
     property string selC: ""
     property string selC2: ""
     property var lastC: ({})
+    property int focusSlot: 0
+    property var slotSt: ({})
     property string reply: ""
     property string editing: ""
     property string qr: ""
@@ -46,34 +54,17 @@ QtObject {
     property var blks: ({})
     property var hooks: ({ render: [], send: [], ev: [] })
     property var mods: []
+    property var featDefs: []
 
     signal ev(var d)
     signal msg(string chan, var m, bool isNew)
     signal msgDel(string chan, string id, bool gone)
-    signal hist(string chan, int n, bool more)
+    signal hist(string chan, int n, bool more, bool ok, var list)
+    signal loaded(string chan, var list)
+    signal mems(string gld, var list)
+    signal sent(string chan, bool ok, string err)
+    signal dmOpened(string usr, string chan, bool ok, string err)
     signal fs(string path)
-
-    readonly property var featDefs: [
-        { k: "msglog", n: "Message logger", d: "Keep deleted messages and edit history visible", on: true },
-        { k: "hidden", n: "Show hidden channels", d: "List channels you cannot open, marked with a lock", on: true },
-        { k: "fakenitro", n: "Emoji and sticker passthrough", d: "Send any emoji or sticker as a link when you cannot use it natively", on: true },
-        { k: "streamq", n: "Stream quality unlock", d: "Pick any resolution and frame rate for screen share", on: true },
-        { k: "silenttyping", n: "Silent typing", d: "Do not send typing indicators", on: false },
-        { k: "noread", n: "Do not send read receipts", d: "Read messages without marking them as read for others", on: false },
-        { k: "platform", n: "Platform indicators", d: "Show desktop, mobile or web next to names", on: true },
-        { k: "spoilers", n: "Reveal spoilers", d: "Show spoiler text without clicking", on: false },
-        { k: "notrack", n: "Block tracking", d: "Drop analytics and telemetry requests", on: true },
-        { k: "translate", n: "Translate", d: "Translate messages from the context menu", on: true },
-        { k: "spotify", n: "Media controls", d: "Player bar for Spotify and other MPRIS players", on: true },
-        { k: "relnotif", n: "Relationship notifier", d: "Tell you when someone removes you as a friend or a server removes you", on: true },
-        { k: "typingtweaks", n: "Typing indicators everywhere", d: "Show who types in the channel list and server bar", on: true },
-        { k: "callTimer", n: "Call timer", d: "Show how long you are in a call", on: true },
-        { k: "copyraw", n: "Copy raw message", d: "Context menu entry to copy the unformatted message", on: true },
-        { k: "readall", n: "Read all", d: "One click to mark every channel as read", on: true },
-        { k: "pinDms", n: "Pin DMs", d: "Keep chosen DMs on top of the list", on: true },
-        { k: "noreplyping", n: "No reply mention", d: "Replies do not ping by default", on: false },
-        { k: "anim", n: "Animations", d: "Interface motion", on: true }
-    ]
 
     function f(k) {
         if (k in feats) return feats[k]
@@ -94,18 +85,53 @@ QtObject {
     function ridOf(o) { return o ? (o.svc === "Mx" ? "mx" : o.svc === "St" ? "st" : "dc") + ":" + o.acc + ":" + o.raw : "" }
     function tag(sv) { return sv === "Mx" ? "mx" : sv === "St" ? "st" : "dc" }
 
+    readonly property var noCaps: ({ call: false, permalink: "", fakeEmoji: false, threads: false })
+    function caps(id) {
+        const ch = chans[id]
+        return ch && ch.caps ? ch.caps : noCaps
+    }
+
+    function pj(txt, d) {
+        try {
+            const v = JSON.parse(txt)
+            return v === null || v === undefined ? d : v
+        } catch (e) {
+            console.warn("cord: bad json", e)
+            return d
+        }
+    }
+
+    function blkIds() {
+        const ids = coreBlks.map(b => b.id)
+        for (const k in blks) ids.push(k)
+        for (const k of ui.kb || []) ids.push(k)
+        for (const p of pj(c.ls("blocks", "qml"), [])) ids.push(p.split("/").pop().replace(/\.qml$/, ""))
+        for (const p of pj(c.ls("mods", ""), [])) ids.push(p.split("/").pop())
+        return ids
+    }
+
     function boot() {
-        const u = JSON.parse(c.cget("ui.json"))
-        ui = u || {}
-        if (ui.lay) lay = ui.lay
-        const cf = JSON.parse(c.cget("cfg.json")) || {}
+        featDefs = pj(c.features(), [])
+        services = pj(c.services(), [])
+        const u = pj(c.cget("ui.json"), null)
+        ui = u && typeof u === "object" ? u : {}
+        if (ui.lay) lay = L.norm(L.safe(L.cp(ui.lay), blkIds()))
+        const cf = pj(c.cget("cfg.json"), {})
         feats = cf.feat || {}
-        cfgAccs = JSON.parse(c.accs())
+        cfgAccs = pj(c.accs(), [])
         setup = !u || !u.done
         loadTheme()
         c.boot()
-        refresh()
+        bootSnap()
+        secretBackend = c.secretBackend()
         scanMods()
+    }
+
+    function reloadUi() {
+        const u = pj(c.cget("ui.json"), null)
+        if (!u || typeof u !== "object") return
+        ui = u
+        if (u.lay) lay = L.norm(L.safe(L.cp(u.lay), blkIds()))
     }
 
     function saveUi() {
@@ -121,89 +147,113 @@ QtObject {
         c.cset("ui.json", JSON.stringify(u))
     }
     function setLay(l) {
-        lay = L.norm(L.cp(l))
+        const n = L.norm(L.cp(l))
+        if (!L.valid(n, blkIds())) {
+            console.warn("cord: rejected invalid layout")
+            return
+        }
+        lay = n
         saveUi()
     }
 
     function themes() {
-        const b = JSON.parse(c.ls("themes", "json"))
+        const b = pj(c.ls("themes", "json"), [])
         const q = c.qml() + "/Cord/themes/"
         return ["graphite", "paper", "mono", "caelestia"].map(n => ({ id: n, path: n === "caelestia" ? "" : q + n + ".json", user: false }))
             .concat(b.map(p => ({ id: p.split("/").pop().replace(".json", ""), path: p, user: true })))
     }
     function loadTheme() {
-        const n = ui.theme || "graphite"
-        const t = themes().find(x => x.id === n) || themes()[0]
         const T = Th
-        T.apply(JSON.parse(c.rdf(c.qml() + "/Cord/themes/graphite.json") || "{}"))
-        if (t.id === "caelestia") {
-            const h = c.home().replace(/\/\.config\/cord$/, "")
-            const j = c.rdf(h + "/.local/state/caelestia/scheme.json")
-            if (j) T.fromScheme(JSON.parse(j))
-        } else if (t.path) {
-            const j = c.rdf(t.path)
-            if (j) T.apply(JSON.parse(j))
+        try {
+            const n = ui.theme || "graphite"
+            const t = themes().find(x => x.id === n) || themes()[0]
+            T.apply(pj(c.rdf(c.qml() + "/Cord/themes/graphite.json"), {}))
+            if (t.id === "caelestia") {
+                const j = c.scheme()
+                if (j) T.fromScheme(pj(j, {}))
+            } else if (t.path) {
+                const j = c.rdf(t.path)
+                if (j) T.apply(pj(j, {}))
+            }
+            if (ui.fs) T.fs = ui.fs
+            if (ui.dens) T.dens = ui.dens
+            if (ui.ac) T.ac = ui.ac
+        } catch (e) {
+            console.warn("cord: theme failed", e)
         }
-        if (ui.fs) T.fs = ui.fs
-        if (ui.dens) T.dens = ui.dens
-        if (ui.ac) T.ac = ui.ac
     }
 
-    function refresh() {
-        const og = glds
-        const j = JSON.parse(c.snap())
-        const am = {}
-        for (const a of j.accs || []) am[a.id] = a
-        accs = am
-        up = j.up || []
-        const nm = {}
-        const gm = {}
-        for (const g of j.glds || []) {
-            const id = ridOf(g.id)
-            g.rid = id
-            gm[id] = g
-            for (const r of g.roles || []) nm[raw(ridOf(r.id))] = r.name
-        }
+    property var nm: ({})
+    property bool dirtyC: false
+    property bool dirtyG: false
+    property bool dirtyN: false
+
+    function sortG() {
         const order = ui.gorder || []
-        const gl = Object.values(gm).sort((a, b) => {
+        glds = Object.values(gmap).sort((a, b) => {
             const ia = order.indexOf(a.rid), ib = order.indexOf(b.rid)
             if (ia >= 0 || ib >= 0) return (ia < 0 ? 1e9 : ia) - (ib < 0 ? 1e9 : ib)
             return a.pos - b.pos || a.rid.localeCompare(b.rid)
         })
-        const cm = {}
-        for (const ch of j.chans || []) {
-            const id = ridOf(ch.id)
-            ch.rid = id
-            ch.grid = ch.gld ? ridOf(ch.gld) : ""
-            ch.prid = ch.par ? ridOf(ch.par) : ""
-            cm[id] = ch
-            nm[raw(id)] = ch.name
-        }
+    }
+
+    property Timer flushT: Timer {
+        interval: 40
+        onTriggered: s.flush()
+    }
+    function flush() {
+        if (dirtyC) { chans = Object.assign({}, chans); dirtyC = false; ver++ }
+        if (dirtyG) { gmap = Object.assign({}, gmap); sortG(); dirtyG = false; ver++ }
+        if (dirtyN) { names = Object.assign({}, nm); dirtyN = false; nver++ }
+        if (sel !== "home" && !selC && gmap[sel]) pick(sel)
+    }
+    function mark(c_, g_, n_) {
+        if (c_) dirtyC = true
+        if (g_) dirtyG = true
+        if (n_) dirtyN = true
+        flushT.restart()
+    }
+
+    function putGld(g) {
+        gmap[g.rid] = g
+        for (const r of g.roles || []) nm[raw(ridOf(r.id))] = r.name
+        mark(false, true, true)
+    }
+    function putChan(ch) {
+        chans[ch.rid] = ch
+        nm[raw(ch.rid)] = ch.name
+        mark(true, false, true)
+    }
+    function delChan(id) {
+        delete chans[id]
+        mark(true, false, false)
+    }
+
+    function bootSnap() {
+        const j = pj(c.snap(), {})
+        const am = {}
+        for (const a of j.accs || []) am[a.id] = a
+        accs = am
+        up = j.up || []
+        gmap = {}
+        chans = {}
+        nm = {}
+        for (const g of j.glds || []) putGld(g)
+        for (const ch of j.chans || []) putChan(ch)
         for (const r of j.rels || []) if (r.usr.id) nm[raw(ridOf(r.usr.id))] = r.usr.disp || r.usr.name
-        names = nm
-        gmap = gm
-        glds = gl
-        chans = cm
-        const nr = j.rels || []
-        if (f("relnotif") && rels.length) {
-            const ids = new Set(nr.filter(x => x.k === "Friend" && x.usr.id).map(x => ridOf(x.usr.id)))
-            for (const o of rels) if (o.k === "Friend" && o.usr.id && !ids.has(ridOf(o.usr.id)) && accs[o.usr.id.acc]) c.notify("Friend removed", (o.usr.disp || o.usr.name) + " is no longer on your friends list")
-            const gs = new Set(Object.keys(gm))
-            for (const g of og) if (!gs.has(g.rid) && am[acc(g.rid)]) c.notify("Server removed", "You are no longer in " + g.name)
-        }
-        rels = nr
+        rels = j.rels || []
         pres = j.pres || {}
         unr = j.unr || {}
         vs = j.vs || []
         call = j.call || {}
-        ver++
-        if (sel !== "home" && !selC && gm[sel]) Qt.callLater(() => { if (!selC) pick(sel) })
+        flushT.stop()
+        flush()
+        dver++
+        uver++
+        if (sel !== "home" && !selC && gmap[sel]) Qt.callLater(() => { if (!selC) pick(sel) })
     }
+    function refresh() { bootSnap() }
 
-    property Timer deb: Timer {
-        interval: 60
-        onTriggered: s.refresh()
-    }
     property Timer typT: Timer {
         interval: 1000
         repeat: true
@@ -221,82 +271,186 @@ QtObject {
         }
     }
 
+    function rm(m) {
+        if (!m || m._r) return m
+        const r = run("render", m) || m
+        r._r = true
+        return r
+    }
+    function rml(l) { return (l || []).map(rm) }
+
+    function visible(cid) {
+        if (Qt.application.state !== Qt.ApplicationActive) return false
+        if (cid === selC && L.has(lay, "chat")) return true
+        return cid === selC2 && slotShown(lay, 1)
+    }
+    function slotShown(n, sl) {
+        if (n.b === "chat" && n.o && n.o.slot === sl) return true
+        return (n.ch || []).some(x => slotShown(x, sl))
+    }
+
+    function handleMsg(d) {
+        const ck = d.chan
+        const m = rm(d.m)
+        if (typing[ck]) {
+            const t = Object.assign({}, typing)
+            const o = Object.assign({}, t[ck])
+            delete o[m.auth.name]
+            t[ck] = o
+            typing = t
+        }
+        const ch = chans[ck]
+        if (d.new && ch) {
+            ch.last = m.id
+            ch.lastTs = m.ts
+            if (ch.k === "Dm" || ch.k === "Grp") dver++
+        }
+        msg(ck, m, d.new)
+        if (d.new && !isMe(m.auth, acc(ck)) && ui.notif !== false && ui.st !== "Dnd") {
+            const dm = ch && (ch.k === "Dm" || ch.k === "Grp")
+            const me_ = me(acc(ck))
+            const men = me_ && me_.id && (m.body || "").indexOf(me_.id.raw) >= 0
+            const focused = Qt.application.state === Qt.ApplicationActive && (selC === ck || selC2 === ck)
+            if ((dm || men) && !focused) c.notify((m.auth.disp || m.auth.name) + (ch && ch.grid && gmap[ch.grid] ? " (#" + ch.name + ", " + gmap[ch.grid].name + ")" : ""), (m.body || (m.atts && m.atts.length ? "Sent an attachment" : "")).slice(0, 200))
+        }
+    }
+
+    function relDiff(nr) {
+        if (!f("relnotif") || !rels.length) return
+        const ids = new Set(nr.filter(x => x.k === "Friend" && x.usr.id).map(x => ridOf(x.usr.id)))
+        for (const o of rels) if (o.k === "Friend" && o.usr.id && !ids.has(ridOf(o.usr.id)) && accs[o.usr.id.acc]) c.notify("Friend removed", (o.usr.disp || o.usr.name) + " is no longer on your friends list")
+    }
+
+    function purgeAcc(a) {
+        const keep = (obj, key) => {
+            const o = {}
+            for (const k in obj) if (key(k) !== a) o[k] = obj[k]
+            return o
+        }
+        const am = Object.assign({}, accs)
+        delete am[a]
+        accs = am
+        gmap = keep(gmap, k => acc(k))
+        chans = keep(chans, k => acc(k))
+        pres = keep(pres, k => acc(k))
+        unr = keep(unr, k => acc(k))
+        typing = keep(typing, k => acc(k))
+        rels = rels.filter(r => !r.usr.id || r.usr.id.acc !== a)
+        vs = vs.filter(v => !v.usr.id || v.usr.id.acc !== a)
+        up = up.filter(x => x !== a)
+        if (call.chan && call.chan.acc === a) call = {}
+        if (acc(selC) === a) selC = ""
+        if (acc(selC2) === a) selC2 = ""
+        if (sel !== "home" && acc(sel) === a) sel = "home"
+        sortG()
+        ver++
+        uver++
+        dver++
+    }
+
     function on(d) {
+        const p = d.d
         switch (d.t) {
-        case "Msg": {
-            const ck = d.d.chan
-            const m = d.d.m
-            run("render", m)
-            if (s.typing[ck]) {
-                const t = Object.assign({}, s.typing)
-                const o = Object.assign({}, t[ck])
-                delete o[m.auth.name]
-                t[ck] = o
-                s.typing = t
-            }
-            s.msg(ck, m, d.d.new)
-            if (d.d.new && !isMe(m.auth, acc(ck)) && ui.notif !== false && ui.st !== "Dnd") {
-                const ch = chans[ck]
-                const dm = ch && (ch.k === "Dm" || ch.k === "Grp")
-                const me_ = me(acc(ck))
-                const men = me_ && me_.id && (m.body || "").indexOf(me_.id.raw) >= 0
-                const focused = Qt.application.state === Qt.ApplicationActive && (selC === ck || selC2 === ck)
-                if ((dm || men) && !focused) c.notify((m.auth.disp || m.auth.name) + (ch && ch.grid && gmap[ch.grid] ? " (#" + ch.name + ", " + gmap[ch.grid].name + ")" : ""), (m.body || (m.atts && m.atts.length ? "Sent an attachment" : "")).slice(0, 200))
-            }
-            if (d.d.new && chans[ck]) {
-                const c2 = Object.assign({}, chans)
-                c2[ck] = Object.assign({}, c2[ck], { last: m.id })
-                chans = c2
-            }
+        case "Msg": handleMsg(p); break
+        case "MsgDel": msgDel(p.chan, p.id, p.gone); break
+        case "Msgs": loaded(p.chan, rml(p.list)); break
+        case "Hist": hist(p.chan, p.n, p.more, p.ok, rml(p.list)); break
+        case "Sent": sent(p.chan, p.ok, p.err); break
+        case "Dm": {
+            dmOpened(p.usr, p.chan, p.ok, p.err)
+            if (p.ok) { pick("home"); open(p.chan) }
             break
         }
-        case "MsgDel": s.msgDel(d.d.chan, d.d.id, d.d.gone); break
+        case "Acc": {
+            const am = Object.assign({}, accs)
+            am[p.id] = p
+            accs = am
+            break
+        }
+        case "Conn": {
+            const u = up.filter(x => x !== p.acc)
+            if (p.up) u.push(p.acc)
+            up = u
+            break
+        }
+        case "Gld": putGld(p); break
+        case "GldDel": {
+            const g = gmap[p]
+            if (g && f("relnotif") && accs[acc(p)]) c.notify("Server removed", "You are no longer in " + g.name)
+            delete gmap[p]
+            for (const k in chans) if (chans[k].grid === p) delete chans[k]
+            mark(true, true, false)
+            break
+        }
+        case "Chan": putChan(p); break
+        case "ChanDel": delChan(p); break
+        case "Chans": {
+            chans = {}
+            for (const ch of p) { chans[ch.rid] = ch; nm[raw(ch.rid)] = ch.name }
+            mark(true, false, true)
+            break
+        }
         case "Typing": {
-            const t = Object.assign({}, s.typing)
-            const o = Object.assign({}, t[d.d.chan] || {})
-            o[d.d.usr.name] = { n: d.d.usr.disp || d.d.usr.name, until: Date.now() + 9000 }
-            t[d.d.chan] = o
-            s.typing = t
+            const t = Object.assign({}, typing)
+            const o = Object.assign({}, t[p.chan] || {})
+            o[p.usr.name] = { n: p.usr.disp || p.usr.name, until: Date.now() + 9000 }
+            t[p.chan] = o
+            typing = t
             break
         }
         case "Unr": {
             const u = Object.assign({}, unr)
-            if (d.d.u.n || d.d.u.ment) u[d.d.chan] = d.d.u
-            else delete u[d.d.chan]
+            if (p.u.n || p.u.ment) u[p.chan] = p.u
+            else delete u[p.chan]
             unr = u
             uver++
-            if (d.d.chan === selC && d.d.u.n && !f("noread")) c.ack(selC)
+            if (p.u.n && visible(p.chan)) c.ack(p.chan)
             break
         }
-        case "Pres": {
-            const p = Object.assign({}, pres)
-            p[d.d.usr] = d.d.p
-            pres = p
+        case "PresBatch": {
+            for (const e of p) pres[e.usr] = e.p
+            pres = Object.assign({}, pres)
             break
         }
-        case "Hist": s.hist(d.d.chan, d.d.n, d.d.more); break
-        case "Qr": qr = d.d; break
-        case "QrUsr": qrUsr = d.d.name; break
-        case "Accs": cfgAccs = JSON.parse(c.accs()); qr = ""; qrUsr = ""; deb.restart(); break
+        case "Rels": {
+            relDiff(p)
+            for (const r of p) if (r.usr.id) nm[raw(ridOf(r.usr.id))] = r.usr.disp || r.usr.name
+            rels = p
+            mark(false, false, true)
+            break
+        }
+        case "Mems": mems(p.gld, p.list); break
+        case "Vs": {
+            const id = p.usr.id ? ridOf(p.usr.id) : ""
+            const v = vs.filter(x => !x.usr.id || ridOf(x.usr.id) !== id)
+            if (p.chan) v.push(p)
+            vs = v
+            break
+        }
+        case "Call": call = p; break
+        case "Qr": qr = p; break
+        case "QrUsr": qrUsr = p.name; break
+        case "Accs": cfgAccs = pj(c.accs(), []); secretBackend = c.secretBackend(); qr = ""; qrUsr = ""; break
+        case "AccGone": purgeAcc(p.acc); cfgAccs = pj(c.accs(), []); break
+        case "Mpris": media = p; break
         case "Err": {
             const e = errs.slice(-4)
-            e.push({ msg: d.d.msg, at: Date.now() })
+            e.push({ msg: p.msg, ctx: p.ctx, acc: p.acc, at: Date.now() })
             errs = e
-            console.warn("cord:", d.d.msg)
+            console.warn("cord:", p.ctx, p.msg)
             break
         }
-        case "Fs": onFs(d.d); break
+        case "Fs": onFs(p); break
         case "Speak": {
             const t = Object.assign({}, speaking)
-            if (d.d.on) t[d.d.usr] = true
-            else delete t[d.d.usr]
+            if (p.on) t[p.usr] = true
+            else delete t[p.usr]
             speaking = t
             break
         }
-        default: deb.restart()
         }
-        s.ev(d)
-        for (const h of hooks.ev) try { h(d) } catch (e) { console.warn(e) }
+        ev(d)
+        for (const h of hooks.ev) try { h.fn(d) } catch (e) { console.warn(e) }
     }
     property var speaking: ({})
 
@@ -307,6 +461,7 @@ QtObject {
             const p = ps
             ps = {}
             for (const k in p) {
+                if (k.endsWith("ui.json")) s.reloadUi()
                 if (k.indexOf("/themes/") >= 0 || k.endsWith("ui.json")) s.loadTheme()
                 if (k.indexOf("/mods/") >= 0 || k.indexOf("/blocks/") >= 0) s.scanMods()
                 s.fs(k)
@@ -322,18 +477,30 @@ QtObject {
     }
 
     function run(k, v) {
-        for (const h of hooks[k] || []) try { const r = h(v); if (r !== undefined) v = r } catch (e) { console.warn(e) }
+        if (k === "render" && v && v._r) return v
+        for (const h of hooks[k] || []) try { const r = h.fn(v); if (r !== undefined) v = r } catch (e) { console.warn(e) }
         return v
     }
-    function hook(k, fn) {
+    function hook(k, fn, owner) {
+        owner = owner || "anon"
+        const src = fn.toString()
+        const cur = hooks[k] || []
+        if (cur.some(h => h.owner === owner && h.src === src)) return
         const h = Object.assign({}, hooks)
-        h[k] = (h[k] || []).concat([fn])
+        h[k] = cur.concat([{ fn: fn, owner: owner, src: src }])
+        hooks = h
+    }
+    function unhook(owner) {
+        const h = {}
+        for (const k in hooks) h[k] = hooks[k].filter(x => x.owner !== owner)
         hooks = h
     }
     function regBlk(id, url, name, opt) {
         const b = Object.assign({}, blks)
         b[id] = { url: url, name: name || id, opt: opt || {} }
         blks = b
+        const kb = ui.kb || []
+        if (kb.indexOf(id) < 0) setUi("kb", kb.concat([id]))
     }
     function blkUrl(id) {
         if (blks[id]) return blks[id].url
@@ -350,8 +517,41 @@ QtObject {
         return coreBlks.concat(Object.keys(blks).map(k => ({ id: k, name: blks[k].name })))
     }
     function scanMods() {
-        const ps = JSON.parse(c.ls("mods", ""))
-        mods = ps.filter(p => c.rdf(p + "/main.qml").length).map(p => ({ id: p.split("/").pop(), url: "file://" + p + "/main.qml", on: (ui.mods || {})[p.split("/").pop()] !== false }))
+        const ps = pj(c.ls("mods", ""), [])
+        const nmods = ps.filter(p => c.rdf(p + "/main.qml").length).map(p => ({ id: p.split("/").pop(), url: "file://" + p + "/main.qml", on: (ui.mods || {})[p.split("/").pop()] !== false }))
+        for (const o of mods) {
+            const n = nmods.find(x => x.id === o.id)
+            if (!n || !n.on) unhook(o.id)
+        }
+        mods = nmods
+    }
+
+    function slot(sl) {
+        const k = sl || 0
+        return slotSt[k] || {}
+    }
+    function setSlot(sl, key, v) {
+        const o = Object.assign({}, slotSt)
+        o[sl] = Object.assign({}, o[sl] || {})
+        o[sl][key] = v
+        slotSt = o
+    }
+    property bool _sw: false
+    onReplyChanged: {
+        if (_sw) return
+        _sw = true
+        setSlot(focusSlot, "reply", reply)
+        if (reply) setSlot(focusSlot, "editing", "")
+        reply = ""
+        _sw = false
+    }
+    onEditingChanged: {
+        if (_sw) return
+        _sw = true
+        setSlot(focusSlot, "editing", editing)
+        if (editing) setSlot(focusSlot, "reply", "")
+        editing = ""
+        _sw = false
     }
 
     function pick(g) {
@@ -367,12 +567,12 @@ QtObject {
         const cs = chList(g).filter(x => x.k === "Txt" || x.k === "Ann" || x.k === "Forum")
         open(cs.length ? cs[0].rid : "")
     }
-    function open(cid, slot) {
-        if (slot === 1) { selC2 = cid; return }
+    function open(cid, sl) {
+        if (sl === 1) { selC2 = cid; return }
         selC = cid
-        reply = ""
-        editing = ""
-        if (cid && unr[cid] && !f("noread")) c.ack(cid)
+        setSlot(0, "reply", "")
+        setSlot(0, "editing", "")
+        if (cid && unr[cid] && Qt.application.state === Qt.ApplicationActive) c.ack(cid)
     }
     function chList(g) {
         void ver
@@ -389,19 +589,22 @@ QtObject {
     }
     function dms() {
         void ver
+        void dver
         const pinned = ui.pins || []
         return Object.values(chans).filter(x => x.k === "Dm" || (x.k === "Grp" && !x.grid))
             .sort((a, b) => {
                 const pa = pinned.indexOf(a.rid) >= 0, pb = pinned.indexOf(b.rid) >= 0
                 if (pa !== pb) return pa ? -1 : 1
-                return (b.last ? lastTs(b) : 0) - (a.last ? lastTs(a) : 0)
+                return lastTs(b) - lastTs(a)
             })
     }
-    function lastTs(ch) {
-        const r = ch.last && ch.last.raw
-        if (!r) return 0
-        if (ch.rid.startsWith("dc") && /^\d+$/.test(r)) return Math.floor(Number(r) / 4194304) + 1420070400000
-        return parseInt(r.replace(/\D/g, "")) || 0
+    function lastTs(ch) { return ch && ch.lastTs ? ch.lastTs : 0 }
+    function openDm(u) {
+        const id = typeof u === "string" ? u : ridOf(u && u.id ? u.id : u)
+        if (!id) return
+        const d = dms().find(x => x.k === "Dm" && x.rcp && x.rcp[0] && x.rcp[0].id && ridOf(x.rcp[0].id) === id)
+        if (d) { pick("home"); open(d.rid); return }
+        c.open_dm(id)
     }
     function gUnr(g) {
         void uver
@@ -431,14 +634,16 @@ QtObject {
     function readAll() {
         for (const k in unr) c.ack(k)
     }
-    function send(cid, txt, files) {
-        if (!cid) return
-        let o = { body: txt, files: files || [] }
+    function send(cid, txt, files, sl) {
+        if (!cid) return false
+        sl = sl || 0
+        let o = { body: txt, files: files || [], cid: cid }
         o = run("send", o)
-        if (!o || (!o.body && !(o.files || []).length)) return
-        if (editing) { c.edit(cid, editing, o.body); editing = ""; return }
-        c.send(cid, o.body, reply, JSON.stringify(o.files || []), !!o.silent)
-        reply = ""
+        if (!o || (!o.body && !(o.files || []).length)) return false
+        const st = slot(sl)
+        if (st.editing) c.edit(cid, st.editing, o.body)
+        else c.send(cid, o.body, st.reply || "", JSON.stringify(o.files || []), !!o.silent)
+        return true
     }
     function setW(p, v, k) {
         const l = L.cp(lay)
@@ -459,16 +664,18 @@ QtObject {
         const q = f("streamq") ? { w: Math.round(h * 16 / 9), h: h, fps: ui.sfps || 60, kbps: h >= 1440 ? 16000 : 8000, snd: ui.ssnd !== false } : { w: 1280, h: 720, fps: 30, kbps: 4000, snd: ui.ssnd !== false }
         c.golive(true, JSON.stringify(q))
     }
-    function u(x) {
+    function u(x, a) {
         if (!x) return ""
-        if (x.startsWith("mxc://") || x.startsWith("mxe:")) return "image://cordm/0/" + x
+        if (x.startsWith("mxc://") || x.startsWith("mxe:")) return "image://cordm/" + (a || 0) + "/" + x
         return x
     }
+    function u2(x, r) { return u(x, acc(r)) }
+    function frame(k) { return "image://cordv/" + k + "?" + c.frameSeq(k) }
     property Timer medT: Timer {
         interval: 2000
         repeat: true
         running: s.f("spotify")
-        onTriggered: { const j = s.c.mpris(); s.media = j ? JSON.parse(j) : null }
+        onTriggered: s.c.mpris()
     }
     property bool qk: false
     function quick() { qk = true }

@@ -61,6 +61,7 @@ struct I {
     hs: String,
     cl: Client,
     sh: Mutex<Sh>,
+    jh: Mutex<Option<tokio::task::JoinHandle<()>>>,
 }
 
 #[derive(Clone)]
@@ -73,7 +74,7 @@ async fn build(hs: &str, dir: &Path) -> Result<Client> {
 }
 
 fn mk(acc: u32, hs: String, cl: Client) -> Mx {
-    Mx { i: Arc::new(I { acc, hs, cl, sh: Mutex::new(Sh::default()) }) }
+    Mx { i: Arc::new(I { acc, hs, cl, sh: Mutex::new(Sh::default()), jh: Mutex::new(None) }) }
 }
 
 impl Mx {
@@ -542,8 +543,16 @@ impl Bk for Mx {
     }
     async fn start(&self, tx: Tx) -> Res<()> {
         let i = self.i.clone();
-        tokio::spawn(async move { i.run(tx).await });
+        let j = tokio::spawn(async move { i.run(tx).await });
+        if let Some(o) = self.i.jh.lock().unwrap().replace(j) {
+            o.abort();
+        }
         Ok(())
+    }
+    async fn stop(&self) {
+        if let Some(j) = self.i.jh.lock().unwrap().take() {
+            j.abort();
+        }
     }
     async fn hist(&self, chan: &Rid, before: Option<&Rid>, n: u32) -> Res<Vec<Msg>> {
         self.i.hist(chan, before, n).await

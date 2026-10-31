@@ -17,22 +17,56 @@ Rectangle {
 
     ListModel { id: mm }
 
-    function rd(keep) {
-        const a = JSON.parse(S.c.msgs(cid) || "[]")
-        const top = lv.contentHeight - lv.contentY
+    property bool failed: false
+    property bool synced: false
+
+    HoverHandler { onHoveredChanged: if (hovered) S.focusSlot = r.slot }
+
+    function row(m, p) {
+        const g = !!p && p.aname === m.auth.name && m.ts - p.ts < 420000 && !m.reply && !p.sys && !m.sys
+        const d = !p || new Date(p.ts).toDateString() !== new Date(m.ts).toDateString()
+        return {
+            mid: S.ridOf(m.id), j: JSON.stringify(m), g: g && !d, d: d,
+            aname: m.auth.name, aid: m.auth.id ? m.auth.id.raw : "", ts: m.ts, sys: !!m.sys, hasReply: !!m.reply, pin: !!m.pin
+        }
+    }
+    function prow(i) {
+        if (i < 0 || i >= mm.count) return null
+        const x = mm.get(i)
+        return { aname: x.aname, ts: x.ts, sys: x.sys }
+    }
+    function fill(list) {
         mm.clear()
         let p = null
-        for (const m of a) {
-            mm.append(it(m, p))
-            p = m
+        for (const m of list) {
+            const w = row(m, p)
+            mm.append(w)
+            p = w
         }
-        if (keep) Qt.callLater(() => lv.contentY = lv.contentHeight - top)
-        else Qt.callLater(() => lv.positionViewAtEnd())
+        Qt.callLater(() => lv.positionViewAtEnd())
     }
-    function it(m, p) {
-        const g = !!p && p.auth.name === m.auth.name && m.ts - p.ts < 420000 && !m.reply && !p.sys && !m.sys
-        const d = !p || new Date(p.ts).toDateString() !== new Date(m.ts).toDateString()
-        return { mid: S.ridOf(m.id), j: JSON.stringify(m), g: g && !d, d: d }
+    function prepend(list) {
+        if (!list.length) return
+        const top = lv.contentHeight - lv.contentY
+        const seen = {}
+        for (let i = 0; i < mm.count; i++) seen[mm.get(i).mid] = true
+        const rows = []
+        let p = null
+        for (const m of list) {
+            if (seen[S.ridOf(m.id)]) continue
+            const w = row(m, p)
+            rows.push(w)
+            p = w
+        }
+        if (!rows.length) return
+        for (let i = 0; i < rows.length; i++) mm.insert(i, rows[i])
+        if (mm.count > rows.length) {
+            const f = mm.get(rows.length)
+            const w = row(JSON.parse(f.j), rows[rows.length - 1])
+            mm.setProperty(rows.length, "g", w.g)
+            mm.setProperty(rows.length, "d", w.d)
+        }
+        Qt.callLater(() => lv.contentY = lv.contentHeight - top)
     }
     function idx(id) {
         for (let i = mm.count - 1; i >= 0; i--) if (mm.get(i).mid === id) return i
@@ -42,33 +76,64 @@ Rectangle {
         const i = idx(id)
         return i >= 0 ? JSON.parse(mm.get(i).j) : null
     }
+    function pinned() {
+        const o = []
+        for (let i = 0; i < mm.count; i++) if (mm.get(i).pin) o.push(JSON.parse(mm.get(i).j))
+        return o
+    }
+    function mineLast() {
+        const me = S.me(S.acc(cid))
+        if (!me || !me.id) return null
+        for (let i = mm.count - 1; i >= 0; i--) if (mm.get(i).aid === me.id.raw) return JSON.parse(mm.get(i).j)
+        return null
+    }
+    function more_() {
+        if (!more || loading || failed || !cid || mm.count === 0) return
+        loading = true
+        S.c.hist(cid, mm.get(0).mid)
+    }
 
     onCidChanged: {
         more = true
         loading = false
+        failed = false
+        synced = false
         mm.clear()
         if (!cid || cid === "inbox") return
-        rd(false)
-        if (mm.count < 30) { loading = true; S.c.hist(cid, mm.count ? mm.get(0).mid : "") }
+        loading = true
+        S.c.load_msgs(cid)
     }
     Component.onCompleted: cidChanged()
 
     Connections {
         target: S
+        function onLoaded(chan, list) {
+            if (chan !== r.cid) return
+            r.fill(list)
+            if (!r.synced) {
+                r.synced = true
+                r.loading = true
+                S.c.hist(r.cid, "")
+            } else {
+                r.loading = false
+                if (mm.count < 30) r.more_()
+            }
+        }
         function onMsg(chan, m, isNew) {
             if (chan !== r.cid) return
             const id = S.ridOf(m.id)
             const i = r.idx(id)
             const end = lv.atYEnd
             if (i >= 0) {
-                mm.set(i, { mid: id, j: JSON.stringify(m) })
+                mm.setProperty(i, "j", JSON.stringify(m))
+                mm.setProperty(i, "pin", !!m.pin)
                 return
             }
             if (!isNew) return
-            const p = mm.count ? JSON.parse(mm.get(mm.count - 1).j) : null
-            mm.append(r.it(m, p))
+            const w = r.row(m, r.prow(mm.count - 1))
+            mm.append(w)
             if (end || S.isMe(m.auth, S.acc(chan))) Qt.callLater(() => lv.positionViewAtEnd())
-            if (Qt.application.state === Qt.ApplicationActive && !S.f("noread")) S.c.ack(chan)
+            if (Qt.application.state === Qt.ApplicationActive) S.c.ack(chan)
         }
         function onMsgDel(chan, id, gone) {
             if (chan !== r.cid) return
@@ -78,14 +143,17 @@ Rectangle {
             else {
                 const m = JSON.parse(mm.get(i).j)
                 m.del = true
-                mm.set(i, { j: JSON.stringify(m) })
+                mm.setProperty(i, "j", JSON.stringify(m))
             }
         }
-        function onHist(chan, n, mr) {
+        function onHist(chan, n, mr, ok, list) {
             if (chan !== r.cid) return
             r.loading = false
+            if (!ok) { r.failed = true; return }
             if (n < 50) r.more = false
-            r.rd(mr)
+            if (!mr) {
+                if (list.length || mm.count === 0) S.c.load_msgs(r.cid)
+            } else r.prepend(list)
         }
     }
 
@@ -113,7 +181,6 @@ Rectangle {
                     font.weight: Font.DemiBold
                     Layout.maximumWidth: 260
                 }
-                Badge { sv: S.svc(r.cid); txt: true }
                 Rectangle { visible: !!(r.ch && r.ch.topic); width: 1; height: 20; color: Th.ln }
                 Lbl {
                     Layout.fillWidth: true
@@ -171,10 +238,7 @@ Rectangle {
                 onJump: id => { const i = r.idx(id); if (i >= 0) lv.positionViewAtIndex(i, ListView.Center) }
             }
             onContentYChanged: {
-                if (r.more && !r.loading && mm.count > 0 && contentY - originY < 400) {
-                    r.loading = true
-                    S.c.hist(r.cid, mm.get(0).mid)
-                }
+                if ((moving || dragging) && contentY - originY < 400) r.more_()
             }
             Rectangle {
                 visible: !lv.atYEnd && mm.count > 0
@@ -195,13 +259,8 @@ Rectangle {
             cid: r.cid
             ch: r.ch
             fnd: id => r.find(id)
-            lastMine: () => {
-                for (let i = mm.count - 1; i >= 0; i--) {
-                    const m = JSON.parse(mm.get(i).j)
-                    if (S.isMe(m.auth, S.acc(r.cid))) return m
-                }
-                return null
-            }
+            slot: r.slot
+            lastMine: () => r.mineLast()
         }
     }
 
@@ -230,7 +289,7 @@ Rectangle {
         padding: 0
         background: Rectangle { color: Th.bg3; radius: Th.r; border.color: Th.ln }
         property var ms: []
-        onOpened: ms = JSON.parse(S.c.msgs(r.cid)).filter(m => m.pin)
+        onOpened: ms = r.pinned()
         ColumnLayout {
             anchors.fill: parent
             spacing: 0

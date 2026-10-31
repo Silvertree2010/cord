@@ -77,6 +77,7 @@ pub(crate) struct I {
     pub c: Mutex<Cache>,
     pub wtx: Mutex<Option<UnboundedSender<String>>>,
     pub seq: AtomicU64,
+    pub jh: Mutex<Option<tokio::task::JoinHandle<()>>>,
 }
 
 #[derive(Clone)]
@@ -97,6 +98,7 @@ impl St {
                 c: Mutex::new(Cache::default()),
                 wtx: Mutex::new(None),
                 seq: AtomicU64::new(0),
+                jh: Mutex::new(None),
             }),
         }
     }
@@ -113,8 +115,17 @@ impl Bk for St {
     async fn start(&self, tx: Tx) -> Res<()> {
         self.i.cfg().await?;
         let i = self.i.clone();
-        tokio::spawn(async move { i.run(tx).await });
+        let j = tokio::spawn(async move { i.run(tx).await });
+        if let Some(o) = self.i.jh.lock().unwrap().replace(j) {
+            o.abort();
+        }
         Ok(())
+    }
+    async fn stop(&self) {
+        if let Some(j) = self.i.jh.lock().unwrap().take() {
+            j.abort();
+        }
+        *self.i.wtx.lock().unwrap() = None;
     }
     async fn hist(&self, chan: &Rid, before: Option<&Rid>, n: u32) -> Res<Vec<Msg>> {
         self.i.hist(chan, before, n).await
