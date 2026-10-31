@@ -195,6 +195,10 @@ impl Eng {
         self.0.lvl.store((-120.0f32).to_bits(), Relaxed);
     }
 
+    pub fn pull(&self, out: &mut [f32]) {
+        self.0.mix.lock().unwrap().pull(out);
+    }
+
     pub fn cap(&self) -> Cap {
         Cap::new(self.0.clone())
     }
