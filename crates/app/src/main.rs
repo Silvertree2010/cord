@@ -1,13 +1,23 @@
+mod acc;
+mod bks;
+mod feat;
 mod br;
+mod cfg;
+mod rt;
 
-use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QUrl};
+use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QString, QUrl};
 
 fn main() {
+    rt::init();
     let mut app = QGuiApplication::new();
+    if let Some(mut a) = app.as_mut() {
+        a.as_mut().set_application_name(&QString::from("cord"));
+        a.as_mut().set_organization_name(&QString::from("cord"));
+    }
     let mut eng = QQmlApplicationEngine::new();
-    let p = std::env::var("CORD_QML").unwrap_or_else(|_| concat!(env!("CARGO_MANIFEST_DIR"), "/qml/Main.qml").into());
+    let p = cfg::qml_dir().join("Main.qml");
     if let Some(e) = eng.as_mut() {
-        e.load(&QUrl::from_local_file(&p.as_str().into()));
+        e.load(&QUrl::from_local_file(&QString::from(p.to_string_lossy().as_ref())));
     }
     if let Some(a) = app.as_mut() {
         a.exec();

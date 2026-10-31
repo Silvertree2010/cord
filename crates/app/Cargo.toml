@@ -1,12 +1,23 @@
 [package]
 name = "cord"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
+license.workspace = true
 
 [dependencies]
-cxx = "1.0.205"
+cxx = "1.0"
 cxx-qt = "0.10"
 cxx-qt-lib = { version = "0.10", features = ["qt_full"] }
+cord-core.workspace = true
+cord-hub.workspace = true
+cord-dc.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+dirs = "6"
+keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
+notify = "8"
 
 [build-dependencies]
 cxx-qt-build = "0.10"
