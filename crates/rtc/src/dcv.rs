@@ -605,7 +605,7 @@ async fn sess(c: &mut Conn, rx: &mut UnboundedReceiver<Pkt>, md: &mut Option<Unb
                         let Ok(v) = serde_json::from_str::<Value>(&t) else { continue };
                         if v["op"].as_u64() == Some(8) {
                             let hi = v["d"]["heartbeat_interval"].as_f64().unwrap_or(13750.0);
-                            iv = Some(interval(Duration::from_millis(hi as u64)));
+                            iv = Some(interval(Duration::from_millis((hi as u64).clamp(500, 120_000))));
                             out.push(c.hello());
                         } else {
                             out.extend(c.text(&v).await);
@@ -698,7 +698,12 @@ async fn run(cfg: Cfg, eng: Eng, ev: UnboundedSender<VEv>, sio: Option<Sio>, mut
     let mut n = 0u32;
     loop {
         c.resume = c.ready;
-        match sess(&mut c, &mut rx, &mut md, &mut stop).await {
+        let t0 = Instant::now();
+        let r = sess(&mut c, &mut rx, &mut md, &mut stop).await;
+        if t0.elapsed() > Duration::from_secs(30) {
+            n = 0;
+        }
+        match r {
             Fin::Stop => break,
             Fin::Fatal(m) => {
                 c.emit(|s| {

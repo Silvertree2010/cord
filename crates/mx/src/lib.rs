@@ -279,6 +279,9 @@ impl I {
                 }
             }
             Item::React { ev: rev, target, key, who } => {
+                if self.sh.lock().unwrap().rx.contains_key(&rev) {
+                    return;
+                }
                 self.note_react(&rev, &target, &key, &who);
                 if let Some(mut m) = self.load(room, &target).await {
                     map::add_react(&mut m, &key, who == cx.me);
@@ -401,7 +404,7 @@ impl I {
                     tracing::warn!("mx sync: {m}");
                     let _ = tx.send(Ev::Conn { acc: self.acc, up: false });
                     let _ = tx.send(Ev::Err { acc: self.acc, msg: m.clone() });
-                    if m.contains("M_UNKNOWN_TOKEN") {
+                    if m.contains("M_UNKNOWN_TOKEN") || format!("{e:?}").contains("M_UNKNOWN_TOKEN") {
                         return;
                     }
                     tokio::time::sleep(Duration::from_secs(back)).await;

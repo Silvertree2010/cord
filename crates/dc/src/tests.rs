@@ -119,3 +119,54 @@ fn ra() {
     assert_eq!((u.id.as_str(), u.name.as_str()), ("123", "some:name"));
     assert_eq!(ra::proof(b"x").len(), 43);
 }
+
+#[test]
+fn ready_sparse() {
+    let s = sh();
+    let (tx, mut rx) = unbounded_channel();
+    hd::dis(&s, &tx, "READY", serde_json::json!({}));
+    hd::dis(&s, &tx, "READY", serde_json::json!({"user":{}, "guilds":[{"id":"1","unavailable":true},{}], "read_state":[{}, {"id":"7","mention_count":3}], "private_channels":[{"type":1}, 5]}));
+    let mut n = 0;
+    while let Ok(e) = rx.try_recv() {
+        if matches!(e, Ev::Gld(_)) {
+            n += 1;
+        }
+        if let Ev::Unread { chan, ment, .. } = &e {
+            assert_eq!((&*chan.raw, *ment), ("7", 3));
+        }
+    }
+    assert_eq!(n, 1);
+}
+
+#[test]
+fn chan_last_not_rolled_back() {
+    let s = sh();
+    let (tx, mut rx) = unbounded_channel();
+    hd::dis(&s, &tx, "READY", serde_json::from_str(RD).unwrap());
+    hd::dis(&s, &tx, "MESSAGE_CREATE", serde_json::json!({"id":"600","channel_id":"20","author":{"id":"200","username":"b"},"content":"x","timestamp":"2024-01-01T00:00:00+00:00"}));
+    while rx.try_recv().is_ok() {}
+    hd::dis(&s, &tx, "GUILD_ROLE_UPDATE", serde_json::json!({"guild_id":"10","role":{"id":"11","name":"m","permissions":"0","position":1}}));
+    let mut last = None;
+    while let Ok(e) = rx.try_recv() {
+        if let Ev::Chan(c) = e {
+            if &*c.id.raw == "20" {
+                last = c.last;
+            }
+        }
+    }
+    assert_eq!(&*last.unwrap().raw, "600");
+}
+
+#[test]
+fn partial_update_without_author() {
+    let m = map::msg_p(1, &serde_json::json!({"id":"5","channel_id":"20","embeds":[{"title":"t"}]}), false).unwrap();
+    assert_eq!((m.ts, m.body.as_str(), m.embs.len()), (0, "", 1));
+    assert!(map::msg(1, &serde_json::json!({"id":"5","channel_id":"20"})).is_none());
+}
+
+#[test]
+fn inflate_limits() {
+    let mut i = zl::Inf::new();
+    assert!(i.push(&vec![1u8; 70 << 20]).is_err());
+    assert!(i.push(&[1, 2, 3]).unwrap().is_none());
+}

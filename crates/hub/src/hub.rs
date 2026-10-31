@@ -28,22 +28,8 @@ impl Hub {
                 if h.hks.read().await.ev(&mut e) == Flow::Stop {
                     continue;
                 }
-                let mut ex = vec![];
-                if let Ev::Msg(m) = &e {
-                    let mut s = h.st.read().await.accs.get(&m.chan.acc).and_then(|a| a.me.id.clone());
-                    if s.as_ref() == m.auth.id.as_ref() {
-                        s = None;
-                    }
-                    if s.is_some() {
-                        let me = s.unwrap();
-                        let men = m.body.contains(&*me.raw);
-                        let mut st = h.st.write().await;
-                        let u = st.bump(&m.chan, men);
-                        ex.push(Dl::Unr { chan: m.chan.to_string(), u });
-                    }
-                }
-                let ds = h.st.write().await.apply(e);
-                for d in ds.into_iter().chain(ex) {
+                let ds = h.st.write().await.ingest(e);
+                for d in ds {
                     sink(d);
                 }
             }

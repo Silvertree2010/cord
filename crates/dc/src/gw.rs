@@ -120,7 +120,7 @@ async fn sess(sh: &Sh, tx: &Tx) -> Res<Fin> {
                                 return Ok(Fin::Re);
                             }
                             Some(10) => {
-                                let hi = v["d"]["heartbeat_interval"].as_u64().unwrap_or(41250);
+                                let hi = v["d"]["heartbeat_interval"].as_u64().filter(|x| *x > 0).unwrap_or(41250);
                                 let j = (hi as f64 * rand::random::<f64>()) as u64;
                                 iv = Some(interval_at(Instant::now() + Duration::from_millis(j), Duration::from_millis(hi)));
                                 ack = true;

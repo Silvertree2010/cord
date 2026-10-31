@@ -150,6 +150,9 @@ impl Cry {
     }
 
     pub fn seal_rtcp(&mut self, pkt: &[u8]) -> Vec<u8> {
+        if pkt.len() < 8 {
+            return vec![];
+        }
         let ctr = self.ctr.to_be_bytes();
         self.ctr = self.ctr.wrapping_add(1);
         let ct = self.run(true, ctr, &pkt[..8], &pkt[8..]).unwrap_or_default();
