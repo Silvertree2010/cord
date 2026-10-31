@@ -227,6 +227,14 @@ QtObject {
                 s.typing = t
             }
             s.msg(ck, m, d.d.new)
+            if (d.d.new && !isMe(m.auth, acc(ck)) && ui.notif !== false && ui.st !== "Dnd") {
+                const ch = chans[ck]
+                const dm = ch && (ch.k === "Dm" || ch.k === "Grp")
+                const me_ = me(acc(ck))
+                const men = me_ && me_.id && (m.body || "").indexOf(me_.id.raw) >= 0
+                const focused = Qt.application.state === Qt.ApplicationActive && (selC === ck || selC2 === ck)
+                if ((dm || men) && !focused) c.notify((m.auth.disp || m.auth.name) + (ch && ch.grid && gmap[ch.grid] ? " (#" + ch.name + ", " + gmap[ch.grid].name + ")" : ""), (m.body || (m.atts && m.atts.length ? "Sent an attachment" : "")).slice(0, 200))
+            }
             if (d.d.new && chans[ck]) {
                 const c2 = Object.assign({}, chans)
                 c2[ck] = Object.assign({}, c2[ck], { last: m.id })

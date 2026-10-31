@@ -243,6 +243,8 @@ Rectangle {
             Seg { opts: [["12", "12"], ["13", "13"], ["14", "14"], ["15", "15"], ["16", "16"], ["18", "18"]]; cur: String(S.ui.fs || 14); onPick: v => { S.setUi("fs", parseInt(v)); S.loadTheme() } }
             Sub { text: "DENSITY" }
             Seg { opts: [["0.85", "Compact"], ["1", "Default"], ["1.15", "Spacious"]]; cur: String(S.ui.dens || 1); onPick: v => { S.setUi("dens", parseFloat(v)); S.loadTheme() } }
+            Sub { text: "NOTIFICATIONS" }
+            Opt { t: "Desktop notifications"; d: "Direct messages and mentions while the window is not focused"; on: S.ui.notif !== false; onTog: v => S.setUi("notif", v) }
             Sub { text: "NETWORK BADGES" }
             Opt { t: "Show network badges"; d: "Small D, M and S marks on servers, avatars and DMs"; on: S.ui.badges !== false; onTog: v => S.setUi("badges", v) }
         }

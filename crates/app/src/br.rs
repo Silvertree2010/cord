@@ -77,6 +77,8 @@ pub mod q {
         #[qinvokable]
         fn load_mems(self: &Core, g: &QString);
         #[qinvokable]
+        fn notify(self: &Core, t: &QString, b: &QString);
+        #[qinvokable]
         fn media(self: &Core, cmd: &QString);
         #[qinvokable]
         fn rel(self: &Core, u: &QString, act: &QString);
@@ -548,6 +550,13 @@ impl q::Core {
         let Ok(c) = qrcode::QrCode::new(qs(t).as_bytes()) else { return QString::default() };
         let svg = c.render::<qrcode::render::svg::Color>().min_dimensions(400, 400).quiet_zone(false).build();
         QString::from(&format!("data:image/svg+xml;utf8,{}", svg.replace('#', "%23")))
+    }
+
+    pub fn notify(&self, t: &QString, b: &QString) {
+        let (t, b) = (qs(t), qs(b));
+        std::thread::spawn(move || {
+            let _ = notify_rust::Notification::new().appname("cord").summary(&t).body(&b).icon("cord").show();
+        });
     }
 
     pub fn load_mems(&self, g: &QString) {
