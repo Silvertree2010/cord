@@ -73,6 +73,8 @@ pub struct Chan {
     pub last: Option<Rid>,
     pub rcp: Vec<Usr>,
     pub icon: Option<String>,
+    #[serde(default)]
+    pub enc: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

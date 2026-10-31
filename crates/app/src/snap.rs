@@ -26,7 +26,7 @@ mod tests {
     fn boot_has_all_sections_and_filters_hidden() {
         let mut s = Sta::default();
         let rid = |r: &str| Rid::new(Svc::Dc, 1, r);
-        let c = |id: &str, hidden: bool| Chan { id: rid(id), gld: None, par: None, k: ChK::Txt, name: id.into(), topic: None, pos: 0, nsfw: false, hidden, last: None, rcp: vec![], icon: None };
+        let c = |id: &str, hidden: bool| Chan { id: rid(id), gld: None, par: None, k: ChK::Txt, name: id.into(), topic: None, pos: 0, nsfw: false, hidden, last: None, rcp: vec![], icon: None, enc: false };
         s.apply(Ev::Chan(c("a", false)));
         s.chans.insert(rid("b"), c("b", true));
         let v = boot(&s);

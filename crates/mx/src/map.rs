@@ -291,6 +291,7 @@ pub struct RoomInfo {
     pub space: bool,
     pub kids: Vec<String>,
     pub others: Vec<Usr>,
+    pub enc: bool,
 }
 
 pub fn layout(cx: &Cx, rooms: &[RoomInfo]) -> (Vec<Gld>, Vec<Chan>) {
@@ -375,6 +376,7 @@ fn chan(cx: &Cx, r: &RoomInfo, k: ChK) -> Chan {
         last: None,
         rcp: r.others.clone(),
         icon: r.av.clone(),
+        enc: r.enc,
     }
 }
 

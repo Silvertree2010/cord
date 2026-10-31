@@ -182,6 +182,7 @@ impl I {
             space: room.is_space(),
             kids,
             others,
+            enc: room.encryption_state().is_encrypted(),
         }
     }
 
