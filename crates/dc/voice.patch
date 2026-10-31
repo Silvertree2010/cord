@@ -1,0 +1,106 @@
+--- a/crates/dc/src/lib.rs
++++ b/crates/dc/src/lib.rs
+@@ -4,6 +4,7 @@
+ pub mod perm;
+ pub mod ra;
+ pub mod rest;
++pub mod vc;
+ pub mod zl;
+ 
+ use async_trait::async_trait;
+@@ -42,6 +43,7 @@
+     pub mu: Mutex<HashSet<String>>,
+     pub ss: Mutex<Sess>,
+     pub gt: Mutex<Option<tokio::sync::mpsc::UnboundedSender<String>>>,
++    pub vo: vc::Vo,
+ }
+ 
+ pub struct Dc(Arc<Sh>);
+@@ -61,6 +63,7 @@
+             mu: Default::default(),
+             ss: Default::default(),
+             gt: Default::default(),
++            vo: Default::default(),
+         }))
+     }
+ 
+@@ -105,6 +108,7 @@
+     }
+ 
+     async fn start(&self, tx: Tx) -> Res<()> {
++        self.0.vo.set_tx(tx.clone());
+         tokio::spawn(gw::run(self.0.clone(), tx));
+         Ok(())
+     }
+@@ -207,6 +211,33 @@
+         Ok(vec![])
+     }
+ 
++    async fn join(&self, chan: &Rid) -> Res<()> {
++        let g = self.0.cg.lock().unwrap().get(&*chan.raw).cloned();
++        let (g, m, d) = self.0.vo.begin(chan, g)?;
++        self.gsend(vc::op4(Some(&chan.raw), g.as_deref(), m, d))
++    }
++
++    async fn leave(&self) -> Res<()> {
++        let g = self.0.vo.gld();
++        let (m, d) = self.0.vo.end();
++        self.gsend(vc::op4(None, g.as_deref(), m, d))
++    }
++
++    async fn vset(&self, mute: bool, deaf: bool) -> Res<()> {
++        match self.0.vo.flags(mute, deaf) {
++            Some(c) => {
++                let g = self.0.vo.gld();
++                self.gsend(vc::op4(Some(&c), g.as_deref(), mute, deaf))
++            }
++            None => Ok(()),
++        }
++    }
++
++    async fn vol(&self, usr: &Rid, v: f32) -> Res<()> {
++        self.0.vo.vol(&usr.raw, v);
++        Ok(())
++    }
++
+     async fn set_st(&self, st: St, act: Option<String>) -> Res<()> {
+         let s = match st {
+             St::On => "online",
+--- a/crates/dc/src/hd.rs
++++ b/crates/dc/src/hd.rs
+@@ -56,6 +56,7 @@
+     let a = sh.a;
+     let gl = gld(a, g, pos);
+     let gid = gl.id.raw.to_string();
++    let gid_s = gid.clone();
+     let uid = sh.me.lock().unwrap().clone();
+     let mut chs = arr(g, "channels");
+     chs.extend(arr(g, "threads"));
+@@ -78,6 +79,7 @@
+     for e in evs {
+         out(sh, tx, e);
+     }
++    crate::vc::guild_vs(sh, tx, &gid_s, g);
+ }
+ 
+ fn refresh(sh: &Sh, tx: &Tx, gid: &str) {
+@@ -249,6 +251,9 @@
+     match t {
+         "READY" => ready(sh, tx, &d),
+         "READY_SUPPLEMENTAL" => supp(sh, tx, &d),
++        "VOICE_STATE_UPDATE" => crate::vc::vsu(sh, tx, &d),
++        "VOICE_SERVER_UPDATE" => crate::vc::vsv(sh, &d),
++        "CALL_CREATE" | "CALL_UPDATE" => crate::vc::call(sh, tx, &d),
+         "RESUMED" => {
+             let _ = tx.send(Ev::Conn { acc: a, up: true });
+         }
+--- a/crates/dc/Cargo.toml
++++ b/crates/dc/Cargo.toml
+@@ -5,6 +5,7 @@
+ 
+ [dependencies]
+ cord-core = { workspace = true }
++cord-rtc = { workspace = true }
+ tokio = { workspace = true }
+ async-trait = { workspace = true }
+ serde = { workspace = true }
