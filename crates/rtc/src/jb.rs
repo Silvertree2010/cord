@@ -64,9 +64,10 @@ impl Jb {
             if self.map.len() < self.depth {
                 return Pop::Empty;
             }
+            let Some(&k) = self.map.keys().next() else { return Pop::Empty };
             self.run = true;
             self.miss = 0;
-            self.next = *self.map.keys().next().unwrap();
+            self.next = k;
         }
         if let Some(d) = self.map.remove(&self.next) {
             self.next += 1;
@@ -129,6 +130,12 @@ mod tests {
         assert_eq!(j.pop(), Pop::Pkt(vec![255]));
         assert_eq!(j.pop(), Pop::Pkt(vec![0]));
         assert_eq!(j.pop(), Pop::Pkt(vec![1]));
+    }
+
+    #[test]
+    fn zero_depth_empty() {
+        let mut j = Jb::new(0, 10);
+        assert_eq!(j.pop(), Pop::Empty);
     }
 
     #[test]

@@ -2,6 +2,7 @@ use serde_json::{Value, json};
 
 pub const PAY: usize = 1100;
 pub const CLK: u64 = 90_000;
+const MAXAU: usize = 16 << 20;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Codec {
@@ -223,6 +224,10 @@ impl Base {
     }
 
     fn fin(&mut self, marker: bool, lost: bool) -> Pu {
+        if self.buf.len() > MAXAU {
+            self.buf.clear();
+            self.bad = true;
+        }
         if marker && !self.bad && !self.buf.is_empty() {
             let b = std::mem::take(&mut self.buf);
             self.ts = None;
@@ -416,6 +421,10 @@ impl Av1u {
             i += l;
         }
         let cnt = els.len();
+        if self.part.len() > MAXAU {
+            self.part.clear();
+            self.b.bad = true;
+        }
         for (k, e) in els.into_iter().enumerate() {
             let first = k == 0 && z;
             let last = k + 1 == cnt && y;
@@ -537,6 +546,16 @@ pub fn parse_fb(mut b: &[u8]) -> Vec<Fb> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn oversize_au_dropped() {
+        let mut u = H264u::default();
+        let big = vec![0x41u8; 1000];
+        for i in 0..(MAXAU / 1000 + 5) {
+            assert!(u.push(i as u16, 1, false, &big).au.is_none());
+        }
+        assert!(u.push(60000, 1, true, &big).au.is_none());
+    }
 
     fn au(sizes: &[usize]) -> Vec<u8> {
         let mut a = vec![];
