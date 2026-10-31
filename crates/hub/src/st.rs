@@ -61,6 +61,8 @@ pub struct Sta {
     pub vs: HashMap<Rid, Vs>,
     pub lts: HashMap<Rid, i64>,
     pub hl: HashSet<Rid>,
+    pub synced: HashSet<Rid>,
+    pub stale: HashMap<Rid, HashSet<Rid>>,
     pub call: CallSt,
     pub cfg: Cfg,
 }
@@ -85,6 +87,20 @@ pub enum Dl {
     Vs(Vs),
     Speak { chan: String, usr: String, on: bool },
     Call(CallSt),
+}
+
+#[derive(Default, Debug)]
+pub struct Rec {
+    pub added: Vec<Msg>,
+    pub changed: Vec<Msg>,
+    pub removed: Vec<Rid>,
+    pub reset: bool,
+}
+
+impl Rec {
+    pub fn dirty(&self) -> bool {
+        self.reset || !self.added.is_empty() || !self.changed.is_empty() || !self.removed.is_empty()
+    }
 }
 
 pub fn flake_ts(r: &str) -> i64 {
@@ -151,6 +167,8 @@ impl Sta {
         self.vs.retain(|k, _| k.acc != a);
         self.lts.retain(|k, _| k.acc != a);
         self.hl.retain(|k| k.acc != a);
+        self.synced.retain(|k| k.acc != a);
+        self.stale.retain(|k, _| k.acc != a);
         if self.call.chan.as_ref().is_some_and(|c| c.acc == a) {
             self.call = CallSt::default();
         }
@@ -171,6 +189,7 @@ impl Sta {
                     self.up.insert(acc);
                 } else {
                     self.up.remove(&acc);
+                    self.synced.retain(|k| k.acc != acc);
                 }
                 o.push(Dl::Conn { acc, up });
             }
@@ -188,6 +207,8 @@ impl Sta {
                     self.unr.remove(&k);
                     self.lts.remove(&k);
                     self.hl.remove(&k);
+                    self.synced.remove(&k);
+                    self.stale.remove(&k);
                 }
                 self.mems.remove(&id);
                 o.push(Dl::GldDel(id.to_string()));
@@ -212,6 +233,8 @@ impl Sta {
                 self.unr.remove(&id);
                 self.lts.remove(&id);
                 self.hl.remove(&id);
+                self.synced.remove(&id);
+                self.stale.remove(&id);
                 o.push(Dl::ChanDel(id.to_string()));
             }
             Ev::Msg(m) => {
@@ -219,6 +242,9 @@ impl Sta {
                     self.usrs.entry(id).or_insert_with(|| m.auth.clone());
                 }
                 let ck = m.chan.to_string();
+                if let Some(sl) = self.stale.get_mut(&m.chan) {
+                    sl.remove(&m.id);
+                }
                 if let Some(c) = self.chans.get_mut(&m.chan) {
                     if c.last.is_none() || newer(Some(&m.id), c.last.as_ref()) {
                         c.last = Some(m.id.clone());
@@ -251,6 +277,9 @@ impl Sta {
             }
             Ev::MsgUpd(mut m) => {
                 let ck = m.chan.to_string();
+                if let Some(sl) = self.stale.get_mut(&m.chan) {
+                    sl.remove(&m.id);
+                }
                 let lg = self.cfg.log_ed;
                 let part = m.ts == 0;
                 let mut found = false;
@@ -444,6 +473,82 @@ impl Sta {
         add
     }
 
+    pub fn hydrate(&mut self, chan: &Rid, v: Vec<Msg>) {
+        let ids: Vec<Rid> = v.iter().map(|m| m.id.clone()).collect();
+        self.prepend(chan, v);
+        self.hl.remove(chan);
+        self.stale.entry(chan.clone()).or_default().extend(ids);
+    }
+
+    pub fn older(&self, chan: &Rid, before: &Rid, n: usize) -> Vec<Msg> {
+        let Some(q) = self.msgs.get(chan) else { return vec![] };
+        let Some(i) = q.iter().position(|m| &m.id == before) else { return vec![] };
+        let from = i.saturating_sub(n);
+        q.iter().skip(from).take(i - from).cloned().collect()
+    }
+
+    pub fn window(&self, chan: &Rid, n: usize) -> Vec<Msg> {
+        self.msgs.get(chan).map(|q| q.iter().skip(q.len().saturating_sub(n)).cloned().collect()).unwrap_or_default()
+    }
+
+    pub fn reconcile(&mut self, chan: &Rid, mut fetched: Vec<Msg>) -> Rec {
+        fetched.sort_by_key(|m| m.ts);
+        let mut rec = Rec::default();
+        let stale = self.stale.remove(chan).unwrap_or_default();
+        let (lo, hi) = match (fetched.first(), fetched.last()) {
+            (Some(a), Some(b)) => (a.ts, b.ts),
+            _ => {
+                self.synced.insert(chan.clone());
+                return rec;
+            }
+        };
+        let ids: HashSet<Rid> = fetched.iter().map(|m| m.id.clone()).collect();
+        let log_del = self.cfg.log_del;
+        let log_ed = self.cfg.log_ed;
+        let q = self.msgs.entry(chan.clone()).or_default();
+        let overlap = q.is_empty() || q.iter().any(|m| ids.contains(&m.id));
+        if !overlap {
+            q.retain(|m| m.ts > hi && !stale.contains(&m.id));
+            rec.reset = true;
+        }
+        let mut fresh = vec![];
+        for f in fetched {
+            match q.iter_mut().find(|x| x.id == f.id) {
+                Some(x) => {
+                    let mut n = f;
+                    n.hist = std::mem::take(&mut x.hist);
+                    n.del = x.del;
+                    if log_ed && x.body != n.body && !x.body.is_empty() && n.hist.last() != Some(&x.body) {
+                        n.hist.push(x.body.clone());
+                    }
+                    if serde_json::to_string(&n).ok() != serde_json::to_string(&*x).ok() {
+                        *x = n.clone();
+                        rec.changed.push(n);
+                    }
+                }
+                None => fresh.push(f),
+            }
+        }
+        let gone: Vec<Rid> = q.iter().filter(|m| stale.contains(&m.id) && !ids.contains(&m.id) && m.ts >= lo && m.ts <= hi).map(|m| m.id.clone()).collect();
+        for id in gone {
+            if log_del {
+                if let Some(x) = q.iter_mut().find(|x| x.id == id) {
+                    if !x.del {
+                        x.del = true;
+                        rec.changed.push(x.clone());
+                    }
+                }
+            } else {
+                q.retain(|x| x.id != id);
+                rec.removed.push(id);
+                rec.reset = true;
+            }
+        }
+        rec.added = self.prepend(chan, fresh);
+        self.synced.insert(chan.clone());
+        rec
+    }
+
     pub fn react(&mut self, chan: &Rid, id: &Rid, e: Emo, me: bool, add: bool) -> Option<Msg> {
         let m = self.msgs.get_mut(chan)?.iter_mut().find(|x| &x.id == id)?;
         let same = |a: &Emo| match (&a.id, &e.id) {
@@ -597,6 +702,7 @@ mod tests {
             last: last.map(rid),
             rcp: vec![],
             icon: None,
+            enc: false,
         };
         s.apply(Ev::Chan(c(Some("90"))));
         s.apply(Ev::Msg(msg("100", "200", "x")));
@@ -627,7 +733,7 @@ mod tests {
     #[test]
     fn golden_chan_and_msg_entities() {
         let mut s = sta();
-        let c = Chan { id: rid("c"), gld: Some(rid("g")), par: None, k: ChK::Txt, name: "gen".into(), topic: None, pos: 0, nsfw: false, hidden: false, last: None, rcp: vec![], icon: None };
+        let c = Chan { id: rid("c"), gld: Some(rid("g")), par: None, k: ChK::Txt, name: "gen".into(), topic: None, pos: 0, nsfw: false, hidden: false, last: None, rcp: vec![], icon: None, enc: false };
         let d = s.apply(Ev::Chan(c));
         match &d[0] {
             Dl::Chan(v) => {
@@ -652,7 +758,7 @@ mod tests {
     #[test]
     fn hidden_chan_emits_del() {
         let mut s = sta();
-        let c = Chan { id: rid("h"), gld: None, par: None, k: ChK::Txt, name: "h".into(), topic: None, pos: 0, nsfw: false, hidden: true, last: None, rcp: vec![], icon: None };
+        let c = Chan { id: rid("h"), gld: None, par: None, k: ChK::Txt, name: "h".into(), topic: None, pos: 0, nsfw: false, hidden: true, last: None, rcp: vec![], icon: None, enc: false };
         assert!(matches!(s.apply(Ev::Chan(c.clone()))[0], Dl::ChanDel(_)));
         s.cfg.show_hid = true;
         assert!(matches!(s.apply(Ev::Chan(c))[0], Dl::Chan(_)));

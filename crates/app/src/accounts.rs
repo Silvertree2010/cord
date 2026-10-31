@@ -30,10 +30,10 @@ async fn commit(ac: &acc::Ac) -> Res<()> {
     acc::save_reg(&r)
 }
 
-async fn finish(h: &Arc<Hub>, e: &Em, ac: acc::Ac, sec: String) -> Res<()> {
+async fn finish(h: &Arc<Hub>, e: &Em, mut ac: acc::Ac, sec: String) -> Res<()> {
     let demo = ac.base == "demo";
     if !demo {
-        acc::put(ac.id, &sec)?;
+        ac.sec = Some(acc::put(ac.id, &sec)?.name().to_string());
     }
     commit(&ac).await?;
     e.s(&Out::Accs);
@@ -45,7 +45,7 @@ pub async fn add(h: Arc<Hub>, e: Em, sv: Svc, v: Value) -> Res<()> {
     let id = reserve().await?;
     let demo = v["demo"].as_bool().unwrap_or(false);
     let (base, sec) = if demo { ("demo".to_string(), String::new()) } else { bks::login(sv, id, &v).await? };
-    let ac = acc::Ac { id, svc: sv, lbl: v["lbl"].as_str().unwrap_or("").into(), base, on: true };
+    let ac = acc::Ac { id, svc: sv, lbl: v["lbl"].as_str().unwrap_or("").into(), base, on: true, sec: None };
     finish(&h, &e, ac, sec).await
 }
 
@@ -62,7 +62,7 @@ pub async fn qr(h: Arc<Hub>, e: Em) -> Res<()> {
     });
     let tok = cord_dc::ra::login(tx).await?;
     let id = reserve().await?;
-    let ac = acc::Ac { id, svc: Svc::Dc, lbl: String::new(), base: String::new(), on: true };
+    let ac = acc::Ac { id, svc: Svc::Dc, lbl: String::new(), base: String::new(), on: true, sec: None };
     finish(&h, &e, ac, tok).await
 }
 
@@ -75,6 +75,7 @@ pub async fn remove(h: Arc<Hub>, e: Em, id: u32) -> Res<()> {
     }
     h.remove(id).await;
     bks::forget(id);
+    crate::frames::clear();
     acc::drop_sec(id);
     let d = crate::cfg::data().join(format!("mx{id}"));
     if d.starts_with(crate::cfg::data()) && d.is_dir() {
@@ -83,6 +84,16 @@ pub async fn remove(h: Arc<Hub>, e: Em, id: u32) -> Res<()> {
     e.s(&Out::AccGone { acc: id });
     e.s(&Out::Accs);
     Ok(())
+}
+
+async fn set_sec(id: u32, be: &str) {
+    let _g = LOCK.lock().await;
+    if let Ok(mut r) = acc::reg() {
+        if let Some(a) = r.list.iter_mut().find(|a| a.id == id) {
+            a.sec = Some(be.to_string());
+            let _ = acc::save_reg(&r);
+        }
+    }
 }
 
 pub async fn start_all(h: Arc<Hub>, e: Em) {
@@ -94,7 +105,22 @@ pub async fn start_all(h: Arc<Hub>, e: Em) {
         }
     };
     for a in reg.list.into_iter().filter(|a| a.on) {
-        let s = acc::get(a.id);
+        let s = if a.base == "demo" {
+            None
+        } else {
+            match acc::get(a.id, a.sec.as_deref()) {
+                Ok(s) => {
+                    if a.sec.is_none() {
+                        set_sec(a.id, acc::backend()).await;
+                    }
+                    Some(s)
+                }
+                Err(x) => {
+                    e.s(&Out::Err(ErrV::new(a.id, "start", x)));
+                    continue;
+                }
+            }
+        };
         match mk(&a, s).await {
             Ok(b) => {
                 if let Err(x) = h.add(b).await {
@@ -112,6 +138,7 @@ mod tests {
 
     #[test]
     fn concurrent_reserve_unique() {
+        let _l = crate::cfg::tests::TENV.lock().unwrap_or_else(|e| e.into_inner());
         let d = std::env::temp_dir().join(format!("cord-acct-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&d);
         unsafe { std::env::set_var("CORD_HOME", &d) };

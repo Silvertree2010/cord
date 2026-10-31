@@ -26,7 +26,7 @@ impl Svc {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize)]
 pub struct Rid {
     pub svc: Svc,
     pub acc: u32,
@@ -36,6 +36,18 @@ pub struct Rid {
 impl Rid {
     pub fn new(svc: Svc, acc: u32, raw: impl Into<Arc<str>>) -> Self {
         Self { svc, acc, raw: raw.into() }
+    }
+}
+
+impl Serialize for Rid {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut o = s.serialize_struct("Rid", 4)?;
+        o.serialize_field("svc", &self.svc)?;
+        o.serialize_field("acc", &self.acc)?;
+        o.serialize_field("raw", &*self.raw)?;
+        o.serialize_field("rid", &self.to_string())?;
+        o.end()
     }
 }
 
@@ -53,5 +65,20 @@ impl FromStr for Rid {
         let a = it.next().ok_or_else(|| anyhow::anyhow!("no acc"))?.parse()?;
         let r = it.next().ok_or_else(|| anyhow::anyhow!("no raw"))?;
         Ok(Rid::new(sv, a, r))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rid_serializes_string_form_and_roundtrips() {
+        let r = Rid::new(Svc::Mx, 3, "!a:b");
+        let v = serde_json::to_value(&r).unwrap();
+        assert_eq!(v["rid"], "mx:3:!a:b");
+        assert_eq!(v["svc"], "Mx");
+        let back: Rid = serde_json::from_value(v).unwrap();
+        assert_eq!(back, r);
     }
 }

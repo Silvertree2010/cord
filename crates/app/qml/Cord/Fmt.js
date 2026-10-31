@@ -84,6 +84,28 @@ function day(ms) {
     return new Date(ms).toLocaleDateString(Qt.locale(), "d MMMM yyyy")
 }
 
+const EMO_TAG = "<(a?):(\\w+):(\\d+)>"
+const EMO_LINK = "\\[(\\w+)\\]\\(https:\\/\\/cdn\\.discordapp\\.com\\/emojis\\/(\\d+)\\.(gif|webp|png)\\?[^)]*\\)"
+
+function emoLink(an, n, id) {
+    return "[" + n + "](https://cdn.discordapp.com/emojis/" + id + "." + (an ? "gif" : "webp") + "?size=48&quality=lossless&name=" + n + ")"
+}
+
+function emoTag(an, n, id) {
+    return "<" + (an ? "a" : "") + ":" + n + ":" + id + ">"
+}
+
+function emoEncode(body, own) {
+    own = own || {}
+    return body.replace(new RegExp(EMO_TAG, "g"), (m, an, n, id) => (own[id] && !an) ? m : emoLink(an, n, id))
+}
+
+function emoDecode(body) {
+    const whole = body.trim().match(new RegExp("^" + EMO_LINK + "$"))
+    if (whole) return emoTag(whole[3] === "gif", whole[1], whole[2])
+    return body.replace(new RegExp(EMO_LINK, "g"), (s, n, id, ex) => emoTag(ex === "gif", n, id))
+}
+
 function size(b) {
     if (b < 1024) return b + " B"
     if (b < 1048576) return (b / 1024).toFixed(1) + " KB"

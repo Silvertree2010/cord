@@ -1,10 +1,11 @@
+use parking_lot::Mutex;
 use anyhow::{Result as Res, bail};
 use base64::{Engine, engine::general_purpose::STANDARD as B64};
 use reqwest::{Client, Method, RequestBuilder, multipart};
 use serde_json::{Value, json};
 use std::{
     collections::HashMap,
-    sync::Mutex,
+    
     time::{Duration, Instant},
 };
 
@@ -72,7 +73,7 @@ impl Rest {
 
     async fn wt(&self, k: &str) {
         let d = {
-            let b = self.bk.lock().unwrap();
+            let b = self.bk.lock();
             let now = Instant::now();
             [k, "global"]
                 .iter()
@@ -103,7 +104,7 @@ impl Rest {
             if hv("x-ratelimit-remaining").as_deref() == Some("0") {
                 let ra = hv("x-ratelimit-reset-after").and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0);
                 let now = Instant::now();
-                let mut b = self.bk.lock().unwrap();
+                let mut b = self.bk.lock();
                 b.retain(|_, t| *t > now);
                 b.insert(k.to_string(), now + Duration::from_secs_f64(ra.clamp(0.0, 3600.0)));
             }
@@ -112,7 +113,7 @@ impl Rest {
                 let ra = v["retry_after"].as_f64().or_else(|| hv("retry-after").and_then(|s| s.parse().ok())).unwrap_or(1.0);
                 let g = v["global"].as_bool().unwrap_or(false) || hv("x-ratelimit-global").is_some();
                 let t = Instant::now() + Duration::from_secs_f64(ra.clamp(0.0, 3600.0) + 0.05);
-                let mut b = self.bk.lock().unwrap();
+                let mut b = self.bk.lock();
                 b.insert(if g { "global".into() } else { k.to_string() }, t);
                 continue;
             }

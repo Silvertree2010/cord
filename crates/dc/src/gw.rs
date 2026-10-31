@@ -40,7 +40,7 @@ pub async fn run(sh: Arc<Sh>, tx: Tx) {
     loop {
         let t0 = std::time::Instant::now();
         let r = sess(&sh, &tx).await;
-        *sh.gt.lock().unwrap() = None;
+        *sh.gt.lock() = None;
         let _ = tx.send(Ev::Conn { acc: sh.a, up: false });
         match r {
             Ok(Fin::Fatal(m)) => {
@@ -74,7 +74,7 @@ async fn tick(iv: &mut Option<Interval>) {
 
 async fn sess(sh: &Sh, tx: &Tx) -> Res<Fin> {
     let (url, rs) = {
-        let s = sh.ss.lock().unwrap();
+        let s = sh.ss.lock();
         match (&s.id, &s.url) {
             (Some(_), Some(u)) => (format!("{u}/?v=9&encoding=json&compress=zlib-stream"), true),
             _ => (GW.to_string(), false),
@@ -84,7 +84,7 @@ async fn sess(sh: &Sh, tx: &Tx) -> Res<Fin> {
     let (ws, _) = connect_async(url).await?;
     let (mut wt, mut rd) = ws.split();
     let (otx, mut orx) = tokio::sync::mpsc::unbounded_channel::<String>();
-    *sh.gt.lock().unwrap() = Some(otx);
+    *sh.gt.lock() = Some(otx);
     let mut inf = Inf::new();
     let mut iv: Option<Interval> = None;
     let mut ack = true;
@@ -97,7 +97,7 @@ async fn sess(sh: &Sh, tx: &Tx) -> Res<Fin> {
                         let Some(t) = inf.push(&b)? else { continue };
                         let v: Value = serde_json::from_str(&t)?;
                         if let Some(s) = v["s"].as_u64() {
-                            sh.ss.lock().unwrap().seq = Some(s);
+                            sh.ss.lock().seq = Some(s);
                         }
                         match v["op"].as_u64() {
                             Some(0) => {
@@ -105,13 +105,13 @@ async fn sess(sh: &Sh, tx: &Tx) -> Res<Fin> {
                                 hd::dis(sh, tx, &t, v["d"].clone());
                             }
                             Some(1) => {
-                                let s = sh.ss.lock().unwrap().seq;
+                                let s = sh.ss.lock().seq;
                                 wt.send(Message::Text(json!({"op": 1, "d": s}).to_string().into())).await?;
                             }
                             Some(7) => return Ok(Fin::Re),
                             Some(9) => {
                                 if v["d"].as_bool() != Some(true) {
-                                    let mut s = sh.ss.lock().unwrap();
+                                    let mut s = sh.ss.lock();
                                     s.id = None;
                                     s.seq = None;
                                     s.url = None;
@@ -124,7 +124,7 @@ async fn sess(sh: &Sh, tx: &Tx) -> Res<Fin> {
                                 let j = (hi as f64 * rand::random::<f64>()) as u64;
                                 iv = Some(interval_at(Instant::now() + Duration::from_millis(j), Duration::from_millis(hi)));
                                 ack = true;
-                                let (id, seq) = { let s = sh.ss.lock().unwrap(); (s.id.clone(), s.seq) };
+                                let (id, seq) = { let s = sh.ss.lock(); (s.id.clone(), s.seq) };
                                 let p = match id {
                                     Some(id) => json!({"op": 6, "d": {"token": sh.tok, "session_id": id, "seq": seq}}),
                                     None => idn(&sh.tok),
@@ -141,7 +141,7 @@ async fn sess(sh: &Sh, tx: &Tx) -> Res<Fin> {
                             return Ok(Fin::Fatal(format!("gateway closed {c}")));
                         }
                         if c == 4007 || c == 4009 {
-                            let mut s = sh.ss.lock().unwrap();
+                            let mut s = sh.ss.lock();
                             s.id = None;
                             s.seq = None;
                             s.url = None;
@@ -157,7 +157,7 @@ async fn sess(sh: &Sh, tx: &Tx) -> Res<Fin> {
             _ = tick(&mut iv) => {
                 if !ack { return Ok(Fin::Re); }
                 ack = false;
-                let s = sh.ss.lock().unwrap().seq;
+                let s = sh.ss.lock().seq;
                 wt.send(Message::Text(json!({"op": 1, "d": s}).to_string().into())).await?;
             }
         }

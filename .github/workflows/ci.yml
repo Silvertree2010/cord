@@ -10,7 +10,7 @@ jobs:
     container: archlinux:latest
     steps:
       - name: Install dependencies
-        run: pacman -Syu --noconfirm --needed base-devel git rust cmake clang pkgconf qt6-base qt6-declarative qt6-multimedia gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugin-pipewire pipewire libsecret opus
+        run: pacman -Syu --noconfirm --needed base-devel git rust cmake clang pkgconf qt6-base qt6-declarative qt6-multimedia gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugin-pipewire pipewire libsecret opus nodejs
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
         with:
@@ -24,6 +24,10 @@ jobs:
         run: cargo build -p cord --release
       - name: Test
         run: cargo test --workspace --exclude cord
+      - name: JS tests
+        run: |
+          node crates/app/qml/Cord/lay.test.js
+          node crates/app/qml/Cord/fmt.test.js
       - name: Collect
         run: |
           mkdir -p dist/bin dist/share/cord

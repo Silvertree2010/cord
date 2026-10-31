@@ -1,3 +1,4 @@
+use parking_lot::Mutex;
 use crate::Sh;
 use cord_cap::{
     Au, Cod, Frame,
@@ -14,7 +15,7 @@ use cord_rtc::{
 use serde_json::{Value, json};
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 use tokio::{
     sync::{
@@ -89,7 +90,7 @@ pub fn pause_op(key: &str, p: bool) -> Value {
 }
 
 pub fn gs(sh: &Sh, v: Value) {
-    if let Some(t) = &*sh.gt.lock().unwrap() {
+    if let Some(t) = &*sh.gt.lock() {
         let _ = t.send(v.to_string());
     }
 }
@@ -104,7 +105,7 @@ fn cod(c: Codec) -> Cod {
 
 impl Stm {
     fn fs(&self, uid: &str) -> Fs {
-        self.0.lock().unwrap().fr.entry(uid.to_string()).or_insert_with(|| Arc::new(watch::channel(None).0)).clone()
+        self.0.lock().fr.entry(uid.to_string()).or_insert_with(|| Arc::new(watch::channel(None).0)).clone()
     }
 
     pub fn frames(&self, uid: &str) -> watch::Receiver<Option<Arc<Frame>>> {
@@ -113,7 +114,7 @@ impl Stm {
 
     pub fn stop_all(&self, sh: &Sh) {
         let (o, w) = {
-            let mut i = self.0.lock().unwrap();
+            let mut i = self.0.lock();
             (i.own.take(), std::mem::take(&mut i.wat))
         };
         if let Some(o) = o {
@@ -131,14 +132,14 @@ impl Stm {
             }
             gs(sh, delete_op(&w.key));
         }
-        for f in self.0.lock().unwrap().fr.values() {
+        for f in self.0.lock().fr.values() {
             f.send_replace(None);
         }
     }
 
     pub async fn golive(&self, sh: &Sh, on: bool, q: Lq) -> Res<()> {
         if !on {
-            let o = self.0.lock().unwrap().own.take();
+            let o = self.0.lock().own.take();
             if let Some(o) = o {
                 for t in &o.tasks {
                     t.abort();
@@ -148,12 +149,12 @@ impl Stm {
                 }
             }
             sh.vo.live(false);
-            let me = sh.me.lock().unwrap().clone();
+            let me = sh.me.lock().clone();
             self.fs(&me).send_replace(None);
             return Ok(());
         }
         let (chan, gld, _) = sh.vo.info().ok_or_else(|| anyhow::anyhow!("join a voice channel first"))?;
-        if self.0.lock().unwrap().own.is_some() {
+        if self.0.lock().own.is_some() {
             anyhow::bail!("already streaming");
         }
         let pipe = scr::pick(false).await?;
@@ -171,20 +172,20 @@ impl Stm {
             (None, None)
         };
         let o = Own { lq: Some(q), keyer: Some(e.keyer()), _enc: Some(e), _aenc: aenc, pre: Some((au, arx)), ..Default::default() };
-        self.0.lock().unwrap().own = Some(o);
+        self.0.lock().own = Some(o);
         gs(sh, create_op(gld.as_deref(), &chan));
         Ok(())
     }
 
     pub fn pause(&self, sh: &Sh, p: bool) -> Res<()> {
-        let k = self.0.lock().unwrap().own.as_ref().and_then(|o| o.key.clone()).ok_or_else(|| anyhow::anyhow!("not streaming"))?;
+        let k = self.0.lock().own.as_ref().and_then(|o| o.key.clone()).ok_or_else(|| anyhow::anyhow!("not streaming"))?;
         gs(sh, pause_op(&k, p));
         Ok(())
     }
 
     pub fn watch(&self, sh: &Sh, usr: &str, on: bool) -> Res<()> {
         if !on {
-            let w = self.0.lock().unwrap().wat.remove(usr);
+            let w = self.0.lock().wat.remove(usr);
             if let Some(w) = w {
                 for t in &w.tasks {
                     t.abort();
@@ -196,20 +197,20 @@ impl Stm {
         }
         let (chan, gld, _) = sh.vo.info().ok_or_else(|| anyhow::anyhow!("join a voice channel first"))?;
         let key = key_of(gld.as_deref(), &chan, usr);
-        self.0.lock().unwrap().wat.insert(usr.to_string(), Wat { key: key.clone(), ..Default::default() });
+        self.0.lock().wat.insert(usr.to_string(), Wat { key: key.clone(), ..Default::default() });
         gs(sh, watch_op(&key));
         Ok(())
     }
 
     pub fn on(&self, sh: &Sh, t: &str, d: &Value) {
         let Some(key) = d["stream_key"].as_str() else { return };
-        let me = sh.me.lock().unwrap().clone();
+        let me = sh.me.lock().clone();
         let Some(uid) = key_uid(key).map(str::to_string) else { return };
         let mine = uid == me;
         match t {
             "STREAM_CREATE" => {
                 let rtc = d["rtc_server_id"].as_str().map(str::to_string).or_else(|| d["rtc_server_id"].as_u64().map(|x| x.to_string()));
-                let mut i = self.0.lock().unwrap();
+                let mut i = self.0.lock();
                 if mine {
                     if let Some(o) = &mut i.own {
                         o.key = Some(key.to_string());
@@ -225,7 +226,7 @@ impl Stm {
                 let tok = d["token"].as_str().map(str::to_string);
                 let ep = d["endpoint"].as_str().map(str::to_string);
                 {
-                    let mut i = self.0.lock().unwrap();
+                    let mut i = self.0.lock();
                     if mine {
                         if let Some(o) = &mut i.own {
                             o.tok = tok;
@@ -240,7 +241,7 @@ impl Stm {
             }
             "STREAM_DELETE" => {
                 if mine {
-                    let o = self.0.lock().unwrap().own.take();
+                    let o = self.0.lock().own.take();
                     if let Some(o) = o {
                         for t in &o.tasks {
                             t.abort();
@@ -249,7 +250,7 @@ impl Stm {
                     sh.vo.live(false);
                     self.fs(&me).send_replace(None);
                 } else {
-                    let w = self.0.lock().unwrap().wat.remove(&uid);
+                    let w = self.0.lock().wat.remove(&uid);
                     if let Some(w) = w {
                         for t in &w.tasks {
                             t.abort();
@@ -264,8 +265,8 @@ impl Stm {
 
     fn up(&self, sh: &Sh, uid: &str, mine: bool) {
         let Some((chan, _, sess)) = sh.vo.info() else { return };
-        let me = sh.me.lock().unwrap().clone();
-        let mut i = self.0.lock().unwrap();
+        let me = sh.me.lock().clone();
+        let mut i = self.0.lock();
         let (rtc, tok, ep, has) = if mine {
             let Some(o) = &i.own else { return };
             (o.rtc.clone(), o.tok.clone(), o.ep.clone(), o.vc.is_some())
@@ -430,42 +431,42 @@ mod tests {
     fn mk() -> (Arc<Sh>, tokio::sync::mpsc::UnboundedReceiver<String>) {
         let dc = crate::Dc::new(1, "t".into());
         let sh = dc.0.clone();
-        *sh.me.lock().unwrap() = "100".into();
+        *sh.me.lock() = "100".into();
         let (t, r) = unbounded_channel();
-        *sh.gt.lock().unwrap() = Some(t);
+        *sh.gt.lock() = Some(t);
         (sh, r)
     }
 
     #[test]
     fn create_unpauses_and_watch_flow() {
         let (sh, mut r) = mk();
-        sh.st.0.lock().unwrap().own = Some(Own::default());
+        sh.st.0.lock().own = Some(Own::default());
         sh.st.on(&sh, "STREAM_CREATE", &json!({"stream_key": "guild:1:2:100", "rtc_server_id": "555", "paused": true}));
         let m: Value = serde_json::from_str(&r.try_recv().unwrap()).unwrap();
         assert_eq!(m["op"], 22);
         assert_eq!(m["d"]["paused"], false);
-        let i = sh.st.0.lock().unwrap();
+        let i = sh.st.0.lock();
         let o = i.own.as_ref().unwrap();
         assert_eq!(o.key.as_deref(), Some("guild:1:2:100"));
         assert_eq!(o.rtc.as_deref(), Some("555"));
         drop(i);
         sh.st.on(&sh, "STREAM_SERVER_UPDATE", &json!({"stream_key": "guild:1:2:100", "token": "tk", "endpoint": "x.discord.media:443"}));
-        assert_eq!(sh.st.0.lock().unwrap().own.as_ref().unwrap().tok.as_deref(), Some("tk"));
-        sh.st.0.lock().unwrap().wat.insert("200".into(), Wat { key: "guild:1:2:200".into(), ..Default::default() });
+        assert_eq!(sh.st.0.lock().own.as_ref().unwrap().tok.as_deref(), Some("tk"));
+        sh.st.0.lock().wat.insert("200".into(), Wat { key: "guild:1:2:200".into(), ..Default::default() });
         sh.st.on(&sh, "STREAM_CREATE", &json!({"stream_key": "guild:1:2:200", "rtc_server_id": 777}));
-        assert_eq!(sh.st.0.lock().unwrap().wat["200"].rtc.as_deref(), Some("777"));
+        assert_eq!(sh.st.0.lock().wat["200"].rtc.as_deref(), Some("777"));
         let rx = sh.st.frames("200");
         sh.st.on(&sh, "STREAM_DELETE", &json!({"stream_key": "guild:1:2:200"}));
-        assert!(sh.st.0.lock().unwrap().wat.is_empty());
+        assert!(sh.st.0.lock().wat.is_empty());
         assert!(rx.borrow().is_none());
         sh.st.on(&sh, "STREAM_DELETE", &json!({"stream_key": "guild:1:2:100"}));
-        assert!(sh.st.0.lock().unwrap().own.is_none());
+        assert!(sh.st.0.lock().own.is_none());
     }
 
     #[tokio::test]
     async fn watch_off_sends_delete() {
         let (sh, mut r) = mk();
-        sh.st.0.lock().unwrap().wat.insert("200".into(), Wat { key: "call:2:200".into(), ..Default::default() });
+        sh.st.0.lock().wat.insert("200".into(), Wat { key: "call:2:200".into(), ..Default::default() });
         sh.st.watch(&sh, "200", false).unwrap();
         let m: Value = serde_json::from_str(&r.try_recv().unwrap()).unwrap();
         assert_eq!(m["op"], 19);

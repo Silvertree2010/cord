@@ -44,7 +44,7 @@ pub enum Out {
     Chans(Vec<ChanV>),
     Msg { chan: String, m: MsgV, new: bool },
     MsgDel { chan: String, id: String, gone: bool },
-    Msgs { chan: String, list: Vec<MsgV> },
+    Msgs { chan: String, list: Vec<MsgV>, synced: bool },
     Typing { chan: String, usr: Usr },
     PresBatch(Vec<PresE>),
     Rels(Vec<Rel>),
@@ -54,7 +54,7 @@ pub enum Out {
     Speak { chan: String, usr: String, on: bool },
     Call(CallSt),
     Err(ErrV),
-    Hist { chan: String, n: usize, more: bool, ok: bool, list: Vec<MsgV> },
+    Hist { chan: String, n: usize, more: bool, ok: bool, list: Vec<MsgV>, err: String, noop: bool },
     Sent { chan: String, ok: bool, err: String },
     Qr(String),
     QrUsr { name: String, id: String },
@@ -63,6 +63,46 @@ pub enum Out {
     Fs(String),
     Mpris(Option<Mp>),
     Dm { usr: String, chan: String, ok: bool, err: String },
+}
+
+#[cfg(test)]
+pub const TAGS: &[&str] = &[
+    "Acc", "Conn", "Gld", "GldDel", "Chan", "ChanDel", "Chans", "Msg", "MsgDel", "Msgs", "Typing", "PresBatch", "Rels", "Unr", "Mems", "Vs", "Speak", "Call", "Err", "Hist", "Sent", "Qr", "QrUsr",
+    "Accs", "AccGone", "Fs", "Mpris", "Dm",
+];
+
+#[cfg(test)]
+pub fn tag(o: &Out) -> &'static str {
+    match o {
+        Out::Acc(_) => "Acc",
+        Out::Conn { .. } => "Conn",
+        Out::Gld(_) => "Gld",
+        Out::GldDel(_) => "GldDel",
+        Out::Chan(_) => "Chan",
+        Out::ChanDel(_) => "ChanDel",
+        Out::Chans(_) => "Chans",
+        Out::Msg { .. } => "Msg",
+        Out::MsgDel { .. } => "MsgDel",
+        Out::Msgs { .. } => "Msgs",
+        Out::Typing { .. } => "Typing",
+        Out::PresBatch(_) => "PresBatch",
+        Out::Rels(_) => "Rels",
+        Out::Unr { .. } => "Unr",
+        Out::Mems { .. } => "Mems",
+        Out::Vs(_) => "Vs",
+        Out::Speak { .. } => "Speak",
+        Out::Call(_) => "Call",
+        Out::Err(_) => "Err",
+        Out::Hist { .. } => "Hist",
+        Out::Sent { .. } => "Sent",
+        Out::Qr(_) => "Qr",
+        Out::QrUsr { .. } => "QrUsr",
+        Out::Accs => "Accs",
+        Out::AccGone { .. } => "AccGone",
+        Out::Fs(_) => "Fs",
+        Out::Mpris(_) => "Mpris",
+        Out::Dm { .. } => "Dm",
+    }
 }
 
 pub fn pres_flush(m: Vec<(String, Pres)>) -> Option<Out> {
@@ -114,8 +154,43 @@ mod tests {
         let v = serde_json::to_value(Out::Sent { chan: "dc:1:c".into(), ok: false, err: "x".into() }).unwrap();
         assert_eq!(v["t"], "Sent");
         assert_eq!(v["d"]["ok"], false);
-        let h = serde_json::to_value(Out::Hist { chan: "c".into(), n: 0, more: false, ok: false, list: vec![] }).unwrap();
+        let h = serde_json::to_value(Out::Hist { chan: "c".into(), n: 0, more: false, ok: false, list: vec![], err: "x".into(), noop: false }).unwrap();
         assert_eq!(h["d"]["ok"], false);
+    }
+
+    #[test]
+    fn every_out_tag_has_a_case_in_s_qml() {
+        let q = include_str!("../qml/Cord/S.qml");
+        let on = &q[q.find("function on(d)").unwrap()..];
+        let on = &on[..on.find("property var speaking").unwrap()];
+        for t in TAGS {
+            assert!(on.contains(&format!("case \"{t}\"")), "S.on has no case for {t}");
+        }
+        let samples = [
+            Out::Accs,
+            Out::AccGone { acc: 1 },
+            Out::Qr(String::new()),
+            Out::Fs(String::new()),
+            Out::Mpris(None),
+            Out::Conn { acc: 1, up: true },
+            Out::Sent { chan: String::new(), ok: true, err: String::new() },
+            Out::Msgs { chan: String::new(), list: vec![], synced: true },
+            Out::Hist { chan: String::new(), n: 0, more: false, ok: true, list: vec![], err: String::new(), noop: false },
+            Out::PresBatch(vec![]),
+            Out::Rels(vec![]),
+            Out::Chans(vec![]),
+            Out::GldDel(String::new()),
+            Out::ChanDel(String::new()),
+            Out::Err(ErrV::new(0, "c", "m")),
+        ];
+        for o in &samples {
+            assert_eq!(serde_json::to_value(o).unwrap()["t"], tag(o));
+            assert!(TAGS.contains(&tag(o)));
+        }
+        let mut u = TAGS.to_vec();
+        u.sort();
+        u.dedup();
+        assert_eq!(u.len(), TAGS.len());
     }
 
     #[test]

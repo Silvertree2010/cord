@@ -1,22 +1,30 @@
 use crate::*;
 use cord_core::*;
 use cord_store::{Log, Row, Store};
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::{Arc, Mutex},
+};
 use tokio::sync::{RwLock, mpsc};
 
 pub type Sink = Arc<dyn Fn(Dl) + Send + Sync>;
 
+pub const WIN: usize = 50;
+
 pub struct Hub {
     pub bks: RwLock<HashMap<u32, Arc<dyn Bk>>>,
     pub st: RwLock<Sta>,
-    pub hks: RwLock<Hks>,
     pub store: Option<Arc<Store>>,
+    gone: Mutex<HashSet<u32>>,
+    locks: Mutex<HashMap<Rid, Arc<tokio::sync::Mutex<()>>>>,
+    acked: Mutex<HashMap<Rid, Rid>>,
     tx: mpsc::UnboundedSender<Ev>,
 }
 
 pub struct HistR {
     pub n: usize,
     pub added: Vec<MsgV>,
+    pub noop: bool,
 }
 
 fn row(m: &Msg) -> Row {
@@ -34,14 +42,41 @@ fn now() -> i64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)
 }
 
+pub fn cache_ok(st: &Sta, chan: &Rid) -> bool {
+    match st.chans.get(chan) {
+        Some(c) => !c.enc,
+        None => chan.svc != Svc::Mx,
+    }
+}
+
+fn ev_acc(e: &Ev) -> Option<u32> {
+    match e {
+        Ev::Ready(a) => Some(a.id),
+        Ev::Gld(g) => Some(g.id.acc),
+        Ev::GldDel(r) | Ev::ChanDel(r) | Ev::RelDel(r) => Some(r.acc),
+        Ev::Chan(c) => Some(c.id.acc),
+        Ev::Msg(m) | Ev::MsgUpd(m) => Some(m.chan.acc),
+        Ev::MsgDel { chan, .. } | Ev::React { chan, .. } | Ev::Typing { chan, .. } | Ev::Unread { chan, .. } | Ev::Ack { chan } | Ev::Speak { chan, .. } => Some(chan.acc),
+        Ev::Pres { usr, .. } => Some(usr.acc),
+        Ev::Rel(r) => r.usr.id.as_ref().map(|i| i.acc),
+        Ev::Mem(m) => Some(m.gld.acc),
+        Ev::Mems(_) => None,
+        Ev::Vs(v) => v.usr.id.as_ref().map(|i| i.acc),
+        Ev::Call(c) => c.chan.as_ref().map(|i| i.acc),
+        Ev::Conn { acc, .. } | Ev::Err { acc, .. } => Some(*acc),
+    }
+}
+
 impl Hub {
     pub fn new(sink: Sink, store: Option<Arc<Store>>) -> Arc<Self> {
         let (tx, mut rx) = mpsc::unbounded_channel::<Ev>();
         let h = Arc::new(Self {
             bks: RwLock::new(HashMap::new()),
             st: RwLock::new(Sta::default()),
-            hks: RwLock::new(Hks::default()),
             store,
+            gone: Default::default(),
+            locks: Default::default(),
+            acked: Default::default(),
             tx,
         });
         let w = Arc::downgrade(&h);
@@ -70,33 +105,22 @@ impl Hub {
                     }
                     e = Ev::Mems(v);
                 }
-                if h.hks.read().await.ev(&mut e) == Flow::Stop {
-                    continue;
-                }
-                let key = match &e {
-                    Ev::Msg(m) | Ev::MsgUpd(m) => Some((m.chan.clone(), m.id.clone())),
-                    Ev::MsgDel { chan, id } | Ev::React { chan, id, .. } => Some((chan.clone(), id.clone())),
-                    _ => None,
-                };
-                let is_del = matches!(e, Ev::MsgDel { .. });
-                let is_upd = matches!(e, Ev::MsgUpd(_));
                 let mut st = h.st.write().await;
-                let before = key.as_ref().and_then(|(c, i)| st.msgs.get(c).and_then(|q| q.iter().find(|x| &x.id == i)).map(|m| m.hist.len()));
-                let ds = st.ingest(e);
-                if let (Some(s), Some((c, i))) = (&h.store, key) {
-                    if let Some(m) = st.msgs.get(&c).and_then(|q| q.iter().find(|x| x.id == i)) {
-                        s.put(row(m));
-                        if is_del && m.del {
-                            s.log(Log { chan: c.to_string(), id: i.to_string(), kind: "del", body: m.body.clone(), ts: now() });
+                {
+                    let bks = h.bks.read().await;
+                    let live = |a: u32| a == 0 || bks.contains_key(&a);
+                    if let Ev::Mems(v) = &mut e {
+                        v.retain(|m| live(m.gld.acc));
+                        if v.is_empty() {
+                            continue;
                         }
-                        if is_upd && before.is_some_and(|b| m.hist.len() > b) {
-                            if let Some(old) = m.hist.last() {
-                                s.log(Log { chan: c.to_string(), id: i.to_string(), kind: "edit", body: old.clone(), ts: now() });
-                            }
+                    } else if let Some(a) = ev_acc(&e) {
+                        if !live(a) {
+                            continue;
                         }
                     }
                 }
-                drop(st);
+                let ds = h.apply(&mut st, e);
                 for d in ds {
                     sink(d);
                 }
@@ -105,14 +129,80 @@ impl Hub {
         h
     }
 
+    fn apply(&self, st: &mut Sta, e: Ev) -> Vec<Dl> {
+        let key = match &e {
+            Ev::Msg(m) | Ev::MsgUpd(m) => Some((m.chan.clone(), m.id.clone())),
+            Ev::MsgDel { chan, id } | Ev::React { chan, id, .. } => Some((chan.clone(), id.clone())),
+            _ => None,
+        };
+        let is_del = matches!(e, Ev::MsgDel { .. });
+        let is_upd = matches!(e, Ev::MsgUpd(_));
+        let upd_copy = match &e {
+            Ev::MsgUpd(m) if m.ts != 0 => Some(m.clone()),
+            _ => None,
+        };
+        let chan_enc = match &e {
+            Ev::Chan(c) if c.enc && st.chans.get(&c.id).is_none_or(|o| !o.enc) => Some(c.id.to_string()),
+            _ => None,
+        };
+        let del_chans: Vec<String> = match &e {
+            Ev::ChanDel(id) => vec![id.to_string()],
+            Ev::GldDel(g) => st.chans.values().filter(|c| c.gld.as_ref() == Some(g)).map(|c| c.id.to_string()).collect(),
+            _ => vec![],
+        };
+        let log_del = st.cfg.log_del;
+        let before = key.as_ref().and_then(|(c, i)| st.msgs.get(c).and_then(|q| q.iter().find(|x| &x.id == i)).map(|m| m.hist.len()));
+        let ds = st.ingest(e);
+        if let Some(s) = &self.store {
+            if let Some(c) = chan_enc {
+                s.purge_chan(&c);
+            }
+            for c in del_chans {
+                s.purge_chan(&c);
+            }
+            if let Some((c, i)) = key {
+                if cache_ok(st, &c) {
+                    let found = st.msgs.get(&c).and_then(|q| q.iter().find(|x| x.id == i));
+                    match found {
+                        Some(m) => {
+                            s.put(row(m));
+                            if is_del && m.del {
+                                s.log(Log { chan: c.to_string(), id: i.to_string(), kind: "del", body: m.body.clone(), ts: now() });
+                            }
+                            if is_upd && before.is_some_and(|b| m.hist.len() > b) {
+                                if let Some(old) = m.hist.last() {
+                                    s.log(Log { chan: c.to_string(), id: i.to_string(), kind: "edit", body: old.clone(), ts: now() });
+                                }
+                            }
+                        }
+                        None if is_del => s.del(&c.to_string(), &i.to_string(), log_del, now()),
+                        None => {
+                            if let Some(m) = upd_copy {
+                                s.put(row(&m));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ds
+    }
+
     pub fn tx(&self) -> mpsc::UnboundedSender<Ev> {
         self.tx.clone()
     }
 
     pub async fn add(&self, b: Arc<dyn Bk>) -> Res<()> {
         let a = b.acc();
+        if let Ok(mut g) = self.gone.lock() {
+            g.remove(&a);
+        }
         self.bks.write().await.insert(a, b.clone());
-        b.start(self.tx.clone()).await
+        if let Err(x) = b.start(self.tx.clone()).await {
+            self.remove(a).await;
+            return Err(x);
+        }
+        Ok(())
     }
 
     pub async fn bk(&self, acc: u32) -> Res<Arc<dyn Bk>> {
@@ -120,68 +210,130 @@ impl Hub {
     }
 
     pub async fn remove(&self, acc: u32) {
+        if let Ok(mut g) = self.gone.lock() {
+            g.insert(acc);
+        }
         let b = self.bks.write().await.remove(&acc);
         if let Some(b) = b {
             b.stop().await;
         }
         self.st.write().await.purge_acc(acc);
+        if let Ok(mut g) = self.locks.lock() {
+            g.retain(|k, _| k.acc != acc);
+        }
+        if let Ok(mut g) = self.acked.lock() {
+            g.retain(|k, _| k.acc != acc);
+        }
         if let Some(s) = &self.store {
-            let svs = [Svc::Dc, Svc::Mx, Svc::St];
-            for sv in svs {
+            for sv in [Svc::Dc, Svc::Mx, Svc::St] {
                 s.purge_prefix(&format!("{}:{}:", sv.tag(), acc));
             }
         }
     }
 
+    fn removed(&self, acc: u32) -> bool {
+        self.gone.lock().map(|g| g.contains(&acc)).unwrap_or(false)
+    }
+
     pub async fn hydrate(&self, chan: &Rid) {
         let Some(s) = &self.store else { return };
-        if self.st.read().await.msgs.get(chan).is_some_and(|q| !q.is_empty()) {
-            return;
-        }
-        let rows = s.last(&chan.to_string(), 50);
-        let v: Vec<Msg> = rows.iter().filter_map(|j| serde_json::from_str(j).ok()).collect();
-        if !v.is_empty() {
-            let mut st = self.st.write().await;
-            if st.msgs.get(chan).is_none_or(|q| q.is_empty()) {
-                st.prepend(chan, v);
+        {
+            let st = self.st.read().await;
+            if st.msgs.get(chan).is_some_and(|q| !q.is_empty()) || !cache_ok(&st, chan) {
+                return;
             }
         }
-    }
-
-    pub async fn msgs(&self, chan: &Rid) -> Vec<MsgV> {
-        self.hydrate(chan).await;
-        self.st.read().await.msgs_v(chan)
-    }
-
-    pub async fn hist(&self, chan: &Rid, before: Option<&Rid>) -> Res<HistR> {
-        if before.is_none() {
-            self.hydrate(chan).await;
+        let ck = chan.to_string();
+        let mut v: Vec<Msg> = vec![];
+        for j in s.last(&ck, WIN as u32) {
+            match serde_json::from_str::<Msg>(&j) {
+                Ok(m) => v.push(m),
+                Err(e) => tracing::warn!("cache row in {ck} unreadable: {e}"),
+            }
         }
-        let b = self.bk(chan.acc).await?;
-        let mut v = b.hist(chan, before, 50).await?;
-        let n = v.len();
-        for m in v.iter_mut() {
-            let mut e = Ev::Msg(m.clone());
-            self.hks.read().await.ev(&mut e);
-            if let Ev::Msg(x) = e {
-                *m = x;
+        if v.is_empty() {
+            return;
+        }
+        for (id, kind, body, _) in s.logs_chan(&ck) {
+            if let Some(m) = v.iter_mut().find(|m| m.id.to_string() == id) {
+                match kind.as_str() {
+                    "edit" if !m.hist.contains(&body) => m.hist.push(body),
+                    "del" => m.del = true,
+                    _ => {}
+                }
             }
         }
         let mut st = self.st.write().await;
-        let added = st.prepend(chan, v);
-        if let Some(s) = &self.store {
-            for m in &added {
+        if st.msgs.get(chan).is_none_or(|q| q.is_empty()) {
+            st.hydrate(chan, v);
+        }
+    }
+
+    pub async fn msgs(&self, chan: &Rid) -> (Vec<MsgV>, bool) {
+        self.hydrate(chan).await;
+        let st = self.st.read().await;
+        (st.window(chan, WIN).iter().map(|m| st.msg_v(m)).collect(), st.synced.contains(chan))
+    }
+
+    fn lock_for(&self, chan: &Rid) -> Arc<tokio::sync::Mutex<()>> {
+        let Ok(mut g) = self.locks.lock() else { return Default::default() };
+        g.entry(chan.clone()).or_default().clone()
+    }
+
+    pub async fn hist(&self, chan: &Rid, before: Option<&Rid>) -> Res<HistR> {
+        match before {
+            None => self.hist_head(chan).await,
+            Some(b) => self.hist_old(chan, b).await,
+        }
+    }
+
+    async fn hist_head(&self, chan: &Rid) -> Res<HistR> {
+        let l = self.lock_for(chan);
+        let _g = l.lock().await;
+        if self.st.read().await.synced.contains(chan) {
+            return Ok(HistR { n: 0, added: vec![], noop: true });
+        }
+        self.hydrate(chan).await;
+        let v = self.bk(chan.acc).await?.hist(chan, None, WIN as u32).await?;
+        let n = v.len();
+        anyhow::ensure!(!self.removed(chan.acc), "account removed");
+        let mut st = self.st.write().await;
+        let rec = st.reconcile(chan, v);
+        if let (Some(s), true) = (&self.store, cache_ok(&st, chan)) {
+            for m in rec.added.iter().chain(rec.changed.iter()) {
+                s.put(row(m));
+            }
+            for id in &rec.removed {
+                s.del(&chan.to_string(), &id.to_string(), false, now());
+            }
+        }
+        let added = if rec.dirty() { st.window(chan, WIN).iter().map(|m| st.msg_v(m)).collect() } else { vec![] };
+        Ok(HistR { n, added, noop: false })
+    }
+
+    async fn hist_old(&self, chan: &Rid, before: &Rid) -> Res<HistR> {
+        {
+            let st = self.st.read().await;
+            let o = st.older(chan, before, WIN);
+            if o.len() >= WIN {
+                return Ok(HistR { n: WIN, added: o.iter().map(|m| st.msg_v(m)).collect(), noop: false });
+            }
+        }
+        let v = self.bk(chan.acc).await?.hist(chan, Some(before), WIN as u32).await?;
+        let n = v.len();
+        anyhow::ensure!(!self.removed(chan.acc), "account removed");
+        let mut st = self.st.write().await;
+        let add = st.prepend(chan, v);
+        if let (Some(s), true) = (&self.store, cache_ok(&st, chan)) {
+            for m in &add {
                 s.put(row(m));
             }
         }
-        let added = added.iter().map(|m| st.msg_v(m)).collect();
-        Ok(HistR { n, added })
+        let o = st.older(chan, before, WIN);
+        Ok(HistR { n, added: o.iter().map(|m| st.msg_v(m)).collect(), noop: false })
     }
 
-    pub async fn send(&self, chan: &Rid, mut o: Out) -> Res<()> {
-        if self.hks.read().await.out(chan, &mut o) == Flow::Stop {
-            return Ok(());
-        }
+    pub async fn send(&self, chan: &Rid, o: Out) -> Res<()> {
         self.bk(chan.acc).await?.send(chan, o).await
     }
 
@@ -193,13 +345,24 @@ impl Hub {
     }
 
     pub async fn ack(&self, chan: &Rid) -> Res<()> {
-        let last = self.st.read().await.chans.get(chan).and_then(|c| c.last.clone());
+        let (last, unread) = {
+            let st = self.st.read().await;
+            (st.chans.get(chan).and_then(|c| c.last.clone()), st.unr.contains_key(chan))
+        };
+        if !unread {
+            return Ok(());
+        }
         let _ = self.tx.send(Ev::Ack { chan: chan.clone() });
         if feat::on("noread") {
             return Ok(());
         }
-        if let Some(m) = last {
-            self.bk(chan.acc).await?.ack(chan, &m).await?;
+        let Some(m) = last else { return Ok(()) };
+        if self.acked.lock().is_ok_and(|g| g.get(chan) == Some(&m)) {
+            return Ok(());
+        }
+        self.bk(chan.acc).await?.ack(chan, &m).await?;
+        if let Ok(mut g) = self.acked.lock() {
+            g.insert(chan.clone(), m);
         }
         Ok(())
     }

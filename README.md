@@ -15,7 +15,7 @@ Early development. Nothing here is usable yet.
 - Built-in client mods that usually need Vencord: message logger, hidden channels, silent typing, emoji and sticker passthrough, stream quality unlock, Spotify controls, translation and more, each toggleable
 - Block based UI: every panel is a block. Pick a preset on first launch, flip simple toggles, or rearrange everything in edit mode. Layouts are plain files and can be shared
 - Themes with hot reload, design tokens and full QML component overrides
-- Mod API in QML/JS and WASM, the built-in features use the same API
+- Mod API in QML/JS, the built-in features use the same API
 
 ## Stack
 
@@ -68,6 +68,8 @@ Everything lives in `~/.config/cord`:
 ## Mods
 
 A mod is a directory with a `main.qml` under `mods/`.
+
+**Mods are full-trust arbitrary code.** A mod runs inside the app process with the same rights as the app: it can read every message and token the UI can reach, call every backend function, read and write files in your config directory and run network requests. There is no sandbox and no permission system. Only install mods you have read or trust. The name `core` is reserved for built-in features. The `cset` helper refuses `accs.json` and `cfg.json`, and `ls`/`rdf` do not expose the data directory or `*.sec` files; these are guard rails against mistakes, not a security boundary.
 
 ```qml
 import QtQuick

@@ -372,6 +372,7 @@ fn base(cx: &Cx, id: &str, k: ChK, name: &str) -> Chan {
         last: None,
         rcp: vec![],
         icon: None,
+        enc: false,
     }
 }
 

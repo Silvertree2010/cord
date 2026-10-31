@@ -172,6 +172,7 @@ pub fn chan(a: u32, gid: Option<&str>, c: &Value, hid: bool, us: &HashMap<String
         last: s(c, "last_message_id").map(|m| rid(a, m)),
         rcp,
         icon: if k == ChK::Grp { ic("channel-icons", id, s(c, "icon")) } else { None },
+        enc: false,
     })
 }
 
