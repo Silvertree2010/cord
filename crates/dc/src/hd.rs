@@ -299,6 +299,12 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
                 let _ = tx.send(Ev::MsgDel { chan: rid(a, c), id: rid(a, i) });
             }
         }
+        "MESSAGE_REACTION_ADD" | "MESSAGE_REACTION_REMOVE" => {
+            if let (Some(c), Some(i), Some(e)) = (s(&d, "channel_id"), s(&d, "message_id"), d.get("emoji")) {
+                let me = s(&d, "user_id").map(|u| *sh.me.lock().unwrap() == u).unwrap_or(false);
+                let _ = tx.send(Ev::React { chan: rid(a, c), id: rid(a, i), e: crate::map::emo(a, e), me, add: t == "MESSAGE_REACTION_ADD" });
+            }
+        }
         "MESSAGE_DELETE_BULK" => {
             if let Some(c) = s(&d, "channel_id") {
                 for i in arr(&d, "ids") {

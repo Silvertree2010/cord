@@ -70,6 +70,10 @@ impl Dc {
         }))
     }
 
+    pub fn eng(&self) -> cord_rtc::Eng {
+        self.0.vo.eng.clone()
+    }
+
     pub fn frames(&self, usr: &Rid) -> tokio::sync::watch::Receiver<Option<Arc<cord_cap::Frame>>> {
         self.0.st.frames(&usr.raw)
     }

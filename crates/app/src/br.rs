@@ -79,6 +79,8 @@ pub mod q {
         #[qinvokable]
         fn notify(self: &Core, t: &QString, b: &QString);
         #[qinvokable]
+        fn ptt(self: &Core, on: bool);
+        #[qinvokable]
         fn media(self: &Core, cmd: &QString);
         #[qinvokable]
         fn rel(self: &Core, u: &QString, act: &QString);
@@ -512,6 +514,9 @@ impl q::Core {
         if let Ok(v) = serde_json::from_str::<Value>(&qs(v)) {
             let _ = cfg::wr(&n, &v);
         }
+        if n == "voice.json" {
+            crate::bks::vapply_all();
+        }
     }
 
     pub fn ls(&self, sub: &QString, ext: &QString) -> QString {
@@ -550,6 +555,10 @@ impl q::Core {
         let Ok(c) = qrcode::QrCode::new(qs(t).as_bytes()) else { return QString::default() };
         let svg = c.render::<qrcode::render::svg::Color>().min_dimensions(400, 400).quiet_zone(false).build();
         QString::from(&format!("data:image/svg+xml;utf8,{}", svg.replace('#', "%23")))
+    }
+
+    pub fn ptt(&self, on: bool) {
+        crate::bks::ptt(on);
     }
 
     pub fn notify(&self, t: &QString, b: &QString) {

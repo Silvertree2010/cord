@@ -11,6 +11,7 @@ pub enum Ev {
     Msg(Msg),
     MsgUpd(Msg),
     MsgDel { chan: Rid, id: Rid },
+    React { chan: Rid, id: Rid, e: Emo, me: bool, add: bool },
     Typing { chan: Rid, usr: Usr },
     Pres { usr: Rid, p: Pres },
     Rel(Rel),

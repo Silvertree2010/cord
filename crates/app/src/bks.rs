@@ -36,6 +36,7 @@ pub async fn mk(a: &Ac, sec: String) -> Option<Arc<dyn Bk>> {
     match a.svc {
         Svc::Dc => {
             let d = Arc::new(cord_dc::Dc::new(a.id, sec));
+            vapply(&d);
             if let Ok(mut g) = DC.get_or_init(Default::default).lock() {
                 g.insert(a.id, d.clone());
             }
@@ -126,5 +127,27 @@ impl Bk for MxB {
     }
     async fn set_st(&self, s: St, a: Option<String>) -> Res<()> {
         self.0.set_st(s, a).await
+    }
+}
+
+pub fn vapply(d: &cord_dc::Dc) {
+    let v = crate::cfg::rd("voice.json").unwrap_or(json!({}));
+    let e = d.eng();
+    e.ns(v["ns"].as_bool().unwrap_or(true));
+    e.ptt_mode(v["ptt"].as_bool().unwrap_or(false));
+    e.vad(v["vad"].as_f64().map(|x| x as f32).or(Some(-50.0)));
+}
+
+pub fn vapply_all() {
+    let ds: Vec<_> = DC.get_or_init(Default::default).lock().map(|g| g.values().cloned().collect()).unwrap_or_default();
+    for d in ds {
+        vapply(&d);
+    }
+}
+
+pub fn ptt(on: bool) {
+    let ds: Vec<_> = DC.get_or_init(Default::default).lock().map(|g| g.values().cloned().collect()).unwrap_or_default();
+    for d in ds {
+        d.eng().ptt(on);
     }
 }

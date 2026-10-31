@@ -3,6 +3,7 @@ use serde::Serialize;
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 pub const MCAP: usize = 400;
+pub const HCAP: usize = 3000;
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct Unr {
@@ -216,6 +217,11 @@ impl Sta {
                 o.push(Dl::MsgDel { chan: chan.to_string(), id: id.to_string(), gone });
             }
             Ev::Typing { chan, usr } => o.push(Dl::Typing { chan: chan.to_string(), usr }),
+            Ev::React { chan, id, e, me, add } => {
+                if let Some(m) = self.react(&chan, &id, e, me, add) {
+                    o.push(Dl::Msg { chan: chan.to_string(), m, new: false });
+                }
+            }
             Ev::Pres { usr, p } => {
                 self.pres.insert(usr.clone(), p.clone());
                 o.push(Dl::Pres { usr: usr.to_string(), p });
@@ -303,6 +309,40 @@ impl Sta {
                 q.push_front(m);
             }
         }
+        while q.len() > HCAP {
+            q.pop_back();
+        }
+    }
+
+    pub fn react(&mut self, chan: &Rid, id: &Rid, e: Emo, me: bool, add: bool) -> Option<Msg> {
+        let m = self.msgs.get_mut(chan)?.iter_mut().find(|x| &x.id == id)?;
+        let same = |a: &Emo| match (&a.id, &e.id) {
+            (Some(x), Some(y)) => x.raw == y.raw,
+            (None, None) => a.name == e.name,
+            _ => false,
+        };
+        match m.reacts.iter().position(|r| same(&r.emo)) {
+            Some(i) => {
+                let r = &mut m.reacts[i];
+                if add {
+                    if !(me && r.me) {
+                        r.n += 1;
+                    }
+                    r.me |= me;
+                } else {
+                    r.n = r.n.saturating_sub(1);
+                    if me {
+                        r.me = false;
+                    }
+                    if r.n == 0 {
+                        m.reacts.remove(i);
+                    }
+                }
+            }
+            None if add => m.reacts.push(React { emo: e, n: 1, me }),
+            None => {}
+        }
+        Some(m.clone())
     }
 }
 
@@ -434,5 +474,23 @@ mod tests {
         assert_eq!(&*s.chans[&rid("c")].last.as_ref().unwrap().raw, "100");
         s.apply(Ev::Chan(c(None)));
         assert_eq!(&*s.chans[&rid("c")].last.as_ref().unwrap().raw, "100");
+    }
+
+    #[test]
+    fn live_react() {
+        let mut s = Sta::default();
+        s.apply(Ev::Msg(msg("1", "200", "x")));
+        let ch = Rid::new(Svc::Dc, 1, "c");
+        let e = Emo { id: None, name: "👍".into(), url: None, anim: false };
+        let c = s.msgs.keys().next().unwrap().clone();
+        let id = s.msgs[&c][0].id.clone();
+        let _ = ch;
+        s.apply(Ev::React { chan: c.clone(), id: id.clone(), e: e.clone(), me: true, add: true });
+        s.apply(Ev::React { chan: c.clone(), id: id.clone(), e: e.clone(), me: false, add: true });
+        assert_eq!(s.msgs[&c][0].reacts[0].n, 2);
+        assert!(s.msgs[&c][0].reacts[0].me);
+        s.apply(Ev::React { chan: c.clone(), id: id.clone(), e: e.clone(), me: true, add: false });
+        s.apply(Ev::React { chan: c.clone(), id: id.clone(), e, me: false, add: false });
+        assert!(s.msgs[&c][0].reacts.is_empty());
     }
 }
