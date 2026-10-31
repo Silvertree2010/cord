@@ -1,19 +1,48 @@
 use crate::cfg;
 use std::path::{Path, PathBuf};
 
-pub fn cget(n: &str) -> serde_json::Value {
+static BAD: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, String>>> = std::sync::LazyLock::new(Default::default);
+
+pub fn cget(n: &str) -> (serde_json::Value, Option<String>) {
     match cfg::rd_in(&cfg::dir(), n) {
-        Ok(Some(v)) => v,
-        _ => serde_json::Value::Null,
+        Ok(v) => {
+            if let Ok(mut g) = BAD.lock() {
+                g.remove(n);
+            }
+            (v.unwrap_or(serde_json::Value::Null), None)
+        }
+        Err(x) => {
+            let m = x.to_string();
+            if let Ok(mut g) = BAD.lock() {
+                g.insert(n.to_string(), m.clone());
+            }
+            (serde_json::Value::Null, Some(m))
+        }
     }
+}
+
+pub fn bad(n: &str) -> String {
+    BAD.lock().ok().and_then(|g| g.get(n).cloned()).unwrap_or_default()
+}
+
+pub fn bad_all() -> Vec<(String, String)> {
+    BAD.lock().map(|g| g.iter().map(|(k, v)| (k.clone(), v.clone())).collect()).unwrap_or_default()
 }
 
 pub fn cset(n: &str, v: &serde_json::Value) -> anyhow::Result<()> {
     anyhow::ensure!(cfg::valid_name(n), "bad file name");
-    if n == "cfg.json" {
-        anyhow::ensure!(cfg::rd_in(&cfg::dir(), n).is_ok(), "cfg.json exists but is not valid JSON; fix it by hand");
+    anyhow::ensure!(n != "accs.json", "accs.json is managed by the account API");
+    anyhow::ensure!(n != "cfg.json", "cfg.json is written through the feature API only");
+    anyhow::ensure!(!n.ends_with(".sec") && !n.ends_with(".tmp"), "reserved file name");
+    if let Err(x) = cfg::rd_in(&cfg::dir(), n) {
+        anyhow::bail!("{x}; fix it by hand, not overwriting");
     }
     cfg::wr(n, v)
+}
+
+pub fn exists(p: &str) -> bool {
+    let p = PathBuf::from(p.trim_start_matches("file://"));
+    p.is_absolute() && cfg::readable(&p)
 }
 
 pub fn ls(sub: &str, ext: &str) -> Vec<String> {

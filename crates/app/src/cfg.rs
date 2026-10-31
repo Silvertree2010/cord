@@ -1,23 +1,31 @@
 use serde_json::Value;
 use std::{
     collections::HashMap,
+    hash::{Hash, Hasher},
     path::{Component, Path, PathBuf},
     sync::{Mutex, OnceLock},
-    time::{Duration, Instant},
 };
 
 pub const SUBS: &[&str] = &["mods", "themes", "blocks"];
 
-pub fn dir() -> PathBuf {
-    let d = std::env::var_os("CORD_HOME").map(PathBuf::from).unwrap_or_else(|| dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("cord"));
-    let _ = std::fs::create_dir_all(&d);
+static MADE: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
+
+fn ensure(d: PathBuf) -> PathBuf {
+    if let Ok(mut g) = MADE.lock() {
+        if !g.contains(&d) {
+            let _ = std::fs::create_dir_all(&d);
+            g.push(d.clone());
+        }
+    }
     d
 }
 
+pub fn dir() -> PathBuf {
+    ensure(std::env::var_os("CORD_HOME").map(PathBuf::from).unwrap_or_else(|| dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("cord")))
+}
+
 pub fn data() -> PathBuf {
-    let d = std::env::var_os("CORD_HOME").map(|p| PathBuf::from(p).join("data")).unwrap_or_else(|| dirs::data_dir().unwrap_or_else(|| PathBuf::from(".")).join("cord"));
-    let _ = std::fs::create_dir_all(&d);
-    d
+    ensure(std::env::var_os("CORD_HOME").map(|p| PathBuf::from(p).join("data")).unwrap_or_else(|| dirs::data_dir().unwrap_or_else(|| PathBuf::from(".")).join("cord")))
 }
 
 pub fn qml_dir() -> PathBuf {
@@ -71,56 +79,106 @@ pub fn rd_in(d: &Path, n: &str) -> anyhow::Result<Option<Value>> {
     }
 }
 
-static OWN: OnceLock<Mutex<HashMap<String, Instant>>> = OnceLock::new();
+static OWN: OnceLock<Mutex<HashMap<String, u64>>> = OnceLock::new();
+static UPD: Mutex<()> = Mutex::new(());
 
-fn own() -> &'static Mutex<HashMap<String, Instant>> {
+fn own() -> &'static Mutex<HashMap<String, u64>> {
     OWN.get_or_init(Default::default)
+}
+
+fn hash(b: &[u8]) -> u64 {
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    b.hash(&mut h);
+    h.finish()
 }
 
 pub fn is_own(p: &Path) -> bool {
     let Some(n) = p.file_name().map(|n| n.to_string_lossy().to_string()) else { return false };
-    let n = n.trim_end_matches(".tmp").to_string();
-    own().lock().ok().is_some_and(|g| g.iter().any(|(k, t)| t.elapsed() < Duration::from_millis(1500) && (k == &n || k.trim_end_matches(".json") == n)))
+    let Some(want) = own().lock().ok().and_then(|g| g.get(&n).copied()) else { return false };
+    std::fs::read(p).map(|b| hash(&b) == want).unwrap_or(false)
 }
 
 pub fn wr(n: &str, v: &Value) -> anyhow::Result<()> {
-    wr_in(&dir(), n, v)?;
+    anyhow::ensure!(valid_name(n), "bad file name");
+    let b = serde_json::to_vec_pretty(v)?;
     if let Ok(mut g) = own().lock() {
-        g.insert(n.to_string(), Instant::now());
+        g.insert(n.to_string(), hash(&b));
     }
+    let r = wr_bytes(&dir(), n, &b);
+    if r.is_err() {
+        if let Ok(mut g) = own().lock() {
+            g.remove(n);
+        }
+    }
+    r
+}
+
+pub fn update(n: &str, f: impl FnOnce(&mut Value)) -> anyhow::Result<()> {
+    let _g = UPD.lock().unwrap_or_else(|e| e.into_inner());
+    let mut v = rd_in(&dir(), n)?.unwrap_or(Value::Object(Default::default()));
+    f(&mut v);
+    wr(n, &v)
+}
+
+fn wr_bytes(d: &Path, n: &str, b: &[u8]) -> anyhow::Result<()> {
+    let p = d.join(n);
+    let t = p.with_extension("tmp");
+    std::fs::write(&t, b)?;
+    std::fs::rename(t, p)?;
     Ok(())
 }
 
+#[cfg(test)]
 pub fn wr_in(d: &Path, n: &str, v: &Value) -> anyhow::Result<()> {
     anyhow::ensure!(valid_name(n), "bad file name");
-    let p = d.join(n);
-    let t = p.with_extension("tmp");
-    std::fs::write(&t, serde_json::to_vec_pretty(v)?)?;
-    std::fs::rename(t, p)?;
-    Ok(())
+    wr_bytes(d, n, &serde_json::to_vec_pretty(v)?)
 }
 
 pub fn ls(sub: &str, ext: &str) -> Vec<PathBuf> {
     let Some(rel) = safe_rel(sub) else { return vec![] };
     let d = dir().join(&rel);
     if rel.components().count() == 1 && SUBS.contains(&rel.to_string_lossy().as_ref()) {
-        let _ = std::fs::create_dir_all(&d);
+        ensure(d.clone());
     }
-    let mut v: Vec<PathBuf> = std::fs::read_dir(&d).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| ext.is_empty() || p.extension().map(|x| x == ext).unwrap_or(false)).collect();
+    if in_data(&d) {
+        return vec![];
+    }
+    let mut v: Vec<PathBuf> = std::fs::read_dir(&d)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| ext.is_empty() || p.extension().map(|x| x == ext).unwrap_or(false))
+        .filter(|p| !is_sec(p) && !in_data(p))
+        .collect();
     v.sort();
     v
 }
 
+fn is_sec(p: &Path) -> bool {
+    p.extension().is_some_and(|x| x == "sec") || p.to_string_lossy().ends_with(".sec.tmp")
+}
+
+fn in_data(p: &Path) -> bool {
+    let Ok(d) = data().canonicalize() else { return false };
+    p.canonicalize().map(|c| c.starts_with(d)).unwrap_or(false)
+}
+
 pub fn readable(p: &Path) -> bool {
     let Ok(c) = p.canonicalize() else { return false };
+    if is_sec(&c) || in_data(&c) {
+        return false;
+    }
     let ok = |b: PathBuf| b.canonicalize().map(|b| c.starts_with(b)).unwrap_or(false);
     ok(dir()) || ok(qml_dir())
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use serde_json::json;
+
+    pub static TENV: Mutex<()> = Mutex::new(());
 
     fn tmp(n: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("cord-cfg-{n}-{}", std::process::id()));
@@ -141,6 +199,33 @@ mod tests {
         assert_eq!(safe_rel(""), Some(PathBuf::new()));
         assert!(safe_rel("/etc").is_none());
         assert!(safe_rel("a/../../b").is_none());
+    }
+
+    #[test]
+    fn own_writes_match_by_content_hash() {
+        let _l = TENV.lock().unwrap_or_else(|e| e.into_inner());
+        let d = tmp("own");
+        unsafe { std::env::set_var("CORD_HOME", &d) };
+        wr("o.json", &json!({"a": 1})).unwrap();
+        assert!(is_own(&d.join("o.json")));
+        std::fs::write(d.join("o.json"), "{\"a\":2}").unwrap();
+        assert!(!is_own(&d.join("o.json")));
+    }
+
+    #[test]
+    fn secrets_and_data_are_not_listed_or_readable() {
+        let _l = TENV.lock().unwrap_or_else(|e| e.into_inner());
+        let d = tmp("sec");
+        unsafe { std::env::set_var("CORD_HOME", &d) };
+        std::fs::create_dir_all(d.join("data")).unwrap();
+        std::fs::write(d.join("data").join("acc1.sec"), "tok").unwrap();
+        std::fs::write(d.join("x.sec"), "tok").unwrap();
+        std::fs::write(d.join("ok.txt"), "hi").unwrap();
+        assert!(!readable(&d.join("data").join("acc1.sec")));
+        assert!(!readable(&d.join("x.sec")));
+        assert!(readable(&d.join("ok.txt")));
+        assert!(ls("data", "").is_empty());
+        assert!(ls("", "").iter().all(|p| !p.to_string_lossy().ends_with(".sec")));
     }
 
     #[test]

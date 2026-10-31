@@ -1,3 +1,4 @@
+use parking_lot::Mutex;
 use crate::{Sh, map::{rid, s, usr}};
 use cord_core::*;
 use cord_rtc::{
@@ -7,7 +8,7 @@ use cord_rtc::{
 use serde_json::{Value, json};
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -44,7 +45,7 @@ pub struct Live(Arc<Mutex<In>>);
 
 impl Live {
     pub fn set(&self, on: bool) {
-        let mut i = self.0.lock().unwrap();
+        let mut i = self.0.lock();
         if i.cs.live != on {
             i.cs.live = on;
             if let Some(t) = &i.tx {
@@ -64,17 +65,17 @@ impl Vo {
     }
 
     pub fn info(&self) -> Option<(String, Option<String>, Option<String>)> {
-        let i = self.i.lock().unwrap();
+        let i = self.i.lock();
         Some((i.chan.clone()?, i.gld.clone(), i.sess.clone()))
     }
 
     pub fn set_tx(&self, tx: Tx) {
-        self.i.lock().unwrap().tx = Some(tx);
+        self.i.lock().tx = Some(tx);
     }
 
     pub fn begin(&self, chan: &Rid, gld: Option<String>) -> Res<(Option<String>, bool, bool)> {
         self.eng.start()?;
-        let mut i = self.i.lock().unwrap();
+        let mut i = self.i.lock();
         i.vc = None;
         i.chan = Some(chan.raw.to_string());
         i.gld = gld.clone();
@@ -91,7 +92,7 @@ impl Vo {
     }
 
     pub fn end(&self) -> (bool, bool) {
-        let mut i = self.i.lock().unwrap();
+        let mut i = self.i.lock();
         i.vc = None;
         i.chan = None;
         i.gld = None;
@@ -109,7 +110,7 @@ impl Vo {
     }
 
     pub fn flags(&self, mute: bool, deaf: bool) -> Option<String> {
-        let mut i = self.i.lock().unwrap();
+        let mut i = self.i.lock();
         i.mute = mute;
         i.deaf = deaf;
         self.eng.mute(mute || deaf);
@@ -123,11 +124,11 @@ impl Vo {
     }
 
     pub fn gld(&self) -> Option<String> {
-        self.i.lock().unwrap().gld.clone()
+        self.i.lock().gld.clone()
     }
 
     pub fn vol(&self, uid: &str, v: f32) {
-        let mut i = self.i.lock().unwrap();
+        let mut i = self.i.lock();
         i.vols.insert(uid.to_string(), v);
         if let Some(&s) = i.ssrc.get(uid) {
             self.eng.set_vol(s, v);
@@ -145,7 +146,7 @@ fn vs_of(sh: &Sh, d: &Value, gld: Option<&str>) -> Vs {
         usr(a, u)
     } else {
         let id = s(d, "user_id").unwrap_or("");
-        sh.us.lock().unwrap().get(id).cloned().unwrap_or(Usr { id: Some(rid(a, id)), ..Default::default() })
+        sh.us.lock().get(id).cloned().unwrap_or(Usr { id: Some(rid(a, id)), ..Default::default() })
     };
     let g = gld.or_else(|| s(d, "guild_id"));
     let b = |k: &str| d[k].as_bool().unwrap_or(false);
@@ -186,11 +187,11 @@ pub fn call(sh: &Sh, tx: &Tx, d: &Value) {
 
 pub fn vsu(sh: &Sh, tx: &Tx, d: &Value) {
     let _ = tx.send(Ev::Vs(vs_of(sh, d, None)));
-    let me = sh.me.lock().unwrap().clone();
+    let me = sh.me.lock().clone();
     if s(d, "user_id") != Some(me.as_str()) {
         return;
     }
-    let mut i = sh.vo.i.lock().unwrap();
+    let mut i = sh.vo.i.lock();
     let Some(want) = i.chan.clone() else { return };
     match s(d, "channel_id") {
         None => {
@@ -210,8 +211,8 @@ pub fn vsu(sh: &Sh, tx: &Tx, d: &Value) {
 }
 
 pub fn vsv(sh: &Sh, d: &Value) {
-    let me = sh.me.lock().unwrap().clone();
-    let mut i = sh.vo.i.lock().unwrap();
+    let me = sh.me.lock().clone();
+    let mut i = sh.vo.i.lock();
     if i.chan.is_none() {
         return;
     }
@@ -244,7 +245,7 @@ fn up(sh: &Sh, i: &mut In, me: &str) {
     let g = i.gen_;
     tokio::spawn(async move {
         while let Some(e) = vr.recv().await {
-            let mut i = st.lock().unwrap();
+            let mut i = st.lock();
             if i.gen_ != g {
                 return;
             }

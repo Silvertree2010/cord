@@ -22,7 +22,7 @@ pub fn ents(v: &Value) -> Vec<Value> {
 fn out(sh: &Sh, tx: &Tx, mut e: Ev) {
     if let Ev::Chan(c) = &mut e {
         {
-            let mut lm = sh.lm.lock().unwrap();
+            let mut lm = sh.lm.lock();
             let k = c.id.raw.to_string();
             match (lm.get(&k), &c.last) {
                 (Some(o), Some(l)) if sn(o) > sn(&l.raw) => c.last = Some(rid(sh.a, o)),
@@ -34,7 +34,7 @@ fn out(sh: &Sh, tx: &Tx, mut e: Ev) {
             }
         }
         if let Some(g) = &c.gld {
-            sh.cg.lock().unwrap().insert(c.id.raw.to_string(), g.raw.to_string());
+            sh.cg.lock().insert(c.id.raw.to_string(), g.raw.to_string());
         }
     }
     let _ = tx.send(e);
@@ -66,11 +66,11 @@ fn ldg(sh: &Sh, tx: &Tx, g: &Value, pos: i64, my: Option<Vec<String>>) {
     let gl = gld(a, g, pos);
     let gid = gl.id.raw.to_string();
     let gid_s = gid.clone();
-    let uid = sh.me.lock().unwrap().clone();
+    let uid = sh.me.lock().clone();
     let mut chs = arr(g, "channels");
     chs.extend(arr(g, "threads"));
     let evs = {
-        let mut m = sh.gs.lock().unwrap();
+        let mut m = sh.gs.lock();
         let my = my
             .or_else(|| {
                 arr(g, "members")
@@ -92,8 +92,8 @@ fn ldg(sh: &Sh, tx: &Tx, g: &Value, pos: i64, my: Option<Vec<String>>) {
 }
 
 fn refresh(sh: &Sh, tx: &Tx, gid: &str) {
-    let uid = sh.me.lock().unwrap().clone();
-    let evs = sh.gs.lock().unwrap().get(gid).map(|g| gs_evs(sh.a, g, &uid));
+    let uid = sh.me.lock().clone();
+    let evs = sh.gs.lock().get(gid).map(|g| gs_evs(sh.a, g, &uid));
     for e in evs.into_iter().flatten() {
         out(sh, tx, e);
     }
@@ -103,15 +103,15 @@ fn one(sh: &Sh, tx: &Tx, gid: Option<&str>, c: &Value, del: bool) {
     let a = sh.a;
     let id = s(c, "id").unwrap_or("").to_string();
     let Some(gid) = gid else {
-        let us = sh.us.lock().unwrap().clone();
+        let us = sh.us.lock().clone();
         if let Some(c) = chan(a, None, c, false, &us) {
             out(sh, tx, Ev::Chan(c));
         }
         return;
     };
     let hid = {
-        let mut m = sh.gs.lock().unwrap();
-        let uid = sh.me.lock().unwrap().clone();
+        let mut m = sh.gs.lock();
+        let uid = sh.me.lock().clone();
         match m.get_mut(gid) {
             Some(gs) => {
                 gs.chs.retain(|x| s(x, "id") != Some(id.as_str()));
@@ -132,7 +132,7 @@ fn one(sh: &Sh, tx: &Tx, gid: Option<&str>, c: &Value, del: bool) {
 }
 
 fn rcol(sh: &Sh, gid: &str, mb: &Value) -> Option<u32> {
-    let m = sh.gs.lock().unwrap();
+    let m = sh.gs.lock();
     let g = m.get(gid)?;
     let rs = arr(mb, "roles");
     g.g.roles
@@ -147,13 +147,13 @@ fn usr_of(sh: &Sh, d: &Value) -> Usr {
         return usr(sh.a, u);
     }
     let id = s(d, "user_id").unwrap_or("");
-    sh.us.lock().unwrap().get(id).cloned().unwrap_or(Usr { id: Some(rid(sh.a, id)), ..Default::default() })
+    sh.us.lock().get(id).cloned().unwrap_or(Usr { id: Some(rid(sh.a, id)), ..Default::default() })
 }
 
 fn ready(sh: &Sh, tx: &Tx, d: &Value) {
     let a = sh.a;
     {
-        let mut u = sh.us.lock().unwrap();
+        let mut u = sh.us.lock();
         for x in arr(d, "users") {
             if let Some(i) = s(&x, "id") {
                 u.insert(i.to_string(), usr(a, &x));
@@ -162,17 +162,17 @@ fn ready(sh: &Sh, tx: &Tx, d: &Value) {
     }
     let me = usr(a, &d["user"]);
     let uid = s(&d["user"], "id").unwrap_or("").to_string();
-    *sh.me.lock().unwrap() = uid.clone();
-    sh.us.lock().unwrap().insert(uid.clone(), me.clone());
+    *sh.me.lock() = uid.clone();
+    sh.us.lock().insert(uid.clone(), me.clone());
     {
-        let mut s_ = sh.ss.lock().unwrap();
+        let mut s_ = sh.ss.lock();
         s_.id = s(d, "session_id").map(str::to_string);
         s_.url = s(d, "resume_gateway_url").map(str::to_string);
     }
     let _ = tx.send(Ev::Ready(Acc { id: a, svc: Svc::Dc, me }));
     let _ = tx.send(Ev::Conn { acc: a, up: true });
     {
-        let mut mu = sh.mu.lock().unwrap();
+        let mut mu = sh.mu.lock();
         for e in ents(&d["user_guild_settings"]) {
             if e["muted"].as_bool() == Some(true) {
                 if let Some(g) = s(&e, "guild_id") {
@@ -201,7 +201,7 @@ fn ready(sh: &Sh, tx: &Tx, d: &Value) {
         ldg(sh, tx, g, i as i64, Some(my.unwrap_or_default()));
     }
     {
-        let us = sh.us.lock().unwrap().clone();
+        let us = sh.us.lock().clone();
         for c in arr(d, "private_channels") {
             if let Some(c) = chan(a, None, &c, false, &us) {
                 out(sh, tx, Ev::Chan(c));
@@ -231,11 +231,11 @@ fn ready(sh: &Sh, tx: &Tx, d: &Value) {
             continue;
         }
         let ment = e["mention_count"].as_u64().unwrap_or(0) as u32;
-        sh.ak.lock().unwrap().insert(id.to_string(), (la.to_string(), ment));
-        let lm = sh.lm.lock().unwrap().get(id).cloned().unwrap_or_default();
-        let g = sh.cg.lock().unwrap().get(id).cloned();
+        sh.ak.lock().insert(id.to_string(), (la.to_string(), ment));
+        let lm = sh.lm.lock().get(id).cloned().unwrap_or_default();
+        let g = sh.cg.lock().get(id).cloned();
         let mt = {
-            let mu = sh.mu.lock().unwrap();
+            let mu = sh.mu.lock();
             mu.contains(id) || g.map(|g| mu.contains(&g)).unwrap_or(false)
         };
         let n = if !mt && sn(&lm) > sn(la) { 1 } else { 0 };
@@ -274,7 +274,7 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
         }
         "MESSAGE_CREATE" => {
             if let Some(mut m) = msg(a, &d) {
-                sh.lm.lock().unwrap().insert(m.chan.raw.to_string(), m.id.raw.to_string());
+                sh.lm.lock().insert(m.chan.raw.to_string(), m.id.raw.to_string());
                 if let Some(mb) = d.get("member") {
                     if let Some(n) = s(mb, "nick") {
                         m.auth.disp = Some(n.to_string());
@@ -284,7 +284,7 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
                     }
                 }
                 if let Some(i) = &m.auth.id {
-                    sh.us.lock().unwrap().insert(i.raw.to_string(), m.auth.clone());
+                    sh.us.lock().insert(i.raw.to_string(), m.auth.clone());
                 }
                 let _ = tx.send(Ev::Msg(m));
             }
@@ -301,7 +301,7 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
         }
         "MESSAGE_REACTION_ADD" | "MESSAGE_REACTION_REMOVE" => {
             if let (Some(c), Some(i), Some(e)) = (s(&d, "channel_id"), s(&d, "message_id"), d.get("emoji")) {
-                let me = s(&d, "user_id").map(|u| *sh.me.lock().unwrap() == u).unwrap_or(false);
+                let me = s(&d, "user_id").map(|u| *sh.me.lock() == u).unwrap_or(false);
                 let _ = tx.send(Ev::React { chan: rid(a, c), id: rid(a, i), e: crate::map::emo(a, e), me, add: t == "MESSAGE_REACTION_ADD" });
             }
         }
@@ -317,7 +317,7 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
         "TYPING_START" => {
             if let Some(c) = s(&d, "channel_id") {
                 let u = usr_of(sh, &d);
-                if u.id.as_ref().map(|i| *i.raw == *sh.me.lock().unwrap()).unwrap_or(false) {
+                if u.id.as_ref().map(|i| *i.raw == *sh.me.lock()).unwrap_or(false) {
                     return;
                 }
                 let _ = tx.send(Ev::Typing { chan: rid(a, c), usr: u });
@@ -330,15 +330,15 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
         }
         "GUILD_CREATE" => {
             if d["unavailable"].as_bool() != Some(true) {
-                let p = sh.gs.lock().unwrap().len() as i64;
+                let p = sh.gs.lock().len() as i64;
                 ldg(sh, tx, &d, p, None);
             }
         }
         "GUILD_UPDATE" => {
             let id = s(&d, "id").unwrap_or("").to_string();
-            let uid = sh.me.lock().unwrap().clone();
+            let uid = sh.me.lock().clone();
             let evs = {
-                let mut m = sh.gs.lock().unwrap();
+                let mut m = sh.gs.lock();
                 m.get_mut(&id).map(|gs| {
                     let n = gld(a, &d, gs.g.pos);
                     gs.g.name = n.name;
@@ -361,14 +361,14 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
         "GUILD_DELETE" => {
             if d["unavailable"].as_bool() != Some(true) {
                 if let Some(i) = s(&d, "id") {
-                    sh.gs.lock().unwrap().remove(i);
+                    sh.gs.lock().remove(i);
                     let _ = tx.send(Ev::GldDel(rid(a, i)));
                 }
             }
         }
         "GUILD_EMOJIS_UPDATE" => {
             let Some(g) = s(&d, "guild_id") else { return };
-            let ev = sh.gs.lock().unwrap().get_mut(g).map(|gs| {
+            let ev = sh.gs.lock().get_mut(g).map(|gs| {
                 gs.g.emos = arr(&d, "emojis").iter().map(|e| emo(a, e)).collect();
                 Ev::Gld(gs.g.clone())
             });
@@ -378,10 +378,10 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
         }
         "GUILD_MEMBER_UPDATE" => {
             let (Some(g), Some(u)) = (s(&d, "guild_id"), d.get("user").and_then(|u| s(u, "id"))) else { return };
-            if u != *sh.me.lock().unwrap() {
+            if u != *sh.me.lock() {
                 return;
             }
-            if let Some(gs) = sh.gs.lock().unwrap().get_mut(g) {
+            if let Some(gs) = sh.gs.lock().get_mut(g) {
                 gs.my = arr(&d, "roles").iter().filter_map(|r| r.as_str().map(str::to_string)).collect();
             }
             refresh(sh, tx, g);
@@ -389,7 +389,7 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
         "GUILD_ROLE_CREATE" | "GUILD_ROLE_UPDATE" => {
             let Some(g) = s(&d, "guild_id") else { return };
             let r = role(a, &d["role"]);
-            if let Some(gs) = sh.gs.lock().unwrap().get_mut(g) {
+            if let Some(gs) = sh.gs.lock().get_mut(g) {
                 gs.g.roles.retain(|x| x.id != r.id);
                 gs.g.roles.push(r);
             }
@@ -397,7 +397,7 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
         }
         "GUILD_ROLE_DELETE" => {
             let (Some(g), Some(r)) = (s(&d, "guild_id"), s(&d, "role_id")) else { return };
-            if let Some(gs) = sh.gs.lock().unwrap().get_mut(g) {
+            if let Some(gs) = sh.gs.lock().get_mut(g) {
                 gs.g.roles.retain(|x| *x.id.raw != *r);
             }
             refresh(sh, tx, g);
@@ -425,7 +425,7 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
             if let Some(c) = s(&d, "channel_id") {
                 let ment = d["mention_count"].as_u64().unwrap_or(0) as u32;
                 if let Some(m) = s(&d, "message_id") {
-                    sh.ak.lock().unwrap().insert(c.to_string(), (m.to_string(), ment));
+                    sh.ak.lock().insert(c.to_string(), (m.to_string(), ment));
                 }
                 let _ = tx.send(Ev::Ack { chan: rid(a, c) });
                 let _ = tx.send(Ev::Unread { chan: rid(a, c), n: 0, ment });

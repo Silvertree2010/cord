@@ -5,6 +5,8 @@ mod media;
 mod out;
 mod snap;
 mod bks;
+mod calls;
+mod feat_ctl;
 mod frames;
 mod img;
 mod br;
@@ -32,4 +34,5 @@ fn main() {
     if let Some(a) = app.as_mut() {
         a.exec();
     }
+    rt::flush_store();
 }

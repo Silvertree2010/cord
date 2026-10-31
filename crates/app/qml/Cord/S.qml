@@ -10,6 +10,7 @@ QtObject {
 
     property Core c: Core {
         onDl: d => s.on(JSON.parse(d))
+        onFrameTick: (k, n) => s.tick(k, n)
     }
 
     property var accs: ({})
@@ -24,6 +25,10 @@ QtObject {
     property var call: ({})
     property var names: ({})
     property var typing: ({})
+    property var frameSeq: ({})
+    property int fver: 0
+    property int pver: 0
+    property string uiBad: ""
     property var cfgAccs: []
     property var services: []
     property string secretBackend: ""
@@ -59,8 +64,9 @@ QtObject {
     signal ev(var d)
     signal msg(string chan, var m, bool isNew)
     signal msgDel(string chan, string id, bool gone)
-    signal hist(string chan, int n, bool more, bool ok, var list)
-    signal loaded(string chan, var list)
+    signal hist(string chan, int n, bool more, bool ok, var list, string err, bool noop)
+    signal loaded(string chan, var list, bool synced)
+    signal frameTick(string key, double seq)
     signal mems(string gld, var list)
     signal sent(string chan, bool ok, string err)
     signal dmOpened(string usr, string chan, bool ok, string err)
@@ -82,7 +88,7 @@ QtObject {
     function acc(id) { return id ? parseInt(id.split(":")[1]) : 0 }
     function raw(id) { return id ? id.split(":").slice(2).join(":") : "" }
     function rid(sv, a, r) { return sv + ":" + a + ":" + r }
-    function ridOf(o) { return o ? (o.svc === "Mx" ? "mx" : o.svc === "St" ? "st" : "dc") + ":" + o.acc + ":" + o.raw : "" }
+    function ridOf(o) { return o ? (o.rid || (o.svc === "Mx" ? "mx" : o.svc === "St" ? "st" : "dc") + ":" + o.acc + ":" + o.raw) : "" }
     function tag(sv) { return sv === "Mx" ? "mx" : sv === "St" ? "st" : "dc" }
 
     readonly property var noCaps: ({ call: false, permalink: "", fakeEmoji: false, threads: false })
@@ -114,12 +120,13 @@ QtObject {
         featDefs = pj(c.features(), [])
         services = pj(c.services(), [])
         const u = pj(c.cget("ui.json"), null)
+        uiBad = c.bad("ui.json")
         ui = u && typeof u === "object" ? u : {}
         if (ui.lay) lay = L.norm(L.safe(L.cp(ui.lay), blkIds()))
         const cf = pj(c.cget("cfg.json"), {})
         feats = cf.feat || {}
         cfgAccs = pj(c.accs(), [])
-        setup = !u || !u.done
+        setup = !uiBad && (!u || !u.done)
         loadTheme()
         c.boot()
         bootSnap()
@@ -129,22 +136,31 @@ QtObject {
 
     function reloadUi() {
         const u = pj(c.cget("ui.json"), null)
+        uiBad = c.bad("ui.json")
         if (!u || typeof u !== "object") return
         ui = u
         if (u.lay) lay = L.norm(L.safe(L.cp(u.lay), blkIds()))
     }
 
+    function writeUi(u) {
+        if (uiBad) {
+            pushErr("ui.json", "ui.json on disk is not valid JSON, settings are not saved until it is fixed: " + uiBad, 0)
+            return false
+        }
+        c.cset("ui.json", JSON.stringify(u))
+        return true
+    }
     function saveUi() {
         const u = Object.assign({}, ui)
         u.lay = lay
         ui = u
-        c.cset("ui.json", JSON.stringify(u))
+        writeUi(u)
     }
     function setUi(k, v) {
         const u = Object.assign({}, ui)
         u[k] = v
         ui = u
-        c.cset("ui.json", JSON.stringify(u))
+        writeUi(u)
     }
     function setLay(l) {
         const n = L.norm(L.cp(l))
@@ -261,20 +277,33 @@ QtObject {
         onTriggered: {
             const n = Date.now()
             let ch = false
-            const t = Object.assign({}, s.typing)
+            const t = s.typing
             for (const k in t) {
-                const o = {}
-                for (const u in t[k]) if (t[k][u].until > n) o[u] = t[k][u]; else ch = true
-                t[k] = o
+                for (const u in t[k]) if (t[k][u].until <= n) { delete t[k][u]; ch = true }
+                if (!Object.keys(t[k]).length) delete t[k]
             }
-            if (ch) s.typing = t
+            if (ch) s.typingChanged()
         }
     }
 
+    property var rcache: ({})
+    property int rcount: 0
+    function rsig(m) {
+        let n = 0
+        for (const r of m.reacts || []) n += r.n + (r.me ? 1000 : 0)
+        return (m.ed || 0) + "|" + (m.body || "").length + "|" + n + "|" + (m.atts || []).length + "|" + (m.embs || []).length + "|" + (m.hist || []).length + "|" + (m.del ? 1 : 0) + (m.pin ? 1 : 0)
+    }
     function rm(m) {
         if (!m || m._r) return m
+        const id = ridOf(m.id)
+        const sg = rsig(m)
+        const hit = rcache[id]
+        if (hit && hit.sg === sg) return hit.v
         const r = run("render", m) || m
         r._r = true
+        if (rcount > 3000) { rcache = {}; rcount = 0 }
+        rcache[id] = { sg: sg, v: r }
+        rcount++
         return r
     }
     function rml(l) { return (l || []).map(rm) }
@@ -292,12 +321,9 @@ QtObject {
     function handleMsg(d) {
         const ck = d.chan
         const m = rm(d.m)
-        if (typing[ck]) {
-            const t = Object.assign({}, typing)
-            const o = Object.assign({}, t[ck])
-            delete o[m.auth.name]
-            t[ck] = o
-            typing = t
+        if (typing[ck] && typing[ck][m.auth.name]) {
+            delete typing[ck][m.auth.name]
+            typingChanged()
         }
         const ch = chans[ck]
         if (d.new && ch) {
@@ -348,17 +374,50 @@ QtObject {
         dver++
     }
 
+    function pushErr(ctx, msg, a) {
+        const e = errs.slice(-4)
+        e.push({ msg: msg, ctx: ctx, acc: a, at: Date.now() })
+        errs = e
+        console.warn("cord:", ctx, msg)
+    }
+
+    function tick(k, n) {
+        frameSeq[k] = n
+        fver++
+        frameTick(k, n)
+    }
+
+    property var ackQ: ({})
+    property Timer ackT: Timer {
+        interval: 400
+        onTriggered: {
+            const q = s.ackQ
+            s.ackQ = {}
+            if (Qt.application.state !== Qt.ApplicationActive) return
+            for (const k in q) if (s.unr[k]) s.c.ack(k)
+        }
+    }
+    function ackReq(cid) {
+        if (!cid) return
+        ackQ[cid] = true
+        ackT.restart()
+    }
+
     function on(d) {
         const p = d.d
         switch (d.t) {
         case "Msg": handleMsg(p); break
         case "MsgDel": msgDel(p.chan, p.id, p.gone); break
-        case "Msgs": loaded(p.chan, rml(p.list)); break
-        case "Hist": hist(p.chan, p.n, p.more, p.ok, rml(p.list)); break
-        case "Sent": sent(p.chan, p.ok, p.err); break
+        case "Msgs": loaded(p.chan, rml(p.list), !!p.synced); break
+        case "Hist": hist(p.chan, p.n, p.more, p.ok, rml(p.list), p.err || "", !!p.noop); break
+        case "Sent":
+            if (!p.ok) pushErr("send", p.err, acc(p.chan))
+            sent(p.chan, p.ok, p.err)
+            break
         case "Dm": {
             dmOpened(p.usr, p.chan, p.ok, p.err)
             if (p.ok) { pick("home"); open(p.chan) }
+            else pushErr("dm", p.err, acc(p.usr))
             break
         }
         case "Acc": {
@@ -385,31 +444,31 @@ QtObject {
         case "Chan": putChan(p); break
         case "ChanDel": delChan(p); break
         case "Chans": {
-            chans = {}
-            for (const ch of p) { chans[ch.rid] = ch; nm[raw(ch.rid)] = ch.name }
-            mark(true, false, true)
+            const o = {}
+            for (const ch of p) { o[ch.rid] = ch; nm[raw(ch.rid)] = ch.name }
+            chans = o
+            ver++
+            mark(false, false, true)
             break
         }
         case "Typing": {
-            const t = Object.assign({}, typing)
-            const o = Object.assign({}, t[p.chan] || {})
-            o[p.usr.name] = { n: p.usr.disp || p.usr.name, until: Date.now() + 9000 }
-            t[p.chan] = o
-            typing = t
+            if (!typing[p.chan]) typing[p.chan] = {}
+            typing[p.chan][p.usr.name] = { n: p.usr.disp || p.usr.name, until: Date.now() + 9000 }
+            typingChanged()
             break
         }
         case "Unr": {
-            const u = Object.assign({}, unr)
-            if (p.u.n || p.u.ment) u[p.chan] = p.u
-            else delete u[p.chan]
-            unr = u
+            if (p.u.n || p.u.ment) unr[p.chan] = p.u
+            else delete unr[p.chan]
+            unrChanged()
             uver++
-            if (p.u.n && visible(p.chan)) c.ack(p.chan)
+            if (p.u.n && visible(p.chan)) ackReq(p.chan)
             break
         }
         case "PresBatch": {
             for (const e of p) pres[e.usr] = e.p
-            pres = Object.assign({}, pres)
+            pver++
+            presChanged()
             break
         }
         case "Rels": {
@@ -433,13 +492,7 @@ QtObject {
         case "Accs": cfgAccs = pj(c.accs(), []); secretBackend = c.secretBackend(); qr = ""; qrUsr = ""; break
         case "AccGone": purgeAcc(p.acc); cfgAccs = pj(c.accs(), []); break
         case "Mpris": media = p; break
-        case "Err": {
-            const e = errs.slice(-4)
-            e.push({ msg: p.msg, ctx: p.ctx, acc: p.acc, at: Date.now() })
-            errs = e
-            console.warn("cord:", p.ctx, p.msg)
-            break
-        }
+        case "Err": pushErr(p.ctx, p.msg, p.acc); break
         case "Fs": onFs(p); break
         case "Speak": {
             const t = Object.assign({}, speaking)
@@ -481,19 +534,34 @@ QtObject {
         for (const h of hooks[k] || []) try { const r = h.fn(v); if (r !== undefined) v = r } catch (e) { console.warn(e) }
         return v
     }
-    function hook(k, fn, owner) {
+    function hook(k, fn, owner, name) {
         owner = owner || "anon"
-        const src = fn.toString()
-        const cur = hooks[k] || []
-        if (cur.some(h => h.owner === owner && h.src === src)) return
+        if (owner === "core") {
+            console.warn("cord: owner core is reserved")
+            owner = "mod-core"
+        }
+        addHook(k, fn, owner, name)
+    }
+    function hookCore(k, fn, name) { addHook(k, fn, "core", name) }
+    function addHook(k, fn, owner, name) {
+        const key = name || fn.toString()
+        const cur = (hooks[k] || []).filter(h => !(h.owner === owner && h.name === key))
         const h = Object.assign({}, hooks)
-        h[k] = cur.concat([{ fn: fn, owner: owner, src: src }])
+        h[k] = cur.concat([{ fn: fn, owner: owner, name: key }])
         hooks = h
     }
     function unhook(owner) {
         const h = {}
         for (const k in hooks) h[k] = hooks[k].filter(x => x.owner !== owner)
         hooks = h
+    }
+    function unhookMods() {
+        const h = {}
+        for (const k in hooks) h[k] = hooks[k].filter(x => x.owner === "core")
+        hooks = h
+        blks = {}
+        rcache = {}
+        rcount = 0
     }
     function regBlk(id, url, name, opt) {
         const b = Object.assign({}, blks)
@@ -505,7 +573,7 @@ QtObject {
     function blkUrl(id) {
         if (blks[id]) return blks[id].url
         const o = c.home() + "/blocks/" + id + ".qml"
-        if (c.rdf(o).length) return "file://" + o
+        if (c.exists(o)) return "file://" + o
         return Qt.resolvedUrl("blocks/" + id.charAt(0).toUpperCase() + id.slice(1) + ".qml")
     }
     readonly property var coreBlks: [
@@ -518,11 +586,8 @@ QtObject {
     }
     function scanMods() {
         const ps = pj(c.ls("mods", ""), [])
-        const nmods = ps.filter(p => c.rdf(p + "/main.qml").length).map(p => ({ id: p.split("/").pop(), url: "file://" + p + "/main.qml", on: (ui.mods || {})[p.split("/").pop()] !== false }))
-        for (const o of mods) {
-            const n = nmods.find(x => x.id === o.id)
-            if (!n || !n.on) unhook(o.id)
-        }
+        const nmods = ps.filter(p => p.split("/").pop() !== "core" && c.exists(p + "/main.qml")).map(p => ({ id: p.split("/").pop(), url: "file://" + p + "/main.qml", on: (ui.mods || {})[p.split("/").pop()] !== false }))
+        unhookMods()
         mods = nmods
     }
 
@@ -568,11 +633,17 @@ QtObject {
         open(cs.length ? cs[0].rid : "")
     }
     function open(cid, sl) {
-        if (sl === 1) { selC2 = cid; return }
+        if (sl === 1) {
+            selC2 = cid
+            setSlot(1, "reply", "")
+            setSlot(1, "editing", "")
+            if (cid && unr[cid]) ackReq(cid)
+            return
+        }
         selC = cid
         setSlot(0, "reply", "")
         setSlot(0, "editing", "")
-        if (cid && unr[cid] && Qt.application.state === Qt.ApplicationActive) c.ack(cid)
+        if (cid && unr[cid]) ackReq(cid)
     }
     function chList(g) {
         void ver
@@ -627,7 +698,7 @@ QtObject {
         return ch.name
     }
     function me(a) { return accs[a] ? accs[a].me : null }
-    function presOf(u) { return u ? pres[typeof u === "string" ? u : ridOf(u)] || null : null }
+    function presOf(u) { void pver; return u ? pres[typeof u === "string" ? u : ridOf(u)] || null : null }
     function vsIn(cid) {
         return vs.filter(v => v.chan && ridOf(v.chan) === cid)
     }
@@ -670,7 +741,7 @@ QtObject {
         return x
     }
     function u2(x, r) { return u(x, acc(r)) }
-    function frame(k) { return "image://cordv/" + k + "?" + c.frameSeq(k) }
+    function frame(k) { void fver; return "image://cordv/" + k + "?" + (frameSeq[k] !== undefined ? frameSeq[k] : c.frameSeq(k)) }
     property Timer medT: Timer {
         interval: 2000
         repeat: true

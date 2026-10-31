@@ -11,95 +11,113 @@ Rectangle {
     property var ch: S.chans[cid] || null
     property bool more: true
     property bool loading: false
+    property bool failed: false
+    property string failMsg: ""
+    property string failKind: ""
+    property int mark: 0
+    property string markId: ""
+    property int below: 0
+    property var arr: []
     implicitWidth: 600
     implicitHeight: 400
     color: Th.bg2
 
     ListModel { id: mm }
 
-    property bool failed: false
-    property bool synced: false
-
     HoverHandler { onHoveredChanged: if (hovered) S.focusSlot = r.slot }
 
-    function row(m, p) {
+    function mk(m, p) {
+        const mid = S.ridOf(m.id)
         const g = !!p && p.aname === m.auth.name && m.ts - p.ts < 420000 && !m.reply && !p.sys && !m.sys
         const d = !p || new Date(p.ts).toDateString() !== new Date(m.ts).toDateString()
-        return {
-            mid: S.ridOf(m.id), j: JSON.stringify(m), g: g && !d, d: d,
-            aname: m.auth.name, aid: m.auth.id ? m.auth.id.raw : "", ts: m.ts, sys: !!m.sys, hasReply: !!m.reply, pin: !!m.pin
-        }
+        return { m: m, mid: mid, g: g && !d, d: d, aname: m.auth.name, aid: m.auth.id ? m.auth.id.raw : "", ts: m.ts, sys: !!m.sys }
     }
-    function prow(i) {
-        if (i < 0 || i >= mm.count) return null
-        const x = mm.get(i)
-        return { aname: x.aname, ts: x.ts, sys: x.sys }
-    }
-    function fill(list) {
-        mm.clear()
+    function entry(w, sec) { return { mid: w.mid, rev: 0, sec: sec } }
+    function fill(list, stick) {
+        const rows = []
         let p = null
+        let seen = false
+        if (!r.markId && r.mark > 0 && r.mark < list.length) r.markId = S.ridOf(list[list.length - r.mark].id)
+        mm.clear()
         for (const m of list) {
-            const w = row(m, p)
-            mm.append(w)
+            const w = mk(m, p)
+            if (w.mid === r.markId) seen = true
+            rows.push(w)
+            mm.append(entry(w, seen ? "1" : "0"))
             p = w
         }
-        Qt.callLater(() => lv.positionViewAtEnd())
+        arr = rows
+        if (stick) Qt.callLater(() => lv.positionViewAtEnd())
     }
     function prepend(list) {
         if (!list.length) return
-        const top = lv.contentHeight - lv.contentY
-        const seen = {}
-        for (let i = 0; i < mm.count; i++) seen[mm.get(i).mid] = true
+        const have = {}
+        for (const x of arr) have[x.mid] = true
         const rows = []
         let p = null
         for (const m of list) {
-            if (seen[S.ridOf(m.id)]) continue
-            const w = row(m, p)
+            if (have[S.ridOf(m.id)]) continue
+            const w = mk(m, p)
             rows.push(w)
             p = w
         }
         if (!rows.length) return
-        for (let i = 0; i < rows.length; i++) mm.insert(i, rows[i])
-        if (mm.count > rows.length) {
-            const f = mm.get(rows.length)
-            const w = row(JSON.parse(f.j), rows[rows.length - 1])
-            mm.setProperty(rows.length, "g", w.g)
-            mm.setProperty(rows.length, "d", w.d)
+        const top = lv.contentHeight - lv.contentY
+        const first = arr.length ? arr[0] : null
+        if (first) {
+            const w = mk(first.m, rows[rows.length - 1])
+            first.g = w.g
+            first.d = w.d
         }
+        arr = rows.concat(arr)
+        for (let i = 0; i < rows.length; i++) mm.insert(i, entry(rows[i], "0"))
+        if (first) mm.setProperty(rows.length, "rev", mm.get(rows.length).rev + 1)
         Qt.callLater(() => lv.contentY = lv.contentHeight - top)
     }
     function idx(id) {
-        for (let i = mm.count - 1; i >= 0; i--) if (mm.get(i).mid === id) return i
+        for (let i = arr.length - 1; i >= 0; i--) if (arr[i].mid === id) return i
         return -1
     }
     function find(id) {
         const i = idx(id)
-        return i >= 0 ? JSON.parse(mm.get(i).j) : null
+        return i >= 0 ? arr[i].m : null
     }
     function pinned() {
-        const o = []
-        for (let i = 0; i < mm.count; i++) if (mm.get(i).pin) o.push(JSON.parse(mm.get(i).j))
-        return o
+        return arr.filter(x => x.m.pin).map(x => x.m)
     }
     function mineLast() {
         const me = S.me(S.acc(cid))
         if (!me || !me.id) return null
-        for (let i = mm.count - 1; i >= 0; i--) if (mm.get(i).aid === me.id.raw) return JSON.parse(mm.get(i).j)
+        for (let i = arr.length - 1; i >= 0; i--) if (arr[i].aid === me.id.raw) return arr[i].m
         return null
     }
     function more_() {
-        if (!more || loading || failed || !cid || mm.count === 0) return
+        if (!more || loading || failed || !cid || arr.length === 0) return
         loading = true
-        S.c.hist(cid, mm.get(0).mid)
+        S.c.hist(cid, arr[0].mid)
     }
-
-    onCidChanged: {
+    function retry() {
+        failed = false
+        loading = true
+        if (r.failKind === "old" && arr.length) S.c.hist(cid, arr[0].mid)
+        else S.c.hist(cid, "")
+    }
+    function reset() {
         more = true
         loading = false
         failed = false
-        synced = false
+        failMsg = ""
+        below = 0
+        markId = ""
         mm.clear()
+        arr = []
+    }
+
+    onCidChanged: {
+        reset()
         if (!cid || cid === "inbox") return
+        const u = S.unr[cid]
+        mark = u ? u.n : 0
         loading = true
         S.c.load_msgs(cid)
     }
@@ -107,53 +125,65 @@ Rectangle {
 
     Connections {
         target: S
-        function onLoaded(chan, list) {
+        function onLoaded(chan, list, synced) {
             if (chan !== r.cid) return
-            r.fill(list)
-            if (!r.synced) {
-                r.synced = true
+            r.fill(list, true)
+            if (synced) {
+                r.loading = false
+                if (list.length < 50) r.more = false
+                else if (list.length < 30) r.more_()
+            } else {
                 r.loading = true
                 S.c.hist(r.cid, "")
-            } else {
-                r.loading = false
-                if (mm.count < 30) r.more_()
             }
         }
         function onMsg(chan, m, isNew) {
             if (chan !== r.cid) return
             const id = S.ridOf(m.id)
             const i = r.idx(id)
-            const end = lv.atYEnd
             if (i >= 0) {
-                mm.setProperty(i, "j", JSON.stringify(m))
-                mm.setProperty(i, "pin", !!m.pin)
+                r.arr[i].m = m
+                mm.setProperty(i, "rev", mm.get(i).rev + 1)
                 return
             }
             if (!isNew) return
-            const w = r.row(m, r.prow(mm.count - 1))
-            mm.append(w)
+            const end = lv.atYEnd
+            const w = r.mk(m, r.arr.length ? r.arr[r.arr.length - 1] : null)
+            r.arr.push(w)
+            mm.append(r.entry(w, r.markId ? "1" : "0"))
             if (end || S.isMe(m.auth, S.acc(chan))) Qt.callLater(() => lv.positionViewAtEnd())
-            if (Qt.application.state === Qt.ApplicationActive) S.c.ack(chan)
+            else r.below++
         }
         function onMsgDel(chan, id, gone) {
             if (chan !== r.cid) return
             const i = r.idx(id)
             if (i < 0) return
-            if (gone) mm.remove(i)
-            else {
-                const m = JSON.parse(mm.get(i).j)
-                m.del = true
-                mm.setProperty(i, "j", JSON.stringify(m))
+            if (gone) {
+                r.arr.splice(i, 1)
+                mm.remove(i)
+            } else {
+                r.arr[i].m = Object.assign({}, r.arr[i].m, { del: true })
+                mm.setProperty(i, "rev", mm.get(i).rev + 1)
             }
         }
-        function onHist(chan, n, mr, ok, list) {
+        function onHist(chan, n, mr, ok, list, err, noop) {
             if (chan !== r.cid) return
+            if (noop) return
             r.loading = false
-            if (!ok) { r.failed = true; return }
+            if (!ok) {
+                r.failed = true
+                r.failMsg = err || "Could not load messages"
+                r.failKind = mr ? "old" : "head"
+                return
+            }
+            r.failed = false
             if (n < 50) r.more = false
-            if (!mr) {
-                if (list.length || mm.count === 0) S.c.load_msgs(r.cid)
-            } else r.prepend(list)
+            if (mr) r.prepend(list)
+            else if (list.length) r.fill(list, lv.atYEnd)
+        }
+        function onUpChanged() {
+            if (!r.cid || r.cid === "inbox" || r.loading || S.up.indexOf(S.acc(r.cid)) < 0) return
+            S.c.hist(r.cid, "")
         }
     }
 
@@ -208,15 +238,42 @@ Rectangle {
             clip: true
             model: mm
             cacheBuffer: 2000
+            topMargin: 12
+            bottomMargin: 4
             boundsBehavior: Flickable.StopAtBounds
             ScrollBar.vertical: Scr {}
+            section.property: "sec"
+            section.criteria: ViewSection.FullString
+            section.labelPositioning: ViewSection.InlineLabels
+            section.delegate: Item {
+                required property string section
+                width: lv.width
+                height: section === "1" ? 28 : 0
+                visible: section === "1"
+                Rectangle { anchors.verticalCenter: parent.verticalCenter; x: 16; width: parent.width - 32; height: 1; color: Th.err }
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: nl.implicitWidth + 16
+                    height: 18
+                    radius: 9
+                    color: Th.err
+                    Lbl { id: nl; anchors.centerIn: parent; text: "New messages"; color: "white"; font.pixelSize: Th.fsS; font.weight: Font.DemiBold }
+                }
+            }
             header: Item {
                 width: lv.width
-                height: r.more ? 60 : wl.implicitHeight + 40
-                BusyIndicator { anchors.centerIn: parent; running: r.loading; visible: r.more; width: 28; height: 28 }
+                height: r.failed ? 64 : r.more ? 60 : wl.implicitHeight + 40
+                BusyIndicator { anchors.centerIn: parent; running: r.loading; visible: r.more && !r.failed; width: 28; height: 28 }
+                Row {
+                    visible: r.failed
+                    anchors.centerIn: parent
+                    spacing: 12
+                    Lbl { text: r.failMsg; color: Th.err; anchors.verticalCenter: parent.verticalCenter; width: Math.min(implicitWidth, lv.width - 140); elide: Text.ElideRight }
+                    Btn { text: "Retry"; onClicked: r.retry() }
+                }
                 Column {
                     id: wl
-                    visible: !r.more
+                    visible: !r.more && !r.failed
                     x: 16
                     y: 24
                     spacing: 6
@@ -226,13 +283,12 @@ Rectangle {
             }
             footer: Item { width: 1; height: 18 }
             delegate: Msg {
-                required property string j
-                required property bool g
-                required property bool d
                 required property int index
-                m: JSON.parse(j)
-                grp: g
-                day: d
+                required property int rev
+                readonly property var x_: { void rev; return r.arr[index] || null }
+                m: x_ ? x_.m : ({})
+                grp: x_ ? x_.g : false
+                day: x_ ? x_.d : false
                 cid: r.cid
                 rep: m.reply ? r.find(S.ridOf(m.reply)) : null
                 onJump: id => { const i = r.idx(id); if (i >= 0) lv.positionViewAtIndex(i, ListView.Center) }
@@ -240,17 +296,24 @@ Rectangle {
             onContentYChanged: {
                 if ((moving || dragging) && contentY - originY < 400) r.more_()
             }
+            onAtYEndChanged: if (atYEnd) r.below = 0
+        }
+
+        Item {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 0
+            z: 5
             Rectangle {
-                visible: !lv.atYEnd && mm.count > 0
+                visible: !lv.atYEnd && r.arr.length > 0
                 anchors.bottom: parent.bottom
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottomMargin: 12
                 width: jl.implicitWidth + 24
                 height: 30
                 radius: 15
-                color: Th.bg4
-                Lbl { id: jl; anchors.centerIn: parent; text: "Jump to present"; font.pixelSize: Th.fsS }
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lv.positionViewAtEnd() }
+                color: r.below > 0 ? Th.ac : Th.bg4
+                Lbl { id: jl; anchors.centerIn: parent; text: r.below > 0 ? r.below + " new " + (r.below === 1 ? "message" : "messages") + " - Jump to present" : "Jump to present"; color: r.below > 0 ? Th.acTx : Th.tx; font.pixelSize: Th.fsS }
+                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { lv.positionViewAtEnd(); r.below = 0 } }
             }
         }
 

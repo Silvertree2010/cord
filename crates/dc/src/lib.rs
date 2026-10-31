@@ -1,3 +1,4 @@
+use parking_lot::Mutex;
 pub mod gw;
 pub mod hd;
 pub mod map;
@@ -15,7 +16,7 @@ use reqwest::Method;
 use serde_json::{Value, json};
 use std::{
     collections::{HashMap, HashSet},
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 #[derive(Default)]
@@ -85,7 +86,7 @@ impl Dc {
     }
 
     fn gsend(&self, v: Value) -> Res<()> {
-        let g = self.0.gt.lock().unwrap();
+        let g = self.0.gt.lock();
         match &*g {
             Some(t) => t.send(v.to_string()).map_err(|e| anyhow::anyhow!("{e}")),
             None => anyhow::bail!("gateway down"),
@@ -127,19 +128,19 @@ impl Bk for Dc {
     async fn start(&self, tx: Tx) -> Res<()> {
         self.0.vo.set_tx(tx.clone());
         let j = tokio::spawn(gw::run(self.0.clone(), tx));
-        if let Some(o) = self.0.jh.lock().unwrap().replace(j) {
+        if let Some(o) = self.0.jh.lock().replace(j) {
             o.abort();
         }
         Ok(())
     }
 
     async fn stop(&self) {
-        if let Some(j) = self.0.jh.lock().unwrap().take() {
+        if let Some(j) = self.0.jh.lock().take() {
             j.abort();
         }
         self.0.st.stop_all(&self.0);
         let _ = self.0.vo.end();
-        *self.0.gt.lock().unwrap() = None;
+        *self.0.gt.lock() = None;
     }
 
     async fn open_dm(&self, usr: &Rid) -> Res<Rid> {
@@ -166,7 +167,7 @@ impl Bk for Dc {
         }
         if let Some(r) = &o.reply {
             let mut mr = json!({"message_id": &*r.raw, "channel_id": &*chan.raw, "fail_if_not_exists": false});
-            if let Some(g) = self.0.cg.lock().unwrap().get(&*chan.raw) {
+            if let Some(g) = self.0.cg.lock().get(&*chan.raw) {
                 mr["guild_id"] = json!(g);
             }
             j["message_reference"] = mr;
@@ -246,8 +247,8 @@ impl Bk for Dc {
 
     async fn mems(&self, gld: &Rid) -> Res<Vec<Mem>> {
         let c = {
-            let uid = self.0.me.lock().unwrap().clone();
-            let m = self.0.gs.lock().unwrap();
+            let uid = self.0.me.lock().clone();
+            let m = self.0.gs.lock();
             let g = m.get(&*gld.raw).ok_or_else(|| anyhow::anyhow!("unknown guild"))?;
             g.chs
                 .iter()
@@ -260,7 +261,7 @@ impl Bk for Dc {
     }
 
     async fn join(&self, chan: &Rid) -> Res<()> {
-        let g = self.0.cg.lock().unwrap().get(&*chan.raw).cloned();
+        let g = self.0.cg.lock().get(&*chan.raw).cloned();
         let (g, m, d) = self.0.vo.begin(chan, g)?;
         self.gsend(vc::op4(Some(&chan.raw), g.as_deref(), m, d))
     }

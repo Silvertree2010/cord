@@ -14,8 +14,14 @@ pub struct Ac {
     pub lbl: String,
     #[serde(default)]
     pub base: String,
-    #[serde(default)]
+    #[serde(default = "yes")]
     pub on: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sec: Option<String>,
+}
+
+fn yes() -> bool {
+    true
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -51,6 +57,7 @@ pub fn load_in(d: &Path) -> anyhow::Result<Reg> {
     Ok(crate::cfg::rd_in(d, "accs.json")?.map(|v| Reg::parse(&v)).unwrap_or(Reg { next: 1, list: vec![] }))
 }
 
+#[cfg(test)]
 pub fn save_in(d: &Path, r: &Reg) -> anyhow::Result<()> {
     crate::cfg::wr_in(d, "accs.json", &r.to_json())
 }
@@ -116,35 +123,87 @@ pub fn write_secret_file(p: &Path, s: &str) -> std::io::Result<()> {
     std::fs::rename(t, p)
 }
 
+#[derive(Debug)]
+pub enum SecErr {
+    Missing,
+    Locked(String),
+}
+
+impl std::fmt::Display for SecErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SecErr::Missing => write!(f, "no stored credentials"),
+            SecErr::Locked(m) => write!(f, "keyring is locked or unavailable ({m}); unlock it and restart"),
+        }
+    }
+}
+
+impl std::error::Error for SecErr {}
+
+fn sec_path(id: u32) -> std::path::PathBuf {
+    crate::cfg::data().join(format!("acc{id}.sec"))
+}
+
 pub fn put(id: u32, s: &str) -> anyhow::Result<Be> {
     if let Ok(e) = ent(id) {
         if e.set_password(s).is_ok() && e.get_password().ok().as_deref() == Some(s) {
+            let _ = std::fs::remove_file(sec_path(id));
             note(Be::Keyring);
             return Ok(Be::Keyring);
         }
     }
-    write_secret_file(&crate::cfg::data().join(format!("acc{id}.sec")), s)?;
+    write_secret_file(&sec_path(id), s)?;
+    if let Ok(e) = ent(id) {
+        let _ = e.delete_credential();
+    }
     note(Be::File);
     Ok(Be::File)
 }
 
-pub fn get(id: u32) -> Option<String> {
-    if let Some(s) = ent(id).ok().and_then(|e| e.get_password().ok()) {
-        note(Be::Keyring);
-        return Some(s);
+fn get_keyring(id: u32) -> Result<String, SecErr> {
+    let e = ent(id).map_err(|e| SecErr::Locked(e.to_string()))?;
+    match e.get_password() {
+        Ok(s) => Ok(s),
+        Err(keyring::Error::NoEntry) => Err(SecErr::Missing),
+        Err(x) => Err(SecErr::Locked(x.to_string())),
     }
-    let r = std::fs::read_to_string(crate::cfg::data().join(format!("acc{id}.sec"))).ok();
-    if r.is_some() {
-        note(Be::File);
+}
+
+fn get_file(id: u32) -> Result<String, SecErr> {
+    std::fs::read_to_string(sec_path(id)).map_err(|_| SecErr::Missing)
+}
+
+pub fn get(id: u32, be: Option<&str>) -> Result<String, SecErr> {
+    match be {
+        Some("keyring") => {
+            let r = get_keyring(id)?;
+            note(Be::Keyring);
+            Ok(r)
+        }
+        Some("file") => {
+            let r = get_file(id)?;
+            note(Be::File);
+            Ok(r)
+        }
+        _ => match get_keyring(id) {
+            Ok(r) => {
+                note(Be::Keyring);
+                Ok(r)
+            }
+            Err(_) => {
+                let r = get_file(id)?;
+                note(Be::File);
+                Ok(r)
+            }
+        },
     }
-    r
 }
 
 pub fn drop_sec(id: u32) {
     if let Ok(e) = ent(id) {
         let _ = e.delete_credential();
     }
-    let _ = std::fs::remove_file(crate::cfg::data().join(format!("acc{id}.sec")));
+    let _ = std::fs::remove_file(sec_path(id));
 }
 
 #[cfg(test)]
@@ -158,7 +217,7 @@ mod tests {
     }
 
     fn ac(id: u32) -> Ac {
-        Ac { id, svc: Svc::Dc, lbl: String::new(), base: String::new(), on: true }
+        Ac { id, svc: Svc::Dc, lbl: String::new(), base: String::new(), on: true, sec: None }
     }
 
     #[test]
@@ -195,6 +254,15 @@ mod tests {
         let d = tmp("bad");
         std::fs::write(d.join("accs.json"), "{{{").unwrap();
         assert!(load_in(&d).is_err());
+    }
+
+    #[test]
+    fn on_defaults_true_and_sec_roundtrips() {
+        let v = json!([{"id": 1, "svc": "Dc"}, {"id": 2, "svc": "Mx", "on": false, "sec": "file"}]);
+        let r = Reg::parse(&v);
+        assert!(r.list[0].on && r.list[0].sec.is_none());
+        assert!(!r.list[1].on && r.list[1].sec.as_deref() == Some("file"));
+        assert!(serde_json::to_string(&r.list[0]).unwrap().find("sec").is_none());
     }
 
     #[test]

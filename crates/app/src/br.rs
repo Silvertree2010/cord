@@ -11,6 +11,9 @@ pub mod q {
 
         #[qsignal]
         fn dl(self: Pin<&mut Core>, d: QString);
+        #[qsignal]
+        #[cxx_name = "frameTick"]
+        fn frame_tick(self: Pin<&mut Core>, k: QString, seq: f64);
 
         #[qinvokable]
         fn boot(self: Pin<&mut Core>);
@@ -73,7 +76,11 @@ pub mod q {
         #[qinvokable]
         fn cget(self: &Core, n: &QString) -> QString;
         #[qinvokable]
+        fn bad(self: &Core, n: &QString) -> QString;
+        #[qinvokable]
         fn cset(self: &Core, n: &QString, v: &QString);
+        #[qinvokable]
+        fn exists(self: &Core, p: &QString) -> bool;
         #[qinvokable]
         fn ls(self: &Core, sub: &QString, ext: &QString) -> QString;
         #[qinvokable]
@@ -103,7 +110,7 @@ pub mod q {
 }
 
 use crate::{
-    accounts, cfg, files, media,
+    accounts, calls, cfg, feat_ctl, files, frames, media,
     out::{self, Conv, ErrV, Out},
     rt::rt,
     snap,
@@ -128,6 +135,7 @@ use std::{
 pub struct CoreR {
     h: Option<Arc<Hub>>,
     em: Option<Em>,
+    want: feat_ctl::Want,
     _w: Option<notify::RecommendedWatcher>,
 }
 
@@ -146,6 +154,14 @@ impl Em {
 
     pub fn err(&self, acc: u32, ctx: &str, m: impl ToString) {
         self.s(&Out::Err(ErrV::new(acc, ctx, m)));
+    }
+
+    fn ticks(&self, v: Vec<(String, u64)>) {
+        let _ = self.t.queue(move |mut o| {
+            for (k, n) in v {
+                o.as_mut().frame_tick(QString::from(&k), n as f64);
+            }
+        });
     }
 
     fn pres(&self, usr: String, p: Pres) {
@@ -178,31 +194,11 @@ fn js<T: serde::Serialize>(v: &T) -> QString {
     QString::from(&serde_json::to_string(v).unwrap_or_default())
 }
 
-static WANT: Mutex<Option<(St, Option<String>)>> = Mutex::new(None);
-
-fn parse_st(s: &str) -> St {
-    match s.to_lowercase().as_str() {
-        "on" | "online" => St::On,
-        "idle" => St::Idle,
-        "dnd" => St::Dnd,
-        _ => St::Off,
-    }
-}
-
-fn cap_lq(mut q: Lq) -> Lq {
-    if !feat::on("streamq") {
-        q.w = q.w.min(1280);
-        q.h = q.h.min(720);
-        q.fps = q.fps.min(30);
-        q.kbps = q.kbps.min(4000);
-    }
-    q
-}
-
 impl CoreR {
     fn hb(&self) -> Option<(Arc<Hub>, Em)> {
         Some((self.h.clone()?, self.em.clone()?))
     }
+
     fn go<F, Fut>(&self, ctx: &'static str, acc: u32, f: F)
     where
         F: FnOnce(Arc<Hub>, Em) -> Fut + Send + 'static,
@@ -217,6 +213,28 @@ impl CoreR {
             });
         }
     }
+
+    fn go_ack<T, F, Fut, A>(&self, f: F, ack: A)
+    where
+        T: Send + 'static,
+        F: FnOnce(Arc<Hub>) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = Res<T>> + Send + 'static,
+        A: FnOnce(Res<T>) -> Out + Send + 'static,
+    {
+        if let Some((h, e)) = self.hb() {
+            rt().spawn(async move {
+                let r = f(h).await;
+                e.s(&ack(r));
+            });
+        }
+    }
+}
+
+fn sent(ck: String, r: Res<()>) -> Out {
+    match r {
+        Ok(()) => Out::Sent { chan: ck, ok: true, err: String::new() },
+        Err(x) => Out::Sent { chan: ck, ok: false, err: x.to_string() },
+    }
 }
 
 impl q::Core {
@@ -226,10 +244,16 @@ impl q::Core {
         }
         let em = Em { t: Arc::new(self.as_mut().qt_thread()), pend: Default::default(), sched: Default::default() };
         let e2 = em.clone();
+        let want = self.want.clone();
+        let w2 = want.clone();
         let cell: Arc<OnceLock<Weak<Hub>>> = Default::default();
         let c2 = cell.clone();
         let store = match cord_store::Store::open(&cfg::data().join("cache.db")) {
-            Ok(s) => Some(Arc::new(s)),
+            Ok(s) => {
+                let s = Arc::new(s);
+                crate::rt::keep_store(s.clone());
+                Some(s)
+            }
             Err(x) => {
                 em.err(0, "store", format!("message cache disabled: {x}"));
                 None
@@ -243,7 +267,7 @@ impl q::Core {
                     Conv::Now(o) => {
                         if let Out::Acc(a) = &o {
                             let acc = a.id;
-                            let want = WANT.lock().ok().and_then(|g| g.clone());
+                            let want = w2.lock().ok().and_then(|g| g.clone());
                             if let (Some((s, act)), Some(h)) = (want, c2.get().and_then(|w| w.upgrade())) {
                                 rt().spawn(async move {
                                     if let Ok(b) = h.bk(acc).await {
@@ -259,31 +283,19 @@ impl q::Core {
             )
         };
         let _ = cell.set(Arc::downgrade(&h));
-        match cfg::rd_in(&cfg::dir(), "cfg.json") {
-            Ok(fc) => {
-                let fc = fc.unwrap_or(json!({}));
-                if let Some(o) = fc["feat"].as_object() {
-                    for (k, v) in o {
-                        if let Some(b) = v.as_bool() {
-                            feat::set(k, b);
-                        }
-                    }
-                }
-            }
-            Err(x) => em.err(0, "cfg", x),
+        if let Err(x) = feat_ctl::load(&want) {
+            em.err(0, "cfg", x);
         }
-        if let Some(u) = cfg::rd("ui.json") {
-            if let Some(s) = u["st"].as_str() {
-                if let Ok(mut g) = WANT.lock() {
-                    *g = Some((parse_st(s), None));
-                }
-            }
+        for (n, m) in files::bad_all() {
+            em.err(0, "parse", format!("{n}: {m}"));
         }
         if let Ok(mut s) = h.st.try_write() {
             s.cfg.log_del = feat::on("msglog");
             s.cfg.log_ed = feat::on("msglog");
             s.cfg.show_hid = feat::on("hidden");
         }
+        let te = em.clone();
+        frames::set_tick(move |v| te.ticks(v));
         let e3 = em.clone();
         let w = notify::recommended_watcher(move |r: notify::Result<notify::Event>| {
             if let Ok(ev) = r {
@@ -322,8 +334,8 @@ impl q::Core {
     pub fn load_msgs(&self, c: &QString) {
         let Some(c) = rid(c) else { return };
         self.go("load", c.acc, move |h, e| async move {
-            let list = h.msgs(&c).await;
-            e.s(&Out::Msgs { chan: c.to_string(), list });
+            let (list, synced) = h.msgs(&c).await;
+            e.s(&Out::Msgs { chan: c.to_string(), list, synced });
             Ok(())
         });
     }
@@ -346,17 +358,15 @@ impl q::Core {
     pub fn hist(&self, c: &QString, b: &QString) {
         let Some(c) = rid(c) else { return };
         let b = rid(b);
-        self.go("history", c.acc, move |h, e| async move {
-            let ck = c.to_string();
-            match h.hist(&c, b.as_ref()).await {
-                Ok(r) => e.s(&Out::Hist { chan: ck, n: r.n, more: b.is_some(), ok: true, list: r.added }),
-                Err(x) => {
-                    e.s(&Out::Hist { chan: ck, n: 0, more: b.is_some(), ok: false, list: vec![] });
-                    return Err(x);
-                }
-            }
-            Ok(())
-        });
+        let more = b.is_some();
+        let ck = c.to_string();
+        self.go_ack(
+            move |h| async move { h.hist(&c, b.as_ref()).await },
+            move |r| match r {
+                Ok(r) => Out::Hist { chan: ck, n: r.n, more, ok: true, list: r.added, err: String::new(), noop: r.noop },
+                Err(x) => Out::Hist { chan: ck, n: 0, more, ok: false, list: vec![], err: x.to_string(), noop: false },
+            },
+        );
     }
 
     pub fn send(&self, c: &QString, body: &QString, reply: &QString, files: &QString, silent: bool) {
@@ -365,34 +375,23 @@ impl q::Core {
         let bad = raw.iter().any(|s| s.contains("://") && !s.starts_with("file://"));
         let fs: Vec<PathBuf> = raw.into_iter().map(|s| PathBuf::from(s.trim_start_matches("file://"))).collect();
         let o = cord_core::Out { body: qs(body), reply: rid(reply), files: fs, silent, stks: vec![] };
-        self.go("send", c.acc, move |h, e| async move {
-            let ck = c.to_string();
-            let r = if bad { Err(anyhow::anyhow!("only local files can be attached")) } else { h.send(&c, o).await };
-            match r {
-                Ok(()) => e.s(&Out::Sent { chan: ck, ok: true, err: String::new() }),
-                Err(x) => {
-                    e.s(&Out::Sent { chan: ck, ok: false, err: x.to_string() });
-                    return Err(x);
+        let ck = c.to_string();
+        self.go_ack(
+            move |h| async move {
+                if bad {
+                    anyhow::bail!("only local files can be attached");
                 }
-            }
-            Ok(())
-        });
+                h.send(&c, o).await
+            },
+            move |r| sent(ck, r),
+        );
     }
 
     pub fn edit(&self, c: &QString, m: &QString, body: &QString) {
         let (Some(c), Some(m)) = (rid(c), rid(m)) else { return };
         let b = qs(body);
-        self.go("edit", c.acc, move |h, e| async move {
-            let ck = c.to_string();
-            match h.bk(c.acc).await?.edit(&c, &m, b).await {
-                Ok(()) => e.s(&Out::Sent { chan: ck, ok: true, err: String::new() }),
-                Err(x) => {
-                    e.s(&Out::Sent { chan: ck, ok: false, err: x.to_string() });
-                    return Err(x);
-                }
-            }
-            Ok(())
-        });
+        let ck = c.to_string();
+        self.go_ack(move |h| async move { h.bk(c.acc).await?.edit(&c, &m, b).await }, move |r| sent(ck, r));
     }
 
     pub fn del(&self, c: &QString, m: &QString) {
@@ -418,35 +417,15 @@ impl q::Core {
 
     pub fn join(&self, c: &QString) {
         let Some(c) = rid(c) else { return };
-        self.go("join", c.acc, move |h, _| async move {
-            let cur = h.st.read().await.call.chan.clone();
-            if let Some(o) = cur {
-                if o.acc != c.acc {
-                    h.bk(o.acc).await?.leave().await?;
-                }
-            }
-            h.bk(c.acc).await?.join(&c).await
-        });
+        self.go("join", c.acc, move |h, _| calls::join(h, c));
     }
 
     pub fn leave(&self) {
-        self.go("leave", 0, move |h, _| async move {
-            let cur = h.st.read().await.call.chan.clone();
-            if let Some(o) = cur {
-                h.bk(o.acc).await?.leave().await?;
-            }
-            Ok(())
-        });
+        self.go("leave", 0, move |h, _| calls::leave(h));
     }
 
     pub fn vset(&self, mute: bool, deaf: bool) {
-        self.go("voice", 0, move |h, _| async move {
-            let cur = h.st.read().await.call.chan.clone();
-            if let Some(o) = cur {
-                h.bk(o.acc).await?.vset(mute, deaf).await?;
-            }
-            Ok(())
-        });
+        self.go("voice", 0, move |h, _| calls::vset(h, mute, deaf));
     }
 
     pub fn vol(&self, u: &QString, v: f32) {
@@ -455,65 +434,23 @@ impl q::Core {
     }
 
     pub fn golive(&self, on: bool, q: &QString) {
-        let lq: Lq = cap_lq(serde_json::from_str(&qs(q)).unwrap_or_default());
-        self.go("stream", 0, move |h, _| async move {
-            let cur = h.st.read().await.call.chan.clone();
-            let Some(o) = cur else { anyhow::bail!("not in a call") };
-            h.bk(o.acc).await?.golive(on, lq).await?;
-            if let (true, Some(d), Some(me)) = (on, crate::bks::dc_of(o.acc), h.st.read().await.accs.get(&o.acc).and_then(|a| a.me.id.clone())) {
-                let mut rx = d.frames(&me);
-                tokio::spawn(async move {
-                    while rx.changed().await.is_ok() {
-                        let f = rx.borrow().clone();
-                        match f {
-                            Some(f) => crate::frames::put("me", f),
-                            None => break,
-                        }
-                    }
-                });
-            } else if !on {
-                crate::frames::drop_k("me");
-            }
-            Ok(())
-        });
+        let lq: Lq = feat_ctl::cap_lq(serde_json::from_str(&qs(q)).unwrap_or_default());
+        self.go("stream", 0, move |h, _| calls::golive(h, on, lq));
     }
 
     pub fn watch(&self, u: &QString, on: bool) {
         let Some(u) = rid(u) else { return };
-        self.go("watch", u.acc, move |h, _| async move {
-            h.bk(u.acc).await?.watch(&u, on).await?;
-            let k = u.to_string();
-            if !on {
-                crate::frames::drop_k(&k);
-                return Ok(());
-            }
-            if let Some(d) = crate::bks::dc_of(u.acc) {
-                let mut rx = d.frames(&u);
-                tokio::spawn(async move {
-                    while rx.changed().await.is_ok() {
-                        let f = rx.borrow().clone();
-                        match f {
-                            Some(f) => crate::frames::put(&k, f),
-                            None => break,
-                        }
-                    }
-                });
-            }
-            Ok(())
-        });
+        self.go("watch", u.acc, move |h, _| calls::watch(h, u, on));
     }
 
     pub fn set_st(&self, st: &QString, act: &QString) {
-        let s = parse_st(&qs(st));
+        let s = feat_ctl::parse_st(&qs(st));
         let a = Some(qs(act)).filter(|s| !s.is_empty());
-        if let Ok(mut g) = WANT.lock() {
+        if let Ok(mut g) = self.want.lock() {
             *g = Some((s, a.clone()));
         }
         self.go("status", 0, move |h, _| async move {
-            let bs: Vec<_> = h.bks.read().await.values().cloned().collect();
-            for b in bs {
-                let _ = b.set_st(s, a.clone()).await;
-            }
+            feat_ctl::set_status(h, s, a).await;
             Ok(())
         });
     }
@@ -539,17 +476,14 @@ impl q::Core {
 
     pub fn open_dm(&self, u: &QString) {
         let Some(u) = rid(u) else { return };
-        self.go("dm", u.acc, move |h, e| async move {
-            let us = u.to_string();
-            match h.bk(u.acc).await?.open_dm(&u).await {
-                Ok(c) => e.s(&Out::Dm { usr: us, chan: c.to_string(), ok: true, err: String::new() }),
-                Err(x) => {
-                    e.s(&Out::Dm { usr: us, chan: String::new(), ok: false, err: x.to_string() });
-                    return Err(x);
-                }
-            }
-            Ok(())
-        });
+        let us = u.to_string();
+        self.go_ack(
+            move |h| async move { h.bk(u.acc).await?.open_dm(&u).await },
+            move |r| match r {
+                Ok(c) => Out::Dm { usr: us, chan: c.to_string(), ok: true, err: String::new() },
+                Err(x) => Out::Dm { usr: us, chan: String::new(), ok: false, err: x.to_string() },
+            },
+        );
     }
 
     pub fn feat(&self, k: &QString, on: bool) {
@@ -558,43 +492,19 @@ impl q::Core {
             return;
         }
         feat::set(&k, on);
-        let w = (|| -> anyhow::Result<()> {
-            let mut c = cfg::rd_in(&cfg::dir(), "cfg.json")?.unwrap_or(json!({}));
-            if !c["feat"].is_object() {
-                c["feat"] = json!({});
-            }
-            c["feat"][&k] = json!(on);
-            cfg::wr("cfg.json", &c)
-        })();
-        if let (Err(x), Some(e)) = (w, &self.em) {
+        if let (Err(x), Some(e)) = (feat_ctl::persist(&k, on), &self.em) {
             e.err(0, "cfg", x);
         }
         self.go("feature", 0, move |h, e| async move {
-            let vis = {
-                let mut s = h.st.write().await;
-                match k.as_str() {
-                    "msglog" => {
-                        s.cfg.log_del = on;
-                        s.cfg.log_ed = on;
-                        None
-                    }
-                    "hidden" => {
-                        s.cfg.show_hid = on;
-                        Some(s.vis_chans())
-                    }
-                    _ => None,
-                }
-            };
-            if let Some(v) = vis {
-                e.s(&Out::Chans(v));
+            if let Some(o) = feat_ctl::apply(&h, &k, on).await {
+                e.s(&o);
             }
             Ok(())
         });
     }
 
     pub fn features(&self) -> QString {
-        let v: Vec<Value> = feat::FEATS.iter().map(|f| json!({"k": f.k, "n": f.n, "d": f.d, "on": f.on})).collect();
-        js(&v)
+        js(&feat_ctl::list())
     }
 
     pub fn services(&self) -> QString {
@@ -606,11 +516,20 @@ impl q::Core {
     }
 
     pub fn frame_seq(&self, k: &QString) -> f64 {
-        crate::frames::seq(&qs(k)) as f64
+        frames::seq(&qs(k)) as f64
     }
 
     pub fn cget(&self, n: &QString) -> QString {
-        js(&files::cget(&qs(n)))
+        let n = qs(n);
+        let (v, err) = files::cget(&n);
+        if let (Some(m), Some(e)) = (err, &self.em) {
+            e.err(0, "parse", format!("{n}: {m}"));
+        }
+        js(&v)
+    }
+
+    pub fn bad(&self, n: &QString) -> QString {
+        QString::from(&files::bad(&qs(n)))
     }
 
     pub fn cset(&self, n: &QString, v: &QString) {
@@ -622,6 +541,10 @@ impl q::Core {
         if n == "voice.json" {
             crate::bks::vapply_all();
         }
+    }
+
+    pub fn exists(&self, p: &QString) -> bool {
+        files::exists(&qs(p))
     }
 
     pub fn ls(&self, sub: &QString, ext: &QString) -> QString {

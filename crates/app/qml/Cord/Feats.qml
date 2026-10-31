@@ -3,7 +3,7 @@ import Cord
 
 QtObject {
     Component.onCompleted: {
-        S.hook("send", o => {
+        S.hookCore("send", o => {
             if (!S.f("fakenitro") || !o.body) return o
             const cid = o.cid
             if (!cid || !S.caps(cid).fakeEmoji) return o

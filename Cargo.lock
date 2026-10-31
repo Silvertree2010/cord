@@ -941,6 +941,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "cord-apptest"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cord-cap",
+ "cord-core",
+ "cord-hub",
+ "cord-store",
+ "dirs",
+ "keyring",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "cord-cap"
 version = "0.1.0"
 dependencies = [
@@ -976,6 +992,7 @@ dependencies = [
  "cord-rtc",
  "flate2",
  "futures",
+ "parking_lot 0.12.5",
  "percent-encoding",
  "rand 0.8.8",
  "reqwest 0.12.28",

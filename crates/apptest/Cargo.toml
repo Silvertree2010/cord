@@ -1,0 +1,18 @@
+[package]
+name = "cord-apptest"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+cord-core.workspace = true
+cord-hub.workspace = true
+cord-store.workspace = true
+cord-cap.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+dirs = "6"
+keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
