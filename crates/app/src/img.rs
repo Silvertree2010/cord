@@ -48,7 +48,7 @@ fn media_get(u: &str) -> Vec<u8> {
         None => (None, u.to_string()),
     };
     let m = match a {
-        Some(a) => crate::bks::mx_of(a),
+        Some(a) => crate::bks::mx_of(a).or_else(|| if a == 0 { crate::bks::mx_any() } else { None }),
         None => crate::bks::mx_any(),
     };
     let Some(m) = m else { return vec![] };

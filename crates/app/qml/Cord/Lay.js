@@ -130,7 +130,7 @@ function valid(n, ids, d) {
 }
 
 function safe(l, ids) {
-    if (valid(l, ids) && has(l, "chat")) return l
+    if (valid(l, ids)) return l
     return cp(presets.classic)
 }
 
