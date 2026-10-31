@@ -77,6 +77,55 @@ Rectangle {
         if (first) mm.setProperty(rows.length, "rev", mm.get(rows.length).rev + 1)
         Qt.callLater(() => lv.contentY = lv.contentHeight - top)
     }
+    function relink() {
+        let p = null
+        let seen = false
+        for (let i = 0; i < arr.length; i++) {
+            const w = arr[i]
+            const f = mk(w.m, p)
+            if (w.mid === r.markId) seen = true
+            const sec = seen ? "1" : "0"
+            let ch = false
+            if (w.g !== f.g || w.d !== f.d) { w.g = f.g; w.d = f.d; ch = true }
+            if (mm.get(i).sec !== sec) mm.setProperty(i, "sec", sec)
+            if (ch) mm.setProperty(i, "rev", mm.get(i).rev + 1)
+            p = w
+        }
+    }
+    function merge(list, stick) {
+        if (!arr.length) { fill(list, stick); return }
+        if (!list.length) return
+        const ids = {}
+        let lo = list[0].ts
+        for (const m of list) {
+            ids[S.ridOf(m.id)] = true
+            if (m.ts < lo) lo = m.ts
+        }
+        for (let i = arr.length - 1; i >= 0; i--) {
+            if (arr[i].ts >= lo && !ids[arr[i].mid]) {
+                arr.splice(i, 1)
+                mm.remove(i)
+            }
+        }
+        const sorted = list.slice().sort((a, b) => a.ts - b.ts)
+        for (const m of sorted) {
+            const id = S.ridOf(m.id)
+            const i = idx(id)
+            if (i >= 0) {
+                arr[i].m = m
+                arr[i].ts = m.ts
+                mm.setProperty(i, "rev", mm.get(i).rev + 1)
+                continue
+            }
+            let j = arr.length
+            while (j > 0 && arr[j - 1].ts > m.ts) j--
+            const w = mk(m, j > 0 ? arr[j - 1] : null)
+            arr.splice(j, 0, w)
+            mm.insert(j, entry(w, "0"))
+        }
+        relink()
+        if (stick) Qt.callLater(() => lv.positionViewAtEnd())
+    }
     function idx(id) {
         for (let i = arr.length - 1; i >= 0; i--) if (arr[i].mid === id) return i
         return -1
@@ -91,7 +140,7 @@ Rectangle {
     function mineLast() {
         const me = S.me(S.acc(cid))
         if (!me || !me.id) return null
-        for (let i = arr.length - 1; i >= 0; i--) if (arr[i].aid === me.id.raw) return arr[i].m
+        for (let i = arr.length - 1; i >= 0; i--) if (arr[i].aid === me.id.raw && !arr[i].m.del) return arr[i].m
         return null
     }
     function more_() {
@@ -134,7 +183,7 @@ Rectangle {
             if (synced) {
                 r.loading = false
                 if (list.length < 50) r.more = false
-                else if (list.length < 30) r.more_()
+                else Qt.callLater(() => { if (lv.contentHeight < lv.height) r.more_() })
             } else {
                 r.loading = true
                 S.c.hist(r.cid, "")
@@ -182,7 +231,12 @@ Rectangle {
             r.failed = false
             if (n < 50) r.more = false
             if (mr) r.prepend(list)
-            else if (list.length) r.fill(list, lv.nearEnd)
+            else if (list.length) r.merge(list, lv.nearEnd)
+        }
+        function onResync() {
+            if (!r.cid || r.cid === "inbox") return
+            r.loading = true
+            S.c.load_msgs(r.cid)
         }
         function onUpChanged() {
             if (!r.cid || r.cid === "inbox" || r.loading || S.up.indexOf(S.acc(r.cid)) < 0) return

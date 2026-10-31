@@ -47,6 +47,9 @@ pub trait Bk: Send + Sync {
         anyhow::bail!("direct messages unsupported on this network")
     }
     async fn stop(&self) {}
+    fn demo(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

@@ -21,7 +21,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use parking_lot::Mutex;
+use std::sync::Arc;
 use std::time::Duration;
 
 pub use matrix_sdk;
@@ -197,7 +198,7 @@ impl I {
         let gs: HashSet<String> = g.iter().map(|x| x.id.raw.to_string()).collect();
         let cs: HashSet<String> = c.iter().map(|x| x.id.raw.to_string()).collect();
         let (og, oc) = {
-            let mut sh = self.sh.lock().unwrap();
+            let mut sh = self.sh.lock();
             (std::mem::replace(&mut sh.glds, gs.clone()), std::mem::replace(&mut sh.chans, cs.clone()))
         };
         for x in og.difference(&gs) {
@@ -223,11 +224,11 @@ impl I {
     }
 
     fn cached(&self, id: &str) -> Option<Msg> {
-        self.sh.lock().unwrap().msgs.get(id).cloned()
+        self.sh.lock().msgs.get(id).cloned()
     }
 
     fn store(&self, m: Msg) {
-        self.sh.lock().unwrap().put(m);
+        self.sh.lock().put(m);
     }
 
     async fn event_item(&self, room: &Room, ev: &Value) -> Item {
@@ -254,7 +255,7 @@ impl I {
 
     fn note_react(&self, ev: &str, target: &str, key: &str, who: &str) {
         let me = self.cx().me;
-        let mut sh = self.sh.lock().unwrap();
+        let mut sh = self.sh.lock();
         sh.rx.insert(ev.to_string(), (target.to_string(), key.to_string(), who.to_string()));
         if who == me {
             sh.mine.insert((target.to_string(), key.to_string()), ev.to_string());
@@ -281,7 +282,7 @@ impl I {
                 }
             }
             Item::React { ev: rev, target, key, who } => {
-                if self.sh.lock().unwrap().rx.contains_key(&rev) {
+                if self.sh.lock().rx.contains_key(&rev) {
                     return;
                 }
                 self.note_react(&rev, &target, &key, &who);
@@ -292,16 +293,16 @@ impl I {
                 }
             }
             Item::Del(t) => {
-                let rx = self.sh.lock().unwrap().rx.remove(&t);
+                let rx = self.sh.lock().rx.remove(&t);
                 if let Some((target, key, who)) = rx {
-                    self.sh.lock().unwrap().mine.remove(&(target.clone(), key.clone()));
+                    self.sh.lock().mine.remove(&(target.clone(), key.clone()));
                     if let Some(mut m) = self.cached(&target) {
                         map::rm_react(&mut m, &key, who == cx.me);
                         self.store(m.clone());
                         let _ = tx.send(Ev::MsgUpd(m));
                     }
                 } else {
-                    let mut sh = self.sh.lock().unwrap();
+                    let mut sh = self.sh.lock();
                     sh.msgs.remove(&t);
                     drop(sh);
                     let _ = tx.send(Ev::MsgDel { chan: cx.rid(&rid), id: cx.rid(&t) });
@@ -396,7 +397,7 @@ impl I {
                     if first {
                         let _ = tx.send(Ev::Conn { acc: self.acc, up: true });
                         let me = self.me().await;
-                        let _ = tx.send(Ev::Ready(Acc { id: self.acc, svc: Svc::Mx, me }));
+                        let _ = tx.send(Ev::Ready(Acc { id: self.acc, svc: Svc::Mx, me, demo: false }));
                     }
                     self.process(r, first, &tx).await;
                     first = false;
@@ -527,7 +528,7 @@ impl I {
             self.note_react(r.response.event_id.as_str(), msg.raw.as_ref(), &key, &self.cx().me);
             return Ok(());
         }
-        let ev = self.sh.lock().unwrap().mine.get(&(msg.raw.to_string(), key.clone())).cloned();
+        let ev = self.sh.lock().mine.get(&(msg.raw.to_string(), key.clone())).cloned();
         let ev = ev.ok_or_else(|| anyhow!("own reaction not known"))?;
         room.redact(&EventId::parse(&ev)?, None, None).await?;
         Ok(())
@@ -545,13 +546,13 @@ impl Bk for Mx {
     async fn start(&self, tx: Tx) -> Res<()> {
         let i = self.i.clone();
         let j = tokio::spawn(async move { i.run(tx).await });
-        if let Some(o) = self.i.jh.lock().unwrap().replace(j) {
+        if let Some(o) = self.i.jh.lock().replace(j) {
             o.abort();
         }
         Ok(())
     }
     async fn stop(&self) {
-        if let Some(j) = self.i.jh.lock().unwrap().take() {
+        if let Some(j) = self.i.jh.lock().take() {
             j.abort();
         }
     }

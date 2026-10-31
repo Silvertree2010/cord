@@ -5,7 +5,7 @@ use cord_dc::Dc;
 async fn main() {
     let t = std::env::var("CORD_DC_TOKEN").expect("CORD_DC_TOKEN");
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-    let d = Dc::new(1, t);
+    let d = Dc::new(1, t).unwrap();
     d.start(tx).await.unwrap();
     let (mut g, mut c, mut h) = (0, 0, 0);
     while let Some(e) = rx.recv().await {

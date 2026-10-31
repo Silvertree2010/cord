@@ -58,6 +58,11 @@ pub mod q {
         #[qinvokable]
         fn dc_qr(self: &Core);
         #[qinvokable]
+        fn qr_cancel(self: &Core);
+        #[qinvokable]
+        #[cxx_name = "secretOf"]
+        fn secret_of(self: &Core, a: i32) -> QString;
+        #[qinvokable]
         fn rm_acc(self: &Core, id: i32);
         #[qinvokable]
         fn open_dm(self: &Core, u: &QString);
@@ -122,7 +127,6 @@ use cxx_qt::{CxxQtType, Threading};
 use cxx_qt_lib::QString;
 use serde_json::{Value, json};
 use std::{
-    collections::HashMap,
     path::PathBuf,
     str::FromStr,
     sync::{
@@ -139,16 +143,83 @@ pub struct CoreR {
     _w: Option<notify::RecommendedWatcher>,
 }
 
+enum It {
+    J(String),
+    P(u64, u64, Vec<(String, Pres)>),
+}
+
 #[derive(Clone)]
 pub struct Em {
     t: Arc<cxx_qt::CxxQtThread<q::Core>>,
-    pend: Arc<Mutex<HashMap<String, Pres>>>,
+    buf: Arc<Mutex<Vec<It>>>,
     sched: Arc<AtomicBool>,
+}
+
+pub const TICK_MS: u64 = 16;
+
+fn stamp(seq: u64, from: Option<u64>, js: &str) -> String {
+    if !js.starts_with('{') || js.len() < 3 {
+        return js.to_string();
+    }
+    match from {
+        Some(f) => format!("{{\"seq\":{seq},\"from\":{f},{}", &js[1..]),
+        None => format!("{{\"seq\":{seq},{}", &js[1..]),
+    }
 }
 
 impl Em {
     pub fn s(&self, v: &Out) {
-        let s = serde_json::to_string(v).unwrap_or_default();
+        self.sq(0, v);
+    }
+
+    pub fn sq(&self, seq: u64, v: &Out) {
+        let js = serde_json::to_string(v).unwrap_or_default();
+        self.push(It::J(stamp(seq, None, &js)));
+    }
+
+    fn push(&self, it: It) {
+        {
+            let mut g = self.buf.lock().unwrap_or_else(|e| e.into_inner());
+            match (g.last_mut(), it) {
+                (Some(It::P(_, to, v)), It::P(f, t, m)) if *to + 1 == f => {
+                    *to = t;
+                    for (u, p) in m {
+                        match v.iter_mut().find(|x| x.0 == u) {
+                            Some(x) => x.1 = p,
+                            None => v.push((u, p)),
+                        }
+                    }
+                }
+                (_, it) => g.push(it),
+            }
+        }
+        if !self.sched.swap(true, Ordering::SeqCst) {
+            let e = self.clone();
+            rt().spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(TICK_MS)).await;
+                e.sched.store(false, Ordering::SeqCst);
+                e.flush();
+            });
+        }
+    }
+
+    fn flush(&self) {
+        let items: Vec<It> = std::mem::take(&mut *self.buf.lock().unwrap_or_else(|e| e.into_inner()));
+        if items.is_empty() {
+            return;
+        }
+        let parts: Vec<String> = items
+            .into_iter()
+            .filter_map(|it| match it {
+                It::J(s) => Some(s),
+                It::P(f, t, m) => {
+                    let o = out::pres_flush(m)?;
+                    let js = serde_json::to_string(&o).unwrap_or_default();
+                    Some(stamp(t, Some(f), &js))
+                }
+            })
+            .collect();
+        let s = format!("[{}]", parts.join(","));
         let _ = self.t.queue(move |o| o.dl(QString::from(&s)));
     }
 
@@ -164,21 +235,8 @@ impl Em {
         });
     }
 
-    fn pres(&self, usr: String, p: Pres) {
-        if let Ok(mut g) = self.pend.lock() {
-            g.insert(usr, p);
-        }
-        if !self.sched.swap(true, Ordering::SeqCst) {
-            let e = self.clone();
-            rt().spawn(async move {
-                tokio::time::sleep(std::time::Duration::from_millis(120)).await;
-                e.sched.store(false, Ordering::SeqCst);
-                let m: Vec<(String, Pres)> = e.pend.lock().map(|mut g| g.drain().collect()).unwrap_or_default();
-                if let Some(o) = out::pres_flush(m) {
-                    e.s(&o);
-                }
-            });
-        }
+    fn pres(&self, seq: u64, usr: String, p: Pres) {
+        self.push(It::P(seq, seq, vec![(usr, p)]));
     }
 }
 
@@ -242,7 +300,7 @@ impl q::Core {
         if self.h.is_some() {
             return;
         }
-        let em = Em { t: Arc::new(self.as_mut().qt_thread()), pend: Default::default(), sched: Default::default() };
+        let em = Em { t: Arc::new(self.as_mut().qt_thread()), buf: Default::default(), sched: Default::default() };
         let e2 = em.clone();
         let want = self.want.clone();
         let w2 = want.clone();
@@ -259,11 +317,15 @@ impl q::Core {
                 None
             }
         };
+        if let Err(x) = feat_ctl::load(&want) {
+            em.err(0, "cfg", x);
+        }
+        let hcfg = cord_hub::Cfg { log_del: feat::on("msglog"), log_ed: feat::on("msglog"), show_hid: feat::on("hidden") };
         let h = {
             let _g = rt().enter();
-            Hub::new(
-                Arc::new(move |d| match out::conv(d) {
-                    Conv::Pres(u, p) => e2.pres(u, p),
+            Hub::with_cfg(
+                Arc::new(move |d: cord_hub::Sd| match out::conv(d.d) {
+                    Conv::Pres(u, p) => e2.pres(d.seq, u, p),
                     Conv::Now(o) => {
                         if let Out::Acc(a) = &o {
                             let acc = a.id;
@@ -276,23 +338,16 @@ impl q::Core {
                                 });
                             }
                         }
-                        e2.s(&o)
+                        e2.sq(d.seq, &o)
                     }
                 }),
                 store,
+                hcfg,
             )
         };
         let _ = cell.set(Arc::downgrade(&h));
-        if let Err(x) = feat_ctl::load(&want) {
-            em.err(0, "cfg", x);
-        }
         for (n, m) in files::bad_all() {
             em.err(0, "parse", format!("{n}: {m}"));
-        }
-        if let Ok(mut s) = h.st.try_write() {
-            s.cfg.log_del = feat::on("msglog");
-            s.cfg.log_ed = feat::on("msglog");
-            s.cfg.show_hid = feat::on("hidden");
         }
         let te = em.clone();
         frames::set_tick(move |v| te.ticks(v));
@@ -328,7 +383,9 @@ impl q::Core {
             Ok(g) => g,
             Err(_) => h.st.blocking_read(),
         };
-        js(&snap::boot(&s))
+        let mut v = snap::boot(&s);
+        v["seq"] = json!(h.seq());
+        js(&v)
     }
 
     pub fn load_msgs(&self, c: &QString) {
@@ -466,7 +523,13 @@ impl q::Core {
     }
 
     pub fn dc_qr(&self) {
-        self.go("login", 0, move |h, e| accounts::qr(h, e));
+        if let Some((h, e)) = self.hb() {
+            accounts::qr(h, e);
+        }
+    }
+
+    pub fn qr_cancel(&self) {
+        accounts::qr_cancel();
     }
 
     pub fn rm_acc(&self, id: i32) {
@@ -509,6 +572,10 @@ impl q::Core {
 
     pub fn services(&self) -> QString {
         js(&svc_list())
+    }
+
+    pub fn secret_of(&self, a: i32) -> QString {
+        QString::from(crate::acc::secret_of(a as u32).as_str())
     }
 
     pub fn secret_backend(&self) -> QString {

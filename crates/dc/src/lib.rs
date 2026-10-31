@@ -53,10 +53,10 @@ pub struct Sh {
 pub struct Dc(Arc<Sh>);
 
 impl Dc {
-    pub fn new(acc: u32, tok: String) -> Dc {
-        Dc(Arc::new(Sh {
+    pub fn new(acc: u32, tok: String) -> Res<Dc> {
+        Ok(Dc(Arc::new(Sh {
             a: acc,
-            rest: rest::Rest::new(tok.clone()),
+            rest: rest::Rest::new(tok.clone())?,
             tok,
             me: Default::default(),
             gs: Default::default(),
@@ -70,7 +70,7 @@ impl Dc {
             vo: Default::default(),
             st: Default::default(),
             jh: Default::default(),
-        }))
+        })))
     }
 
     pub fn eng(&self) -> cord_rtc::Eng {

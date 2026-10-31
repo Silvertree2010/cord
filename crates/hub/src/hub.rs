@@ -3,11 +3,19 @@ use cord_core::*;
 use cord_store::{Log, Row, Store};
 use std::{
     collections::{HashMap, HashSet},
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 use tokio::sync::{RwLock, mpsc};
 
-pub type Sink = Arc<dyn Fn(Dl) + Send + Sync>;
+pub struct Sd {
+    pub seq: u64,
+    pub d: Dl,
+}
+
+pub type Sink = Arc<dyn Fn(Sd) + Send + Sync>;
 
 pub const WIN: usize = 50;
 
@@ -18,6 +26,7 @@ pub struct Hub {
     gone: Mutex<HashSet<u32>>,
     locks: Mutex<HashMap<Rid, Arc<tokio::sync::Mutex<()>>>>,
     acked: Mutex<HashMap<Rid, Rid>>,
+    seq: AtomicU64,
     tx: mpsc::UnboundedSender<Ev>,
 }
 
@@ -43,6 +52,9 @@ fn now() -> i64 {
 }
 
 pub fn cache_ok(st: &Sta, chan: &Rid) -> bool {
+    if st.accs.get(&chan.acc).is_some_and(|a| a.demo) || st.demo.contains(&chan.acc) {
+        return false;
+    }
     match st.chans.get(chan) {
         Some(c) => !c.enc,
         None => chan.svc != Svc::Mx,
@@ -69,14 +81,23 @@ fn ev_acc(e: &Ev) -> Option<u32> {
 
 impl Hub {
     pub fn new(sink: Sink, store: Option<Arc<Store>>) -> Arc<Self> {
+        Self::with_cfg(sink, store, Cfg::default())
+    }
+
+    pub fn seq(&self) -> u64 {
+        self.seq.load(Ordering::SeqCst)
+    }
+
+    pub fn with_cfg(sink: Sink, store: Option<Arc<Store>>, cfg: Cfg) -> Arc<Self> {
         let (tx, mut rx) = mpsc::unbounded_channel::<Ev>();
         let h = Arc::new(Self {
             bks: RwLock::new(HashMap::new()),
-            st: RwLock::new(Sta::default()),
+            st: RwLock::new(Sta { cfg, ..Default::default() }),
             store,
             gone: Default::default(),
             locks: Default::default(),
             acked: Default::default(),
+            seq: AtomicU64::new(0),
             tx,
         });
         let w = Arc::downgrade(&h);
@@ -105,23 +126,26 @@ impl Hub {
                     }
                     e = Ev::Mems(v);
                 }
-                let mut st = h.st.write().await;
-                {
-                    let bks = h.bks.read().await;
-                    let live = |a: u32| a == 0 || bks.contains_key(&a);
-                    if let Ev::Mems(v) = &mut e {
-                        v.retain(|m| live(m.gld.acc));
-                        if v.is_empty() {
-                            continue;
-                        }
-                    } else if let Some(a) = ev_acc(&e) {
-                        if !live(a) {
-                            continue;
+                let out: Vec<Sd> = {
+                    let mut st = h.st.write().await;
+                    {
+                        let bks = h.bks.read().await;
+                        let live = |a: u32| a == 0 || bks.contains_key(&a);
+                        if let Ev::Mems(v) = &mut e {
+                            v.retain(|m| live(m.gld.acc));
+                            if v.is_empty() {
+                                continue;
+                            }
+                        } else if let Some(a) = ev_acc(&e) {
+                            if !live(a) {
+                                continue;
+                            }
                         }
                     }
-                }
-                let ds = h.apply(&mut st, e);
-                for d in ds {
+                    let ds = h.apply(&mut st, e);
+                    ds.into_iter().map(|d| Sd { seq: h.seq.fetch_add(1, Ordering::SeqCst) + 1, d }).collect()
+                };
+                for d in out {
                     sink(d);
                 }
             }
@@ -197,6 +221,14 @@ impl Hub {
         if let Ok(mut g) = self.gone.lock() {
             g.remove(&a);
         }
+        if b.demo() {
+            self.st.write().await.demo.insert(a);
+            if let Some(s) = &self.store {
+                for sv in [Svc::Dc, Svc::Mx, Svc::St] {
+                    s.purge_prefix(&format!("{}:{}:", sv.tag(), a));
+                }
+            }
+        }
         self.bks.write().await.insert(a, b.clone());
         if let Err(x) = b.start(self.tx.clone()).await {
             self.remove(a).await;
@@ -244,24 +276,33 @@ impl Hub {
             }
         }
         let ck = chan.to_string();
-        let mut v: Vec<Msg> = vec![];
-        for j in s.last(&ck, WIN as u32) {
-            match serde_json::from_str::<Msg>(&j) {
-                Ok(m) => v.push(m),
-                Err(e) => tracing::warn!("cache row in {ck} unreadable: {e}"),
-            }
-        }
-        if v.is_empty() {
-            return;
-        }
-        for (id, kind, body, _) in s.logs_chan(&ck) {
-            if let Some(m) = v.iter_mut().find(|m| m.id.to_string() == id) {
-                match kind.as_str() {
-                    "edit" if !m.hist.contains(&body) => m.hist.push(body),
-                    "del" => m.del = true,
-                    _ => {}
+        let s = s.clone();
+        let v = tokio::task::spawn_blocking(move || {
+            let mut v: Vec<Msg> = vec![];
+            for j in s.last(&ck, WIN as u32) {
+                match serde_json::from_str::<Msg>(&j) {
+                    Ok(m) => v.push(m),
+                    Err(e) => tracing::warn!("cache row in {ck} unreadable: {e}"),
                 }
             }
+            if v.is_empty() {
+                return v;
+            }
+            for (id, kind, body, _) in s.logs_chan(&ck) {
+                if let Some(m) = v.iter_mut().find(|m| m.id.to_string() == id) {
+                    match kind.as_str() {
+                        "edit" if !m.hist.contains(&body) => m.hist.push(body),
+                        "del" => m.del = true,
+                        _ => {}
+                    }
+                }
+            }
+            v
+        })
+        .await
+        .unwrap_or_default();
+        if v.is_empty() {
+            return;
         }
         let mut st = self.st.write().await;
         if st.msgs.get(chan).is_none_or(|q| q.is_empty()) {
@@ -347,23 +388,28 @@ impl Hub {
     pub async fn ack(&self, chan: &Rid) -> Res<()> {
         let (last, unread) = {
             let st = self.st.read().await;
-            (st.chans.get(chan).and_then(|c| c.last.clone()), st.unr.contains_key(chan))
+            (st.newest(chan), st.unr.contains_key(chan))
         };
         if !unread {
             return Ok(());
         }
-        let _ = self.tx.send(Ev::Ack { chan: chan.clone() });
+        let local = || {
+            let _ = self.tx.send(Ev::Ack { chan: chan.clone() });
+        };
         if feat::on("noread") {
+            local();
             return Ok(());
         }
         let Some(m) = last else { return Ok(()) };
         if self.acked.lock().is_ok_and(|g| g.get(chan) == Some(&m)) {
+            local();
             return Ok(());
         }
         self.bk(chan.acc).await?.ack(chan, &m).await?;
         if let Ok(mut g) = self.acked.lock() {
             g.insert(chan.clone(), m);
         }
+        local();
         Ok(())
     }
 }

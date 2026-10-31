@@ -120,11 +120,48 @@ pub fn update(n: &str, f: impl FnOnce(&mut Value)) -> anyhow::Result<()> {
     wr(n, &v)
 }
 
+static TMPN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+pub fn tmp_for(p: &Path, tail: &str) -> PathBuf {
+    let n = p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    p.with_file_name(format!(".{n}.{}.{}.{tail}", std::process::id(), TMPN.fetch_add(1, std::sync::atomic::Ordering::Relaxed)))
+}
+
+pub fn sync_dir(d: &Path) {
+    if let Ok(f) = std::fs::File::open(d) {
+        let _ = f.sync_all();
+    }
+}
+
+pub fn atomic_write(p: &Path, b: &[u8], tail: &str, secret: bool) -> std::io::Result<()> {
+    use std::io::Write;
+    let t = tmp_for(p, tail);
+    let mut o = std::fs::OpenOptions::new();
+    o.write(true).create_new(true);
+    #[cfg(unix)]
+    if secret {
+        use std::os::unix::fs::OpenOptionsExt;
+        o.mode(0o600);
+    }
+    let _ = secret;
+    let r = (|| {
+        let mut f = o.open(&t)?;
+        f.write_all(b)?;
+        f.sync_all()?;
+        std::fs::rename(&t, p)?;
+        if let Some(d) = p.parent() {
+            sync_dir(d);
+        }
+        Ok(())
+    })();
+    if r.is_err() {
+        let _ = std::fs::remove_file(&t);
+    }
+    r
+}
+
 fn wr_bytes(d: &Path, n: &str, b: &[u8]) -> anyhow::Result<()> {
-    let p = d.join(n);
-    let t = p.with_extension("tmp");
-    std::fs::write(&t, b)?;
-    std::fs::rename(t, p)?;
+    atomic_write(&d.join(n), b, "tmp", false)?;
     Ok(())
 }
 

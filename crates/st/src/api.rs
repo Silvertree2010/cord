@@ -83,12 +83,12 @@ impl I {
 
     pub async fn cx(&self) -> Result<Cx> {
         let c = self.cfg().await?;
-        let me = self.c.lock().unwrap().me.clone();
+        let me = self.c.lock().me.clone();
         Ok(Cx { acc: self.acc, me, api: c.api.clone(), cdn: c.cdn.clone(), prx: c.prx.clone() })
     }
 
     pub fn view<R>(&self, f: impl FnOnce(&crate::Cache, &Lk) -> R) -> R {
-        let c = self.c.lock().unwrap();
+        let c = self.c.lock();
         let uf = |id: &str| c.user(id);
         let ef = |id: &str| c.emoji(id);
         let lk = Lk { user: &uf, emoji: &ef };
@@ -127,18 +127,18 @@ impl I {
     }
 
     pub async fn fetch_user(&self, id: &str) -> Option<w::User> {
-        if let Some(u) = self.c.lock().unwrap().user(id) {
+        if let Some(u) = self.c.lock().user(id) {
             return Some(u);
         }
         let v = self.req(Method::GET, &format!("/users/{id}"), None, &[]).await.ok()?;
         let u = serde_json::from_value::<w::User>(v.clone()).ok()?;
-        self.c.lock().unwrap().users.insert(id.to_string(), v);
+        self.c.lock().users.insert(id.to_string(), v);
         Some(u)
     }
 
     pub async fn ensure(&self, ids: Vec<String>) {
         let miss: Vec<String> = {
-            let c = self.c.lock().unwrap();
+            let c = self.c.lock();
             let mut m: Vec<String> = ids.into_iter().filter(|i| !c.users.contains_key(i) && i != NIL).collect();
             m.sort();
             m.dedup();
@@ -148,7 +148,7 @@ impl I {
     }
 
     pub fn absorb(&self, m: &w::Message) {
-        let mut c = self.c.lock().unwrap();
+        let mut c = self.c.lock();
         if let Some(u) = &m.user {
             if !u.id.is_empty() && !c.users.contains_key(&u.id) {
                 let mut v = json!({"_id": u.id, "username": u.username, "display_name": u.display_name, "bot": u.bot});
@@ -171,7 +171,6 @@ impl I {
         let u = self
             .c
             .lock()
-            .unwrap()
             .user(&m.author)
             .or_else(|| m.user.clone())
             .unwrap_or_else(|| w::User {
@@ -193,7 +192,7 @@ impl I {
             w::Bulk::Plain(m) => m,
             w::Bulk::Full { messages, users, members } => {
                 {
-                    let mut c = self.c.lock().unwrap();
+                    let mut c = self.c.lock();
                     for u in users {
                         if let Some(id) = u.get("_id").and_then(|i| i.as_str()) {
                             c.users.entry(id.to_string()).or_insert(u.clone());
@@ -314,7 +313,7 @@ impl I {
         let users = v.get("users").and_then(|u| u.as_array()).cloned().unwrap_or_default();
         let members = v.get("members").and_then(|u| u.as_array()).cloned().unwrap_or_default();
         {
-            let mut c = self.c.lock().unwrap();
+            let mut c = self.c.lock();
             for u in users {
                 if let Some(id) = u.get("_id").and_then(|i| i.as_str()) {
                     c.users.insert(id.to_string(), u.clone());

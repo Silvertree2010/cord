@@ -356,3 +356,122 @@ async fn message_logger_restores_after_restart() {
     assert_eq!(v[0].m.hist, vec!["first".to_string()]);
     assert!(v[1].m.del);
 }
+
+struct DemoStub(Arc<Stub>);
+
+#[async_trait::async_trait]
+impl Bk for DemoStub {
+    fn svc(&self) -> Svc {
+        Svc::Dc
+    }
+    fn acc(&self) -> u32 {
+        1
+    }
+    fn demo(&self) -> bool {
+        true
+    }
+    async fn start(&self, tx: Tx) -> Res<()> {
+        self.0.start(tx).await
+    }
+    async fn hist(&self, c: &Rid, b: Option<&Rid>, n: u32) -> Res<Vec<Msg>> {
+        self.0.hist(c, b, n).await
+    }
+    async fn send(&self, _c: &Rid, _o: cord_core::Out) -> Res<()> {
+        Ok(())
+    }
+    async fn edit(&self, _c: &Rid, _m: &Rid, _b: String) -> Res<()> {
+        Ok(())
+    }
+    async fn del(&self, _c: &Rid, _m: &Rid) -> Res<()> {
+        Ok(())
+    }
+    async fn react(&self, _c: &Rid, _m: &Rid, _e: &Emo, _on: bool) -> Res<()> {
+        Ok(())
+    }
+    async fn typing(&self, _c: &Rid) -> Res<()> {
+        Ok(())
+    }
+    async fn ack(&self, _c: &Rid, _m: &Rid) -> Res<()> {
+        Ok(())
+    }
+}
+
+#[tokio::test]
+async fn demo_accounts_are_never_cached() {
+    let p = tmp("demo");
+    let store = Arc::new(Store::open(&p).unwrap());
+    let h = Hub::new(Arc::new(|_| {}), Some(store.clone()));
+    let st = Stub::new();
+    h.add(Arc::new(DemoStub(st.clone()))).await.unwrap();
+    let tx = st.tx.lock().unwrap().clone().unwrap();
+    tx.send(Ev::Msg(msg("1", 1, "x"))).unwrap();
+    settle().await;
+    store.flush();
+    assert!(store.last("dc:1:c", 5).is_empty());
+}
+
+#[tokio::test]
+async fn live_msg_clears_del_and_empty_head_fetch_is_authoritative() {
+    let h = Hub::new(Arc::new(|_| {}), None);
+    let b = Stub::new();
+    h.add(b.clone()).await.unwrap();
+    let tx = b.tx.lock().unwrap().clone().unwrap();
+    h.st.write().await.cfg.log_del = true;
+    tx.send(Ev::Msg(msg("1", 1, "a"))).unwrap();
+    tx.send(Ev::MsgDel { chan: rid("c"), id: rid("1") }).unwrap();
+    settle().await;
+    assert!(h.st.read().await.msgs[&rid("c")][0].del);
+    tx.send(Ev::Msg(msg("1", 1, "a"))).unwrap();
+    settle().await;
+    assert!(!h.st.read().await.msgs[&rid("c")][0].del);
+    {
+        let mut st = h.st.write().await;
+        st.stale.entry(rid("c")).or_default().insert(rid("1"));
+        st.cfg.log_del = false;
+    }
+    let r = h.hist(&rid("c"), None).await.unwrap();
+    assert!(!r.noop);
+    assert!(h.st.read().await.msgs[&rid("c")].is_empty());
+}
+
+#[tokio::test]
+async fn ack_sends_local_only_after_server_ack() {
+    feat::set("noread", false);
+    let h = Hub::new(Arc::new(|_| {}), None);
+    let b = Stub::new();
+    h.add(b.clone()).await.unwrap();
+    let c = rid("c");
+    let mut ch = chan("c", false);
+    ch.last = None;
+    h.st.write().await.chans.insert(c.clone(), ch);
+    h.st.write().await.unr.insert(c.clone(), Unr { n: 1, ment: 0 });
+    h.ack(&c).await.unwrap();
+    settle().await;
+    assert_eq!(b.acks.load(Ordering::SeqCst), 0);
+    assert!(h.st.read().await.unr.contains_key(&c));
+    let tx = b.tx.lock().unwrap().clone().unwrap();
+    tx.send(Ev::Msg(msg("5", 5, "x"))).unwrap();
+    settle().await;
+    h.st.write().await.unr.insert(c.clone(), Unr { n: 1, ment: 0 });
+    h.ack(&c).await.unwrap();
+    settle().await;
+    assert_eq!(b.acks.load(Ordering::SeqCst), 1);
+    assert!(!h.st.read().await.unr.contains_key(&c));
+}
+
+#[tokio::test]
+async fn deltas_carry_monotonic_seq() {
+    let seen = Arc::new(Mutex::new(vec![]));
+    let s2 = seen.clone();
+    let h = Hub::new(Arc::new(move |d: Sd| s2.lock().unwrap().push(d.seq)), None);
+    let b = Stub::new();
+    h.add(b.clone()).await.unwrap();
+    let tx = b.tx.lock().unwrap().clone().unwrap();
+    tx.send(Ev::Msg(msg("1", 1, "a"))).unwrap();
+    tx.send(Ev::Msg(msg("2", 2, "a"))).unwrap();
+    settle().await;
+    let v = seen.lock().unwrap().clone();
+    assert!(v.len() >= 2);
+    assert!(v.windows(2).all(|w| w[1] == w[0] + 1));
+    assert_eq!(*v.last().unwrap(), h.seq());
+}

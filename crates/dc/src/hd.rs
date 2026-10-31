@@ -169,7 +169,7 @@ fn ready(sh: &Sh, tx: &Tx, d: &Value) {
         s_.id = s(d, "session_id").map(str::to_string);
         s_.url = s(d, "resume_gateway_url").map(str::to_string);
     }
-    let _ = tx.send(Ev::Ready(Acc { id: a, svc: Svc::Dc, me }));
+    let _ = tx.send(Ev::Ready(Acc { id: a, svc: Svc::Dc, me, demo: false }));
     let _ = tx.send(Ev::Conn { acc: a, up: true });
     {
         let mut mu = sh.mu.lock();

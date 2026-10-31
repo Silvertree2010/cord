@@ -72,7 +72,7 @@ impl I {
         loop {
             let mut ready = false;
             let r = self.session(&tx, &mut ready).await;
-            self.wtx.lock().unwrap().take();
+            self.wtx.lock().take();
             let _ = tx.send(Ev::Conn { acc: self.acc, up: false });
             match r {
                 Ok(Fin::Stop) => return,
@@ -97,7 +97,7 @@ impl I {
         let (mut sink, mut st) = ws.split();
         sink.send(Wm::text(json!({"type": "Authenticate", "token": self.tok}).to_string())).await?;
         let (otx, mut orx) = mpsc::unbounded_channel::<String>();
-        *self.wtx.lock().unwrap() = Some(otx);
+        *self.wtx.lock() = Some(otx);
         let mut tick = tokio::time::interval(Duration::from_secs(20));
         let mut last = Instant::now();
         loop {
@@ -141,7 +141,7 @@ impl I {
     }
 
     fn put(&self, f: impl FnOnce(&mut Cache)) {
-        f(&mut self.c.lock().unwrap());
+        f(&mut self.c.lock());
     }
 
     fn srv_evs(&self, cx: &Cx, sid: &str, with_gld: bool) -> Vec<Ev> {
@@ -158,7 +158,7 @@ impl I {
     }
 
     fn chan_evs(&self, cx: &Cx, id: &str) -> Vec<Ev> {
-        let sid = self.c.lock().unwrap().chan(id).and_then(|c| c.server().map(String::from));
+        let sid = self.c.lock().chan(id).and_then(|c| c.server().map(String::from));
         if let Some(s) = sid {
             return self.srv_evs(cx, &s, false);
         }
@@ -213,13 +213,13 @@ impl I {
             }
             (me, o)
         });
-        let _ = tx.send(Ev::Ready(Acc { id: self.acc, svc: Svc::St, me }));
-        let sids: Vec<String> = self.c.lock().unwrap().servers.keys().cloned().collect();
+        let _ = tx.send(Ev::Ready(Acc { id: self.acc, svc: Svc::St, me, demo: false }));
+        let sids: Vec<String> = self.c.lock().servers.keys().cloned().collect();
         for s in sids {
             evs.extend(self.srv_evs(&cx, &s, true));
         }
         let dms: Vec<String> = {
-            let c = self.c.lock().unwrap();
+            let c = self.c.lock();
             c.chans.iter().filter(|(_, v)| v.get("server").is_none()).map(|(k, _)| k.clone()).collect()
         };
         for d in dms {
@@ -231,7 +231,7 @@ impl I {
         if let Ok(un) = self.unreads().await {
             for u in un {
                 let ch = u.id.channel;
-                let last = self.c.lock().unwrap().chan(&ch).and_then(|c| match c {
+                let last = self.c.lock().chan(&ch).and_then(|c| match c {
                     w::Channel::DirectMessage { last_message_id, .. }
                     | w::Channel::Group { last_message_id, .. }
                     | w::Channel::TextChannel { last_message_id, .. } => last_message_id,
@@ -263,7 +263,7 @@ impl I {
         if !upd && m.author != cx.me {
             let ment = m.mentions.as_ref().map(|l| l.contains(&cx.me)).unwrap_or(false) as u32;
             let (n, mm) = {
-                let mut c = self.c.lock().unwrap();
+                let mut c = self.c.lock();
                 let e = c.unread.entry(m.channel.clone()).or_insert((0, 0));
                 e.0 += 1;
                 e.1 += ment;
@@ -362,7 +362,7 @@ impl I {
                 }
             }
             E::ServerMemberLeave { id, user } => {
-                let me = self.c.lock().unwrap().me.clone();
+                let me = self.c.lock().me.clone();
                 if user == me {
                     self.drop_server(&id, tx).await?;
                 } else {
@@ -401,7 +401,7 @@ impl I {
                     merge(u, &data, &clear);
                 });
                 let cx = self.cx().await?;
-                if let Some(u) = self.c.lock().unwrap().user(&id) {
+                if let Some(u) = self.c.lock().user(&id) {
                     if id != cx.me {
                         if data.get("online").is_some() || data.get("status").is_some() || !clear.is_empty() {
                             send(Ev::Pres { usr: cx.rid(&id), p: map::pres(&u) });
@@ -438,7 +438,7 @@ impl I {
                 }
             }
             E::EmojiDelete { id } => {
-                let old = self.c.lock().unwrap().emoji(&id);
+                let old = self.c.lock().emoji(&id);
                 self.put(|c| {
                     c.emojis.remove(&id);
                 });
@@ -511,7 +511,7 @@ impl I {
                 let cx = self.cx().await?;
                 if user != cx.me {
                     self.ensure(vec![user.clone()]).await;
-                    let u = self.c.lock().unwrap().user(&user);
+                    let u = self.c.lock().user(&user);
                     let usr = u.map(|u| map::usr(&cx, &u)).unwrap_or_else(|| Usr {
                         id: Some(cx.rid(&user)),
                         name: user.clone(),
@@ -546,7 +546,7 @@ impl I {
 
     async fn emit_mem(&self, key: &(String, String), tx: &Tx) -> Result<()> {
         let cx = self.cx().await?;
-        let m = self.c.lock().unwrap().mems.get(key).and_then(|v| serde_json::from_value::<w::Member>(v.clone()).ok());
+        let m = self.c.lock().mems.get(key).and_then(|v| serde_json::from_value::<w::Member>(v.clone()).ok());
         if let Some(m) = m {
             let o = self.view(|_, lk| map::mem(&cx, lk, &m));
             let _ = tx.send(Ev::Mem(o));

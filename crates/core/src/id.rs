@@ -1,11 +1,24 @@
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr, sync::Arc};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Svc {
     Dc,
     Mx,
     St,
+}
+
+impl Serialize for Svc {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.tag())
+    }
+}
+
+impl<'de> Deserialize<'de> for Svc {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(d)?;
+        Svc::from_tag(&s.to_ascii_lowercase()).ok_or_else(|| serde::de::Error::custom(format!("unknown service {s}")))
+    }
 }
 
 impl Svc {
@@ -77,7 +90,9 @@ mod tests {
         let r = Rid::new(Svc::Mx, 3, "!a:b");
         let v = serde_json::to_value(&r).unwrap();
         assert_eq!(v["rid"], "mx:3:!a:b");
-        assert_eq!(v["svc"], "Mx");
+        assert_eq!(v["svc"], "mx");
+        let old: Rid = serde_json::from_value(serde_json::json!({"svc": "Mx", "acc": 3, "raw": "!a:b"})).unwrap();
+        assert_eq!(old, r);
         let back: Rid = serde_json::from_value(v).unwrap();
         assert_eq!(back, r);
     }

@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use cord_core::*;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::sync::Mutex;
+use parking_lot::Mutex;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
@@ -116,16 +116,16 @@ impl Bk for St {
         self.i.cfg().await?;
         let i = self.i.clone();
         let j = tokio::spawn(async move { i.run(tx).await });
-        if let Some(o) = self.i.jh.lock().unwrap().replace(j) {
+        if let Some(o) = self.i.jh.lock().replace(j) {
             o.abort();
         }
         Ok(())
     }
     async fn stop(&self) {
-        if let Some(j) = self.i.jh.lock().unwrap().take() {
+        if let Some(j) = self.i.jh.lock().take() {
             j.abort();
         }
-        *self.i.wtx.lock().unwrap() = None;
+        *self.i.wtx.lock() = None;
     }
     async fn hist(&self, chan: &Rid, before: Option<&Rid>, n: u32) -> Res<Vec<Msg>> {
         self.i.hist(chan, before, n).await
@@ -143,7 +143,7 @@ impl Bk for St {
         self.i.react(chan, msg, e, on).await
     }
     async fn typing(&self, chan: &Rid) -> Res<()> {
-        let g = self.i.wtx.lock().unwrap();
+        let g = self.i.wtx.lock();
         match g.as_ref() {
             Some(t) => {
                 t.send(serde_json::json!({"type": "BeginTyping", "channel": chan.raw}).to_string())

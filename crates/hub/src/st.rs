@@ -11,7 +11,7 @@ pub struct Unr {
     pub ment: u32,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Cfg {
     pub log_del: bool,
     pub log_ed: bool,
@@ -44,6 +44,14 @@ pub struct MsgV {
     pub m: Msg,
     pub mid: String,
     pub permalink: String,
+    pub rev: u32,
+}
+
+fn rev_of(m: &Msg) -> u32 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    serde_json::to_string(m).unwrap_or_default().hash(&mut h);
+    (h.finish() & 0xffff_ffff) as u32
 }
 
 #[derive(Default)]
@@ -65,6 +73,7 @@ pub struct Sta {
     pub stale: HashMap<Rid, HashSet<Rid>>,
     pub call: CallSt,
     pub cfg: Cfg,
+    pub demo: HashSet<u32>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -124,7 +133,7 @@ pub fn flake_ts(r: &str) -> i64 {
 impl Sta {
     pub fn msg_v(&self, m: &Msg) -> MsgV {
         let g = self.chans.get(&m.chan).and_then(|c| c.gld.clone());
-        MsgV { mid: m.id.to_string(), permalink: link(&m.chan, g.as_ref(), Some(&m.id)), m: m.clone() }
+        MsgV { mid: m.id.to_string(), permalink: link(&m.chan, g.as_ref(), Some(&m.id)), rev: rev_of(m), m: m.clone() }
     }
 
     pub fn chan_v(&self, c: &Chan) -> ChanV {
@@ -169,6 +178,7 @@ impl Sta {
         self.hl.retain(|k| k.acc != a);
         self.synced.retain(|k| k.acc != a);
         self.stale.retain(|k, _| k.acc != a);
+        self.demo.remove(&a);
         if self.call.chan.as_ref().is_some_and(|c| c.acc == a) {
             self.call = CallSt::default();
         }
@@ -245,8 +255,9 @@ impl Sta {
                 if let Some(sl) = self.stale.get_mut(&m.chan) {
                     sl.remove(&m.id);
                 }
+                let prev_lt = self.lts.get(&m.chan).copied().unwrap_or(0);
                 if let Some(c) = self.chans.get_mut(&m.chan) {
-                    if c.last.is_none() || newer(Some(&m.id), c.last.as_ref()) {
+                    if c.last.is_none() || (m.chan.svc == Svc::Mx && m.ts >= prev_lt) || (m.chan.svc != Svc::Mx && newer(Some(&m.id), c.last.as_ref())) {
                         c.last = Some(m.id.clone());
                     }
                 }
@@ -260,7 +271,7 @@ impl Sta {
                     Some(x) => {
                         let mut n = m.clone();
                         n.hist = std::mem::take(&mut x.hist);
-                        n.del = x.del;
+                        n.del = false;
                         *x = n;
                         false
                     }
@@ -478,6 +489,20 @@ impl Sta {
         self.prepend(chan, v);
         self.hl.remove(chan);
         self.stale.entry(chan.clone()).or_default().extend(ids);
+        self.fix_last(chan);
+    }
+
+    pub fn fix_last(&mut self, chan: &Rid) {
+        let Some(top) = self.msgs.get(chan).and_then(|q| q.iter().max_by_key(|m| (m.ts, m.id.raw.len(), m.id.raw.clone()))).map(|m| m.id.clone()) else { return };
+        if let Some(c) = self.chans.get_mut(chan) {
+            if c.last.is_none() || chan.svc == Svc::Mx || newer(Some(&top), c.last.as_ref()) {
+                c.last = Some(top);
+            }
+        }
+    }
+
+    pub fn newest(&self, chan: &Rid) -> Option<Rid> {
+        self.chans.get(chan).and_then(|c| c.last.clone()).or_else(|| self.msgs.get(chan).and_then(|q| q.iter().max_by_key(|m| (m.ts, m.id.raw.len(), m.id.raw.clone()))).map(|m| m.id.clone()))
     }
 
     pub fn older(&self, chan: &Rid, before: &Rid, n: usize) -> Vec<Msg> {
@@ -495,18 +520,16 @@ impl Sta {
         fetched.sort_by_key(|m| m.ts);
         let mut rec = Rec::default();
         let stale = self.stale.remove(chan).unwrap_or_default();
+        let empty = fetched.is_empty();
         let (lo, hi) = match (fetched.first(), fetched.last()) {
             (Some(a), Some(b)) => (a.ts, b.ts),
-            _ => {
-                self.synced.insert(chan.clone());
-                return rec;
-            }
+            _ => (i64::MIN, i64::MAX),
         };
         let ids: HashSet<Rid> = fetched.iter().map(|m| m.id.clone()).collect();
         let log_del = self.cfg.log_del;
         let log_ed = self.cfg.log_ed;
         let q = self.msgs.entry(chan.clone()).or_default();
-        let overlap = q.is_empty() || q.iter().any(|m| ids.contains(&m.id));
+        let overlap = empty || q.is_empty() || q.iter().any(|m| ids.contains(&m.id));
         if !overlap {
             q.retain(|m| m.ts > hi && !stale.contains(&m.id));
             rec.reset = true;
@@ -517,7 +540,7 @@ impl Sta {
                 Some(x) => {
                     let mut n = f;
                     n.hist = std::mem::take(&mut x.hist);
-                    n.del = x.del;
+                    n.del = false;
                     if log_ed && x.body != n.body && !x.body.is_empty() && n.hist.last() != Some(&x.body) {
                         n.hist.push(x.body.clone());
                     }
@@ -546,6 +569,7 @@ impl Sta {
         }
         rec.added = self.prepend(chan, fresh);
         self.synced.insert(chan.clone());
+        self.fix_last(chan);
         rec
     }
 
@@ -635,7 +659,7 @@ mod tests {
 
     fn sta() -> Sta {
         let mut s = Sta::default();
-        s.apply(Ev::Ready(Acc { id: 1, svc: Svc::Dc, me: usr("100") }));
+        s.apply(Ev::Ready(Acc { id: 1, svc: Svc::Dc, me: usr("100"), demo: false }));
         s
     }
 

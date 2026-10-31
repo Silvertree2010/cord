@@ -3,7 +3,7 @@ use flate2::{Compress, Compression, FlushCompress};
 use tokio::sync::mpsc::unbounded_channel;
 
 fn sh() -> Sh {
-    Arc::try_unwrap(Dc::new(1, "t".into()).0).ok().unwrap()
+    Arc::try_unwrap(Dc::new(1, "t".into()).unwrap().0).ok().unwrap()
 }
 
 const RD: &str = r#"{

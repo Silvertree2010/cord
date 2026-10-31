@@ -933,6 +933,7 @@ dependencies = [
  "keyring",
  "notify",
  "notify-rust",
+ "parking_lot 0.12.5",
  "qrcode",
  "rustls",
  "serde",
@@ -1030,6 +1031,7 @@ dependencies = [
  "futures",
  "matrix-sdk",
  "mime_guess",
+ "parking_lot 0.12.5",
  "serde",
  "serde_json",
  "tokio",
@@ -1063,6 +1065,7 @@ dependencies = [
  "async-trait",
  "cord-core",
  "futures",
+ "parking_lot 0.12.5",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -1075,6 +1078,7 @@ dependencies = [
 name = "cord-store"
 version = "0.1.0"
 dependencies = [
+ "parking_lot 0.12.5",
  "rusqlite",
  "tracing",
 ]

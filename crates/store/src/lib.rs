@@ -1,8 +1,9 @@
+use parking_lot::Mutex;
 use rusqlite::{Connection, params};
 use std::{
     collections::HashSet,
     path::Path,
-    sync::{Mutex, mpsc},
+    sync::mpsc,
 };
 
 pub struct Row {
@@ -27,6 +28,7 @@ enum W {
     Log(Log),
     Purge(String),
     PurgeChan(String),
+    Use(String, i64),
     Del { chan: String, id: String, keep: bool, ts: i64 },
     Flush(mpsc::Sender<()>),
 }
@@ -38,12 +40,18 @@ pub struct Store {
 
 pub const VER: i64 = 1;
 pub const CAP: i64 = 500;
+pub const GCAP: i64 = 20000;
+
+fn clock() -> i64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)
+}
 
 const SCHEMA: &str = "
 create table if not exists messages(chan text not null, id text not null, json text not null, ts integer not null, deleted integer not null default 0, edited integer not null default 0, primary key(chan,id));
 create index if not exists messages_ts on messages(chan, ts desc);
 create table if not exists logs(chan text not null, id text not null, kind text not null, body text not null, ts integer not null);
 create index if not exists logs_id on logs(chan, id);
+create table if not exists chan_use(chan text primary key, used integer not null);
 ";
 
 fn touch(p: &Path) -> std::io::Result<()> {
@@ -79,6 +87,31 @@ fn prune(w: &Connection, chan: &str) {
     chk("prune logs", w.execute("delete from logs where chan=?1 and id not in (select id from messages where chan=?1)", params![chan]));
 }
 
+fn gprune(w: &Connection, cap: i64) {
+    let n: i64 = w.query_row("select count(*) from messages", [], |r| r.get(0)).unwrap_or(0);
+    if n <= cap {
+        return;
+    }
+    let target = cap - cap / 10;
+    let mut left = n;
+    let chans: Vec<(String, i64)> = match w.prepare("select m.chan, count(*) from messages m left join chan_use u on u.chan=m.chan group by m.chan order by coalesce(u.used,0) asc") {
+        Ok(mut s) => s.query_map([], |r| Ok((r.get(0)?, r.get(1)?))).map(|i| i.flatten().collect()).unwrap_or_default(),
+        Err(e) => {
+            tracing::warn!("store lru: {e}");
+            return;
+        }
+    };
+    for (c, k) in chans {
+        if left <= target {
+            break;
+        }
+        chk("lru", w.execute("delete from messages where chan=?1", params![c]));
+        chk("lru logs", w.execute("delete from logs where chan=?1", params![c]));
+        chk("lru use", w.execute("delete from chan_use where chan=?1", params![c]));
+        left -= k;
+    }
+}
+
 fn apply(w: &Connection, x: W, touched: &mut HashSet<String>, acks: &mut Vec<mpsc::Sender<()>>) {
     match x {
         W::Msg(r) => {
@@ -107,10 +140,13 @@ fn apply(w: &Connection, x: W, touched: &mut HashSet<String>, acks: &mut Vec<mps
         W::Purge(pfx) => {
             let pat = format!("{}%", pfx.replace('%', "").replace('_', ""));
             chk("purge", w.execute("delete from messages where chan like ?1", params![pat]));
+            chk("purge use", w.execute("delete from chan_use where chan like ?1", params![pat]));
             chk("purge logs", w.execute("delete from logs where chan like ?1", params![pat]));
         }
+        W::Use(c, t) => chk("use", w.execute("insert into chan_use(chan,used) values(?1,?2) on conflict(chan) do update set used=excluded.used", params![c, t])),
         W::PurgeChan(c) => {
             chk("purge chan", w.execute("delete from messages where chan=?1", params![c]));
+            chk("purge chan use", w.execute("delete from chan_use where chan=?1", params![c]));
             chk("purge chan logs", w.execute("delete from logs where chan=?1", params![c]));
             touched.remove(&c);
         }
@@ -149,6 +185,10 @@ impl Store {
                 }
                 for c in &touched {
                     prune(&w, c);
+                    chk("use", w.execute("insert into chan_use(chan,used) values(?1,?2) on conflict(chan) do update set used=excluded.used", params![c, clock()]));
+                }
+                if !touched.is_empty() {
+                    gprune(&w, GCAP);
                 }
                 chk("commit", w.execute_batch("commit"));
                 for a in acks {
@@ -160,10 +200,8 @@ impl Store {
     }
 
     fn send(&self, w: W) {
-        if let Ok(t) = self.tx.lock() {
-            if t.send(w).is_err() {
-                tracing::warn!("store writer is gone");
-            }
+        if self.tx.lock().send(w).is_err() {
+            tracing::warn!("store writer is gone");
         }
     }
 
@@ -189,15 +227,14 @@ impl Store {
 
     pub fn flush(&self) {
         let (a, b) = mpsc::channel();
-        if let Ok(t) = self.tx.lock() {
-            if t.send(W::Flush(a)).is_ok() {
-                let _ = b.recv_timeout(std::time::Duration::from_secs(5));
-            }
+        if self.tx.lock().send(W::Flush(a)).is_ok() {
+            let _ = b.recv_timeout(std::time::Duration::from_secs(5));
         }
     }
 
     pub fn last(&self, chan: &str, n: u32) -> Vec<String> {
-        let Ok(c) = self.rd.lock() else { return vec![] };
+        self.send(W::Use(chan.to_string(), clock()));
+        let c = self.rd.lock();
         let mut s = match c.prepare("select json from messages where chan=?1 order by ts desc, id desc limit ?2") {
             Ok(s) => s,
             Err(e) => {
@@ -226,14 +263,14 @@ impl Store {
     }
 
     pub fn logs(&self, chan: &str, id: &str) -> Vec<(String, String, i64)> {
-        let Ok(c) = self.rd.lock() else { return vec![] };
+        let c = self.rd.lock();
         let Ok(mut s) = c.prepare("select kind,body,ts from logs where chan=?1 and id=?2 order by ts") else { return vec![] };
         let Ok(it) = s.query_map(params![chan, id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?))) else { return vec![] };
         it.flatten().collect()
     }
 
     pub fn logs_chan(&self, chan: &str) -> Vec<(String, String, String, i64)> {
-        let Ok(c) = self.rd.lock() else { return vec![] };
+        let c = self.rd.lock();
         let Ok(mut s) = c.prepare("select id,kind,body,ts from logs where chan=?1 order by ts") else { return vec![] };
         let Ok(it) = s.query_map(params![chan], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))) else { return vec![] };
         it.flatten().collect()
@@ -274,6 +311,27 @@ mod tests {
             use std::os::unix::fs::PermissionsExt;
             assert_eq!(std::fs::metadata(&p).unwrap().permissions().mode() & 0o777, 0o600);
         }
+    }
+
+    #[test]
+    fn global_cap_prunes_least_recently_used_channel() {
+        let p = tmp("gcap");
+        let s = Store::open(&p).unwrap();
+        for ch in ["dc:1:a", "dc:1:b"] {
+            for i in 0..3 {
+                s.put(Row { chan: ch.into(), id: format!("{i}"), json: "{}".into(), ts: i, deleted: false, edited: false });
+            }
+            s.flush();
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        s.last("dc:1:a", 1);
+        s.flush();
+        drop(s);
+        let w = conn(&p).unwrap();
+        gprune(&w, 5);
+        let n: i64 = w.query_row("select count(*) from messages where chan='dc:1:a'", [], |r| r.get(0)).unwrap();
+        let m: i64 = w.query_row("select count(*) from messages where chan='dc:1:b'", [], |r| r.get(0)).unwrap();
+        assert_eq!((n, m), (3, 0));
     }
 
     #[test]
