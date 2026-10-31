@@ -24,6 +24,7 @@ keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
 notify = "8"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 notify-rust = "4"
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
 
 [build-dependencies]
 cxx-qt-build = "0.10"

@@ -10,6 +10,7 @@ mod rt;
 use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QString, QUrl};
 
 fn main() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
     rt::init();
     let mut app = QGuiApplication::new();
     if let Some(mut a) = app.as_mut() {

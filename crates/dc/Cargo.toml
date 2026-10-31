@@ -22,3 +22,6 @@ rsa = "0.9"
 sha2 = "0.10"
 rand = "0.8"
 percent-encoding = "2"
+
+[dev-dependencies]
+rustls = { version = "0.23", default-features = false, features = ["ring"] }

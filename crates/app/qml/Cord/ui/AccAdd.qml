@@ -65,7 +65,8 @@ ColumnLayout {
         }
         Lbl { visible: S.qrUsr !== ""; text: "Confirm the login on your phone as " + S.qrUsr; color: Th.ok }
         Btn { text: S.qr ? "New code" : "Get code"; onClicked: { S.qr = ""; S.qrUsr = ""; S.c.dc_qr() } }
-        Component.onCompleted: if (visible) S.c.dc_qr()
+        onVisibleChanged: if (visible && !S.qr) S.c.dc_qr()
+        Component.onCompleted: if (visible && !S.qr) S.c.dc_qr()
     }
     ColumnLayout {
         visible: r.sv === "dc" && r.mode === "tok"

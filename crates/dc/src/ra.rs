@@ -66,8 +66,8 @@ pub async fn login(tx: UnboundedSender<Ra>) -> Res<String> {
             None => bail!("ra closed"),
         };
         let Message::Text(t) = m else {
-            if let Message::Close(_) = m {
-                bail!("ra closed");
+            if let Message::Close(c) = m {
+                bail!("QR login closed by Discord: {}", c.map(|c| format!("{} {}", c.code, c.reason)).unwrap_or_default());
             }
             continue;
         };
@@ -80,7 +80,7 @@ pub async fn login(tx: UnboundedSender<Ra>) -> Res<String> {
             }
             "nonce_proof" => {
                 let n = dec(v["encrypted_nonce"].as_str().unwrap_or(""))?;
-                wt.send(Message::Text(json!({"op": "nonce_proof", "nonce": proof(&n)}).to_string().into())).await?;
+                wt.send(Message::Text(json!({"op": "nonce_proof", "proof": proof(&n)}).to_string().into())).await?;
             }
             "pending_remote_init" => {
                 let f = v["fingerprint"].as_str().unwrap_or("");
