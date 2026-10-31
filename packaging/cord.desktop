@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=cord
+Comment=Chat client for Discord, Matrix and Stoat
+Exec=cord
+Icon=cord
+Terminal=false
+Categories=Network;InstantMessaging;Chat;
+StartupWMClass=cord
