@@ -69,6 +69,8 @@ pub mod q {
         #[qinvokable]
         fn home(self: &Core) -> QString;
         #[qinvokable]
+        fn copy(self: &Core, t: &QString);
+        #[qinvokable]
         fn qml(self: &Core) -> QString;
     }
     impl cxx_qt::Threading for Core {}
@@ -481,11 +483,26 @@ impl q::Core {
 
     pub fn rdf(&self, p: &QString) -> QString {
         let p = PathBuf::from(qs(p).trim_start_matches("file://"));
-        let ok = p.canonicalize().map(|c| c.starts_with(cfg::dir().canonicalize().unwrap_or_default()) || c.starts_with(cfg::qml_dir().canonicalize().unwrap_or_default())).unwrap_or(false);
+        let sch = dirs::state_dir().map(|d| d.join("caelestia/scheme.json")).and_then(|p| p.canonicalize().ok());
+        let ok = p.canonicalize().map(|c| c.starts_with(cfg::dir().canonicalize().unwrap_or_default()) || c.starts_with(cfg::qml_dir().canonicalize().unwrap_or_default()) || Some(&c) == sch.as_ref()).unwrap_or(false);
         if !ok {
             return QString::default();
         }
         QString::from(&std::fs::read_to_string(p).unwrap_or_default())
+    }
+
+    pub fn copy(&self, t: &QString) {
+        use std::io::Write;
+        let t = qs(t);
+        for (c, a) in [("wl-copy", vec![]), ("xclip", vec!["-selection", "clipboard"])] {
+            if let Ok(mut ch) = std::process::Command::new(c).args(&a).stdin(std::process::Stdio::piped()).spawn() {
+                if let Some(mut i) = ch.stdin.take() {
+                    let _ = i.write_all(t.as_bytes());
+                }
+                let _ = ch.wait();
+                return;
+            }
+        }
     }
 
     pub fn home(&self) -> QString {

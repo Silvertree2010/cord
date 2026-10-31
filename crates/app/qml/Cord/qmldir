@@ -1,0 +1,22 @@
+module Cord
+singleton Th 1.0 Th.qml
+singleton S 1.0 S.qml
+Ico 1.0 ui/Ico.qml
+Av 1.0 ui/Av.qml
+Badge 1.0 ui/Badge.qml
+Btn 1.0 ui/Btn.qml
+IBtn 1.0 ui/IBtn.qml
+Tog 1.0 ui/Tog.qml
+Fld 1.0 ui/Fld.qml
+Lbl 1.0 ui/Lbl.qml
+Sep 1.0 ui/Sep.qml
+Scr 1.0 ui/Scr.qml
+Msg 1.0 ui/Msg.qml
+Emb 1.0 ui/Emb.qml
+Comp 1.0 ui/Comp.qml
+Friends 1.0 ui/Friends.qml
+Emo 1.0 ui/Emo.qml
+Prof 1.0 ui/Prof.qml
+View 1.0 ui/View.qml
+Node 1.0 Node.qml
+Blk 1.0 Blk.qml

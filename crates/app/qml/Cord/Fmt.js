@@ -1,0 +1,90 @@
+.pragma library
+
+function esc(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+}
+
+function inl(s, o) {
+    const ac = o.ac || "#8fb3ff", cb = o.cb || "#ffffff14", mono = o.mono || "monospace", nm = o.names || {}
+    const em = o.em || 22
+    const keep = []
+    const k = h => { keep.push(h); return "\u0000" + (keep.length - 1) + "\u0000" }
+    s = s.replace(/`([^`\n]+)`/g, (m, a) => k('<code style="background:' + cb + ';font-family:\'' + mono + '\'">&nbsp;' + a + '&nbsp;</code>'))
+    s = s.replace(/&lt;(a?):(\w+):(\d+)&gt;/g, (m, an, n, id) => k('<img src="https://cdn.discordapp.com/emojis/' + id + '.' + (an ? "gif" : "webp") + '?size=48" width="' + em + '" height="' + em + '" alt=":' + n + ':">'))
+    s = s.replace(/&lt;@!?(\d+)&gt;/g, (m, id) => k('<a href="cord:usr/' + id + '" style="color:' + ac + ';text-decoration:none;background:' + cb + '">@' + esc(nm[id] || id) + '</a>'))
+    s = s.replace(/&lt;#(\d+)&gt;/g, (m, id) => k('<a href="cord:chan/' + id + '" style="color:' + ac + ';text-decoration:none">#' + esc(nm[id] || id) + '</a>'))
+    s = s.replace(/&lt;@&amp;(\d+)&gt;/g, (m, id) => k('<span style="color:' + ac + '">@' + esc(nm[id] || "role") + '</span>'))
+    s = s.replace(/&lt;t:(\d+)(?::\w)?&gt;/g, (m, t) => k('<span style="background:' + cb + '">' + new Date(parseInt(t) * 1000).toLocaleString() + '</span>'))
+    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (m, t, u) => k('<a href="' + u + '" style="color:' + ac + '">' + t + '</a>'))
+    s = s.replace(/(https?:\/\/[^\s<]+[^\s<.,:;"')\]])/g, (m, u) => k('<a href="' + u + '" style="color:' + ac + '">' + u + '</a>'))
+    s = s.replace(/\*\*\*(.+?)\*\*\*/g, "<b><i>$1</i></b>")
+    s = s.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+    s = s.replace(/__(.+?)__/g, "<u>$1</u>")
+    s = s.replace(/(^|[^\w*])\*([^*\n]+)\*/g, "$1<i>$2</i>")
+    s = s.replace(/(^|[^\w])_([^_\n]+)_(?!\w)/g, "$1<i>$2</i>")
+    s = s.replace(/~~(.+?)~~/g, "<s>$1</s>")
+    s = s.replace(/\|\|(.+?)\|\|/g, (m, a) => o.spoil ? '<span style="background:' + cb + '">' + a + '</span>' : '<a href="cord:spoil" style="background:' + (o.sp || "#555") + ';color:' + (o.sp || "#555") + ';text-decoration:none">' + a + '</a>')
+    return s.replace(/\u0000(\d+)\u0000/g, (m, i) => keep[parseInt(i)])
+}
+
+function html(src, o) {
+    o = o || {}
+    if (!src) return ""
+    let s = esc(src)
+    const blocks = []
+    s = s.replace(/```(\w*)\n?([\s\S]*?)```/g, (m, l, c) => {
+        blocks.push('<table width="100%" style="background:' + (o.cb || "#ffffff14") + '" cellpadding="8"><tr><td><pre style="font-family:\'' + (o.mono || "monospace") + '\'">' + c.replace(/\n$/, "") + '</pre></td></tr></table>')
+        return "\u0001" + (blocks.length - 1) + "\u0001"
+    })
+    const ls = s.split("\n")
+    const out = []
+    for (let i = 0; i < ls.length; i++) {
+        let l = ls[i]
+        let m
+        if ((m = l.match(/^&gt; (.*)$/)) || l === "&gt;") {
+            out.push('<table cellpadding="0" cellspacing="0"><tr><td width="3" style="background:' + (o.qb || "#555") + '"></td><td width="8"></td><td>' + inl(m ? m[1] : "", o) + '</td></tr></table>')
+            continue
+        }
+        if ((m = l.match(/^(#{1,3}) (.*)$/))) {
+            const sz = [0, 1.5, 1.3, 1.15][m[1].length]
+            out.push('<span style="font-size:' + Math.round((o.fs || 14) * sz) + 'px"><b>' + inl(m[2], o) + '</b></span>')
+            continue
+        }
+        if ((m = l.match(/^-# (.*)$/))) {
+            out.push('<span style="font-size:' + Math.round((o.fs || 14) * 0.8) + 'px;color:' + (o.sub || "#888") + '">' + inl(m[1], o) + '</span>')
+            continue
+        }
+        if ((m = l.match(/^\s*[-*] (.*)$/))) {
+            out.push("&nbsp;•&nbsp;" + inl(m[1], o))
+            continue
+        }
+        out.push(inl(l, o))
+    }
+    s = out.join("<br>")
+    s = s.replace(/\u0001(\d+)\u0001/g, (m, i) => blocks[parseInt(i)])
+    if (o.big && /^(\s*(<img[^>]*>|\p{Extended_Pictographic}|️|‍))+\s*$/u.test(s)) s = s.replace(/width="\d+" height="\d+"/g, 'width="48" height="48"')
+    return s
+}
+
+function onlyEmoji(src) {
+    return /^(\s*(<a?:\w+:\d+>|\p{Extended_Pictographic}|️|‍|\p{Emoji_Modifier}))+\s*$/u.test(src || "")
+}
+
+function time(ms) {
+    const d = new Date(ms), n = new Date()
+    const hm = d.toLocaleTimeString(Qt.locale(), "HH:mm")
+    if (d.toDateString() === n.toDateString()) return hm
+    const y = new Date(n.getTime() - 86400000)
+    if (d.toDateString() === y.toDateString()) return "Yesterday " + hm
+    return d.toLocaleDateString(Qt.locale(), "dd.MM.yyyy") + " " + hm
+}
+
+function day(ms) {
+    return new Date(ms).toLocaleDateString(Qt.locale(), "d MMMM yyyy")
+}
+
+function size(b) {
+    if (b < 1024) return b + " B"
+    if (b < 1048576) return (b / 1024).toFixed(1) + " KB"
+    return (b / 1048576).toFixed(1) + " MB"
+}

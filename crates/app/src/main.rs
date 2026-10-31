@@ -16,7 +16,9 @@ fn main() {
     }
     let mut eng = QQmlApplicationEngine::new();
     let p = cfg::qml_dir().join("Main.qml");
-    if let Some(e) = eng.as_mut() {
+    if let Some(mut e) = eng.as_mut() {
+        e.as_mut().add_import_path(&QString::from(cfg::qml_dir().to_string_lossy().as_ref()));
+        e.as_mut().add_import_path(&QString::from(cfg::dir().join("mods").to_string_lossy().as_ref()));
         e.load(&QUrl::from_local_file(&QString::from(p.to_string_lossy().as_ref())));
     }
     if let Some(a) = app.as_mut() {
