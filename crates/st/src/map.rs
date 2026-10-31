@@ -101,7 +101,7 @@ pub fn col(s: &str) -> Option<u32> {
             let (r, g, b) = ((v >> 8) & 15, (v >> 4) & 15, v & 15);
             Some((r * 17) << 16 | (g * 17) << 8 | b * 17)
         }
-        8 => u32::from_str_radix(&h[..6], 16).ok(),
+        8 => u32::from_str_radix(h.get(..6)?, 16).ok(),
         _ => None,
     }
 }
@@ -648,5 +648,13 @@ mod tests {
         assert!(matches!(e, w::Event::Bulk { .. }));
         let e: w::Event = serde_json::from_value(json!({"type": "ChannelCreate", "_id": "C", "channel_type": "Group", "name": "g", "recipients": []})).unwrap();
         assert!(matches!(e, w::Event::ChannelCreate(_)));
+    }
+
+    #[test]
+    fn col_no_panic() {
+        assert_eq!(col("#ff0000"), Some(0xff0000));
+        assert_eq!(col("#ééé"), None);
+        assert_eq!(col("#12345éx"), None);
+        assert_eq!(col("#ff000080"), Some(0xff0000));
     }
 }
