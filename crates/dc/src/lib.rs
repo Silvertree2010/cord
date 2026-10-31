@@ -1,14 +1,223 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+pub mod gw;
+pub mod hd;
+pub mod map;
+pub mod perm;
+pub mod ra;
+pub mod rest;
+pub mod zl;
+
+use async_trait::async_trait;
+use cord_core::*;
+use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
+use reqwest::Method;
+use serde_json::{Value, json};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::{Arc, Mutex},
+};
+
+#[derive(Default)]
+pub struct Sess {
+    pub id: Option<String>,
+    pub seq: Option<u64>,
+    pub url: Option<String>,
+}
+
+pub struct Gs {
+    pub g: Gld,
+    pub my: Vec<String>,
+    pub chs: Vec<Value>,
+}
+
+pub struct Sh {
+    pub a: u32,
+    pub tok: String,
+    pub rest: rest::Rest,
+    pub me: Mutex<String>,
+    pub gs: Mutex<HashMap<String, Gs>>,
+    pub us: Mutex<HashMap<String, Usr>>,
+    pub lm: Mutex<HashMap<String, String>>,
+    pub cg: Mutex<HashMap<String, String>>,
+    pub ak: Mutex<HashMap<String, (String, u32)>>,
+    pub mu: Mutex<HashSet<String>>,
+    pub ss: Mutex<Sess>,
+    pub gt: Mutex<Option<tokio::sync::mpsc::UnboundedSender<String>>>,
+}
+
+pub struct Dc(Arc<Sh>);
+
+impl Dc {
+    pub fn new(acc: u32, tok: String) -> Dc {
+        Dc(Arc::new(Sh {
+            a: acc,
+            rest: rest::Rest::new(tok.clone()),
+            tok,
+            me: Default::default(),
+            gs: Default::default(),
+            us: Default::default(),
+            lm: Default::default(),
+            cg: Default::default(),
+            ak: Default::default(),
+            mu: Default::default(),
+            ss: Default::default(),
+            gt: Default::default(),
+        }))
+    }
+
+    fn gsend(&self, v: Value) -> Res<()> {
+        let g = self.0.gt.lock().unwrap();
+        match &*g {
+            Some(t) => t.send(v.to_string()).map_err(|e| anyhow::anyhow!("{e}")),
+            None => anyhow::bail!("gateway down"),
+        }
+    }
+}
+
+fn nonce() -> String {
+    let ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0);
+    ((ms.saturating_sub(1420070400000)) << 22 | (rand::random::<u64>() & 0x3fffff)).to_string()
+}
+
+fn mime(n: &str) -> &'static str {
+    match n.rsplit('.').next().map(str::to_lowercase).as_deref() {
+        Some("png") => "image/png",
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("gif") => "image/gif",
+        Some("webp") => "image/webp",
+        Some("mp4") => "video/mp4",
+        Some("webm") => "video/webm",
+        Some("mp3") => "audio/mpeg",
+        Some("ogg") => "audio/ogg",
+        Some("txt") => "text/plain",
+        Some("pdf") => "application/pdf",
+        _ => "application/octet-stream",
+    }
+}
+
+#[async_trait]
+impl Bk for Dc {
+    fn svc(&self) -> Svc {
+        Svc::Dc
+    }
+
+    fn acc(&self) -> u32 {
+        self.0.a
+    }
+
+    async fn start(&self, tx: Tx) -> Res<()> {
+        tokio::spawn(gw::run(self.0.clone(), tx));
+        Ok(())
+    }
+
+    async fn hist(&self, chan: &Rid, before: Option<&Rid>, n: u32) -> Res<Vec<Msg>> {
+        let mut p = format!("/channels/{}/messages?limit={}", chan.raw, n.clamp(1, 100));
+        if let Some(b) = before {
+            p.push_str(&format!("&before={}", b.raw));
+        }
+        let v = self.0.rest.js(Method::GET, &p, None).await?;
+        let mut o: Vec<Msg> = v.as_array().map(|a| a.iter().filter_map(|m| map::msg(self.0.a, m)).collect()).unwrap_or_default();
+        o.reverse();
+        Ok(o)
+    }
+
+    async fn send(&self, chan: &Rid, o: Out) -> Res<()> {
+        let mut j = json!({"content": o.body, "nonce": nonce(), "tts": false});
+        if o.silent {
+            j["flags"] = json!(4096);
+        }
+        if let Some(r) = &o.reply {
+            let mut mr = json!({"message_id": &*r.raw, "channel_id": &*chan.raw, "fail_if_not_exists": false});
+            if let Some(g) = self.0.cg.lock().unwrap().get(&*chan.raw) {
+                mr["guild_id"] = json!(g);
+            }
+            j["message_reference"] = mr;
+        }
+        if !o.stks.is_empty() {
+            j["sticker_ids"] = json!(o.stks.iter().map(|s| s.raw.to_string()).collect::<Vec<_>>());
+        }
+        let p = format!("/channels/{}/messages", chan.raw);
+        if o.files.is_empty() {
+            self.0.rest.js(Method::POST, &p, Some(j)).await?;
+        } else {
+            let mut fs = vec![];
+            let mut at = vec![];
+            for (i, f) in o.files.iter().enumerate() {
+                let n = f.file_name().map(|x| x.to_string_lossy().to_string()).unwrap_or_else(|| format!("file{i}"));
+                let d = tokio::fs::read(f).await?;
+                at.push(json!({"id": i, "filename": n}));
+                let m = mime(&n).to_string();
+                fs.push((n, d, m));
+            }
+            j["attachments"] = Value::Array(at);
+            self.0.rest.mp(&p, j, fs).await?;
+        }
+        Ok(())
+    }
+
+    async fn edit(&self, chan: &Rid, msg: &Rid, body: String) -> Res<()> {
+        let p = format!("/channels/{}/messages/{}", chan.raw, msg.raw);
+        self.0.rest.js(Method::PATCH, &p, Some(json!({"content": body}))).await?;
+        Ok(())
+    }
+
+    async fn del(&self, chan: &Rid, msg: &Rid) -> Res<()> {
+        let p = format!("/channels/{}/messages/{}", chan.raw, msg.raw);
+        self.0.rest.js(Method::DELETE, &p, None).await?;
+        Ok(())
+    }
+
+    async fn react(&self, chan: &Rid, msg: &Rid, e: &Emo, on: bool) -> Res<()> {
+        let raw = match &e.id {
+            Some(i) => format!("{}:{}", e.name, i.raw),
+            None => e.name.clone(),
+        };
+        let en = utf8_percent_encode(&raw, NON_ALPHANUMERIC);
+        let p = format!("/channels/{}/messages/{}/reactions/{}/@me", chan.raw, msg.raw, en);
+        if on {
+            self.0.rest.js(Method::PUT, &format!("{p}?location=Message&type=0"), None).await?;
+        } else {
+            self.0.rest.js(Method::DELETE, &format!("{p}?location=Message&type=0"), None).await?;
+        }
+        Ok(())
+    }
+
+    async fn typing(&self, chan: &Rid) -> Res<()> {
+        self.0.rest.js(Method::POST, &format!("/channels/{}/typing", chan.raw), None).await?;
+        Ok(())
+    }
+
+    async fn ack(&self, chan: &Rid, msg: &Rid) -> Res<()> {
+        let p = format!("/channels/{}/messages/{}/ack", chan.raw, msg.raw);
+        self.0.rest.js(Method::POST, &p, Some(json!({"token": null}))).await?;
+        Ok(())
+    }
+
+    async fn mems(&self, gld: &Rid) -> Res<Vec<Mem>> {
+        let c = {
+            let uid = self.0.me.lock().unwrap().clone();
+            let m = self.0.gs.lock().unwrap();
+            let g = m.get(&*gld.raw).ok_or_else(|| anyhow::anyhow!("unknown guild"))?;
+            g.chs
+                .iter()
+                .find(|c| c["type"].as_u64() == Some(0) && perm::view(&g.g, &g.my, &uid, c))
+                .and_then(|c| map::s(c, "id").map(str::to_string))
+        };
+        let Some(c) = c else { return Ok(vec![]) };
+        self.gsend(json!({"op": 14, "d": {"guild_id": &*gld.raw, "typing": true, "activities": true, "threads": true, "channels": {c: [[0, 99]]}}}))?;
+        Ok(vec![])
+    }
+
+    async fn set_st(&self, st: St, act: Option<String>) -> Res<()> {
+        let s = match st {
+            St::On => "online",
+            St::Idle => "idle",
+            St::Dnd => "dnd",
+            St::Off => "invisible",
+        };
+        let acts: Vec<Value> = act.map(|a| vec![json!({"type": 4, "name": "Custom Status", "state": a})]).unwrap_or_default();
+        self.gsend(json!({"op": 3, "d": {"status": s, "since": 0, "activities": acts, "afk": false}}))
+    }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+mod tests;
