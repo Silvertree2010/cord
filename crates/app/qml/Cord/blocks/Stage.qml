@@ -11,7 +11,7 @@ Rectangle {
     property var cs: S.call || ({})
     property string cid: cs.chan ? S.ridOf(cs.chan) : (S.chans[S.selC] && (S.chans[S.selC].k === "Voice" || S.chans[S.selC].k === "Stage") ? S.selC : "")
     property var ppl: cid ? S.vsIn(cid) : []
-    property string focus: ""
+    property string foc: ""
     property var vcs: r.cid ? [] : S.chList(S.sel).filter(c => c.k === "Voice" || c.k === "Stage").slice(0, 5)
     Column {
         anchors.centerIn: parent
@@ -39,24 +39,24 @@ Rectangle {
         visible: !!r.cid
         Loader {
             anchors.fill: parent
-            active: r.focus !== ""
+            active: r.foc !== ""
             sourceComponent: Rectangle {
                 color: "#000"
                 radius: Th.r
                 Image {
                     anchors.fill: parent
                     fillMode: Image.PreserveAspectFit
-                    source: "image://cordv/" + r.focus + "?" + fr
+                    source: "image://cordv/" + r.foc + "?" + fr
                     cache: false
                     property int fr: 0
                     Timer { interval: 16; repeat: true; running: true; onTriggered: parent.fr++ }
                 }
-                IBtn { anchors.right: parent.right; anchors.margins: 8; y: 8; n: "x"; onClicked: { S.c.watch(r.focus, false); r.focus = "" } }
+                IBtn { anchors.right: parent.right; anchors.margins: 8; y: 8; n: "x"; onClicked: { S.c.watch(r.foc, false); r.foc = "" } }
             }
         }
         Grid {
             id: gr
-            visible: r.focus === ""
+            visible: r.foc === ""
             anchors.centerIn: parent
             property int n: Math.max(1, r.ppl.length)
             columns: Math.ceil(Math.sqrt(n))
@@ -95,7 +95,7 @@ Rectangle {
                         anchors.verticalCenterOffset: parent.height * 0.3
                         text: "Watch stream"
                         pri: true
-                        onClicked: { S.c.watch(parent.uid, true); r.focus = parent.uid }
+                        onClicked: { S.c.watch(parent.uid, true); r.foc = parent.uid }
                     }
                     MouseArea {
                         anchors.fill: parent

@@ -103,13 +103,13 @@ Popup {
                     y: 6
                     width: parent.width - 20
                     spacing: 4
-                    Lbl { text: modelData.text; color: Th.tx2; font.pixelSize: Th.fsS }
+                    Lbl { text: modelData.text || ""; color: Th.tx2; font.pixelSize: Th.fsS }
                     Sld {
                         width: parent.width
-                        from: modelData.from
-                        to: modelData.to
-                        value: modelData.value
-                        onMoved: modelData.run(value)
+                        from: modelData.from || 0
+                        to: modelData.to || 1
+                        value: modelData.value || 0
+                        onMoved: if (modelData.run) modelData.run(value)
                     }
                 }
             }
