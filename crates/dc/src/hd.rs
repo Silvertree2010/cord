@@ -19,10 +19,19 @@ pub fn ents(v: &Value) -> Vec<Value> {
     }
 }
 
-fn out(sh: &Sh, tx: &Tx, e: Ev) {
-    if let Ev::Chan(c) = &e {
-        if let Some(l) = &c.last {
-            sh.lm.lock().unwrap().insert(c.id.raw.to_string(), l.raw.to_string());
+fn out(sh: &Sh, tx: &Tx, mut e: Ev) {
+    if let Ev::Chan(c) = &mut e {
+        {
+            let mut lm = sh.lm.lock().unwrap();
+            let k = c.id.raw.to_string();
+            match (lm.get(&k), &c.last) {
+                (Some(o), Some(l)) if sn(o) > sn(&l.raw) => c.last = Some(rid(sh.a, o)),
+                (Some(o), None) => c.last = Some(rid(sh.a, o)),
+                (_, Some(l)) => {
+                    lm.insert(k, l.raw.to_string());
+                }
+                _ => {}
+            }
         }
         if let Some(g) = &c.gld {
             sh.cg.lock().unwrap().insert(c.id.raw.to_string(), g.raw.to_string());
@@ -181,6 +190,9 @@ fn ready(sh: &Sh, tx: &Tx, d: &Value) {
     }
     let mm = arr(d, "merged_members");
     for (i, g) in arr(d, "guilds").iter().enumerate() {
+        if g["unavailable"].as_bool() == Some(true) {
+            continue;
+        }
         let my = mm.get(i).and_then(|l| {
             let l = l.as_array()?;
             let m = l.iter().find(|x| s(x, "user_id") == Some(uid.as_str())).or_else(|| l.first())?;
@@ -215,10 +227,12 @@ fn ready(sh: &Sh, tx: &Tx, d: &Value) {
     }
     for e in ents(&d["read_state"]) {
         let (Some(id), la) = (s(&e, "id"), s(&e, "last_message_id").unwrap_or("0")) else { continue };
+        if e["read_state_type"].as_u64().is_some_and(|t| t != 0) {
+            continue;
+        }
         let ment = e["mention_count"].as_u64().unwrap_or(0) as u32;
         sh.ak.lock().unwrap().insert(id.to_string(), (la.to_string(), ment));
-        let lm = sh.lm.lock().unwrap().get(id).cloned();
-        let Some(lm) = lm else { continue };
+        let lm = sh.lm.lock().unwrap().get(id).cloned().unwrap_or_default();
         let g = sh.cg.lock().unwrap().get(id).cloned();
         let mt = {
             let mu = sh.mu.lock().unwrap();
@@ -276,7 +290,7 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
             }
         }
         "MESSAGE_UPDATE" => {
-            if let Some(m) = msg(a, &d) {
+            if let Some(m) = msg_p(a, &d, false) {
                 let _ = tx.send(Ev::MsgUpd(m));
             }
         }

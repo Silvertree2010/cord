@@ -224,13 +224,22 @@ pub fn emb(e: &Value) -> Emb {
 }
 
 pub fn msg(a: u32, v: &Value) -> Option<Msg> {
-    let au = v.get("author")?;
+    msg_p(a, v, true)
+}
+
+pub fn msg_p(a: u32, v: &Value, need: bool) -> Option<Msg> {
+    let au = match v.get("author") {
+        Some(a) => a.clone(),
+        None if !need => Value::Null,
+        None => return None,
+    };
+    let au = &au;
     let arr = |k: &str| v.get(k).and_then(|x| x.as_array()).cloned().unwrap_or_default();
     let t = v["type"].as_u64().unwrap_or(0);
     Some(Msg {
         id: rid(a, s(v, "id")?),
         chan: rid(a, s(v, "channel_id")?),
-        auth: usr(a, au),
+        auth: if au.is_null() { Usr::default() } else { usr(a, au) },
         body: s(v, "content").unwrap_or("").to_string(),
         ts: s(v, "timestamp").and_then(ts).unwrap_or(0),
         ed: s(v, "edited_timestamp").and_then(ts),

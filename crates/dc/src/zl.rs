@@ -1,5 +1,8 @@
 use flate2::{Decompress, FlushDecompress};
 
+const MAXB: usize = 64 << 20;
+const MAXO: usize = 256 << 20;
+
 pub struct Inf {
     d: Decompress,
     b: Vec<u8>,
@@ -17,6 +20,10 @@ impl Inf {
     }
 
     pub fn push(&mut self, x: &[u8]) -> anyhow::Result<Option<String>> {
+        if self.b.len() + x.len() > MAXB {
+            self.b.clear();
+            anyhow::bail!("gateway frame too large");
+        }
         self.b.extend_from_slice(x);
         if !self.b.ends_with(&[0, 0, 0xff, 0xff]) {
             return Ok(None);
@@ -38,6 +45,9 @@ impl Inf {
             }
             if u == 0 && w == 0 {
                 break;
+            }
+            if o.len() > MAXO {
+                anyhow::bail!("gateway payload too large");
             }
         }
         Ok(Some(String::from_utf8(o)?))

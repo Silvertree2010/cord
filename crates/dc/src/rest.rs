@@ -102,14 +102,18 @@ impl Rest {
             let hv = |n: &str| hd.get(n).and_then(|v| v.to_str().ok()).map(str::to_owned);
             if hv("x-ratelimit-remaining").as_deref() == Some("0") {
                 let ra = hv("x-ratelimit-reset-after").and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0);
-                self.bk.lock().unwrap().insert(k.to_string(), Instant::now() + Duration::from_secs_f64(ra));
+                let now = Instant::now();
+                let mut b = self.bk.lock().unwrap();
+                b.retain(|_, t| *t > now);
+                b.insert(k.to_string(), now + Duration::from_secs_f64(ra.clamp(0.0, 3600.0)));
             }
             if st.as_u16() == 429 {
                 let v: Value = r.json().await.unwrap_or(Value::Null);
                 let ra = v["retry_after"].as_f64().or_else(|| hv("retry-after").and_then(|s| s.parse().ok())).unwrap_or(1.0);
                 let g = v["global"].as_bool().unwrap_or(false) || hv("x-ratelimit-global").is_some();
-                let t = Instant::now() + Duration::from_secs_f64(ra + 0.05);
-                self.bk.lock().unwrap().insert(if g { "global".into() } else { k.to_string() }, t);
+                let t = Instant::now() + Duration::from_secs_f64(ra.clamp(0.0, 3600.0) + 0.05);
+                let mut b = self.bk.lock().unwrap();
+                b.insert(if g { "global".into() } else { k.to_string() }, t);
                 continue;
             }
             let tx = r.text().await?;
