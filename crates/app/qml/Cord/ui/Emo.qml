@@ -8,6 +8,9 @@ Popup {
     width: 380
     height: 420
     padding: 10
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    onAboutToShow: U.reg(r)
+    onClosed: U.unreg(r)
     background: Rectangle { color: Th.bg3; radius: Th.r; border.color: Th.ln }
     readonly property var uni: "😀 😃 😄 😁 😆 😅 😂 🤣 🥲 😊 😇 🙂 🙃 😉 😌 😍 🥰 😘 😗 😋 😛 😜 🤪 😝 🤑 🤗 🤭 🤫 🤔 🤐 🤨 😐 😑 😶 😏 😒 🙄 😬 😮‍💨 🤥 😔 😪 🤤 😴 😷 🤒 🤕 🤢 🤮 🥵 🥶 🥴 😵 🤯 🤠 🥳 😎 🤓 🧐 😕 😟 🙁 😮 😯 😲 😳 🥺 😦 😧 😨 😰 😥 😢 😭 😱 😖 😣 😞 😓 😩 😫 🥱 😤 😡 😠 🤬 😈 👿 💀 ☠️ 💩 🤡 👹 👻 👽 🤖 😺 👋 🤚 ✋ 🖖 👌 🤌 🤏 ✌️ 🤞 🤟 🤘 🤙 👈 👉 👆 👇 ☝️ 👍 👎 ✊ 👊 🤛 🤜 👏 🙌 👐 🤲 🤝 🙏 💪 🧠 👀 👁️ 👅 👄 ❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💯 💢 💥 💫 💦 💨 🕳️ 💬 💤 🔥 ✨ ⭐ 🌟 ⚡ 🎉 🎊 🎈 🎁 🏆 🥇 ⚽ 🎮 🕹️ 🎲 🎧 🎵 🎶 💻 🖥️ ⌨️ 🖱️ 📱 📷 🔒 🔑 🛠️ ⚙️ 🧪 📌 📎 ✅ ❌ ⚠️ ❓ ❗ 🔴 🟢 🔵 ⚫ ⚪ 🍕 🍔 🍟 🌭 🍿 🍩 🍪 🎂 🍰 ☕ 🍺 🍻 🥂 🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🦆 🦅 🦉 🐺 🐗 🐴 🦄 🐝 🦋 🐌 🐞 🐢 🐍 🐙 🦀 🐬 🐳 🦈 🐊 🦖".split(" ")
     property string q: ""

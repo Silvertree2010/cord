@@ -20,8 +20,16 @@ Item {
 
     Rectangle {
         anchors.fill: parent
+        anchors.leftMargin: 8
+        anchors.rightMargin: 8
+        radius: Th.rs
         color: r.m.del ? Th.a(Th.err, 0.08) : r.ment ? Th.ment : r.hov ? Th.hov : "transparent"
-        Rectangle { visible: r.ment && !r.m.del; width: 2; height: parent.height; color: Th.ac }
+        Rectangle { visible: r.ment && !r.m.del; width: 2; height: parent.height - 8; y: 4; x: 0; radius: 1; color: Th.ac }
+    }
+    function askDel(skip) {
+        const go = () => S.c.del(r.cid, S.ridOf(r.m.id))
+        if (skip) { go(); return }
+        U.ask({ title: "Delete message", body: "This message will be deleted for everyone in the conversation.", ok: "Delete", danger: true, run: go })
     }
     readonly property bool ment: {
         const me = S.me(S.acc(cid))
@@ -33,7 +41,7 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         acceptedButtons: Qt.RightButton
-        onClicked: menu.popup()
+        onClicked: m => menu.show(ma, m.x, m.y, m.modifiers)
     }
 
     Column {
@@ -102,7 +110,7 @@ Item {
                 horizontalAlignment: Text.AlignRight
                 text: new Date(r.m.ts || 0).toLocaleTimeString(Qt.locale(), "HH:mm")
                 color: Th.tx3
-                font.pixelSize: 10
+                font.pixelSize: 11
             }
             Row {
                 id: hd
@@ -163,7 +171,7 @@ Item {
                     selectionColor: Th.ac
                     selectedTextColor: Th.acTx
                     property bool spoil: S.f("spoilers")
-                    text: F.html(S.run("render", r.m).body || "", { ac: Th.ac, cb: Th.bg4, qb: Th.tx3, mono: Th.mono, sub: Th.tx3, fs: Th.fs, names: S.names, spoil: spoil, sp: Th.bg4, big: F.onlyEmoji(r.m.body), em: 22 }) + (r.m.ed ? ' <span style="color:' + Th.tx3 + ';font-size:10px">(edited)</span>' : "")
+                    text: F.html(S.run("render", r.m).body || "", { ac: Th.ac, cb: Th.bg4, qb: Th.tx3, mono: Th.mono, sub: Th.tx3, fs: Th.fs, names: S.names, spoil: spoil, sp: Th.bg4, big: F.onlyEmoji(r.m.body), em: 22 }) + (r.m.ed ? ' <span style="color:' + Th.tx2 + ';font-size:11px">(edited)</span>' : "")
                     onLinkActivated: l => {
                         if (l === "cord:spoil") { spoil = true; return }
                         if (l.startsWith("cord:chan/")) { const id = l.slice(10); const c = Object.keys(S.chans).find(k => S.raw(k) === id); if (c) { S.sel = S.chans[c].grid || "home"; S.open(c) } return }
@@ -297,8 +305,8 @@ Item {
         property bool hov: bm.containsMouse
         visible: r.hov && !r.m.del
         anchors.right: parent.right
-        anchors.rightMargin: 16
-        y: -12
+        anchors.rightMargin: 8
+        y: -14
         z: 10
         height: 32
         width: br.implicitWidth + 4
@@ -312,20 +320,25 @@ Item {
             IBtn { n: "smile"; sz: 28; isz: 16; tip: "Add reaction"; onClicked: S.emoji(bar, e => S.c.react(r.cid, S.ridOf(r.m.id), JSON.stringify(e), true)) }
             IBtn { n: "reply"; sz: 28; isz: 16; tip: "Reply"; onClicked: S.reply = S.ridOf(r.m.id) }
             IBtn { visible: r.mine; n: "edit"; sz: 28; isz: 16; tip: "Edit"; onClicked: S.editing = S.ridOf(r.m.id) }
-            IBtn { n: "dots"; sz: 28; isz: 16; tip: "More"; onClicked: menu.popup() }
+            IBtn { visible: r.mine; n: "trash"; sz: 28; isz: 16; tip: "Delete  (Shift+click skips confirm)"; onClicked: r.askDel(!!(mods & Qt.ShiftModifier)) }
+            IBtn { id: dotB; n: "dots"; sz: 28; isz: 16; tip: "More"; onClicked: menu.show(dotB, 0, dotB.height + 4) }
         }
     }
 
-    Menu {
+    Ctx {
         id: menu
-        MenuItem { text: "Reply"; onTriggered: S.reply = S.ridOf(r.m.id) }
-        MenuItem { text: "Edit"; visible: r.mine; height: visible ? implicitHeight : 0; onTriggered: S.editing = S.ridOf(r.m.id) }
-        MenuItem { text: "Copy text"; onTriggered: S.copy(tx.getText(0, tx.length)) }
-        MenuItem { text: "Copy raw"; visible: S.f("copyraw"); height: visible ? implicitHeight : 0; onTriggered: S.copy(r.m.body) }
-        MenuItem { text: "Copy message ID"; onTriggered: S.copy(r.m.id.raw) }
-        MenuItem { text: "Copy link"; visible: S.svc(r.cid) === "dc"; height: visible ? implicitHeight : 0; onTriggered: { const c = S.chans[r.cid]; S.copy("https://discord.com/channels/" + (c && c.grid ? S.raw(c.grid) : "@me") + "/" + S.raw(r.cid) + "/" + r.m.id.raw) } }
-        MenuItem { text: "Translate"; visible: S.f("translate"); height: visible ? implicitHeight : 0; onTriggered: Qt.openUrlExternally("https://translate.google.com/?sl=auto&tl=" + Qt.locale().name.split("_")[0] + "&text=" + encodeURIComponent(r.m.body)) }
-        MenuSeparator {}
-        MenuItem { text: "Delete"; visible: r.mine; height: visible ? implicitHeight : 0; onTriggered: S.c.del(r.cid, S.ridOf(r.m.id)) }
+        model: [
+            { text: "Reply", run: () => S.reply = S.ridOf(r.m.id) },
+            { text: "Edit", when: r.mine, run: () => S.editing = S.ridOf(r.m.id) },
+            { text: "Copy", items: [
+                { text: "Text", run: () => S.copy(tx.getText(0, tx.length)) },
+                { text: "Raw text", when: S.f("copyraw"), run: () => S.copy(r.m.body) },
+                { text: "Message ID", run: () => S.copy(r.m.id.raw) },
+                { text: "Link", when: S.svc(r.cid) === "dc", run: () => { const c = S.chans[r.cid]; S.copy("https://discord.com/channels/" + (c && c.grid ? S.raw(c.grid) : "@me") + "/" + S.raw(r.cid) + "/" + r.m.id.raw) } }
+            ] },
+            { text: "Translate", when: S.f("translate"), run: () => Qt.openUrlExternally("https://translate.google.com/?sl=auto&tl=" + Qt.locale().name.split("_")[0] + "&text=" + encodeURIComponent(r.m.body)) },
+            { sep: true, when: r.mine },
+            { text: "Delete", danger: true, when: r.mine, run: () => r.askDel(!!(menu.mods & Qt.ShiftModifier)) }
+        ]
     }
 }

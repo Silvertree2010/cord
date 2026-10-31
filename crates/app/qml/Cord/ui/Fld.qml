@@ -16,6 +16,7 @@ TextField {
     leftPadding: 10
     rightPadding: 10
     implicitHeight: 36 * Th.dens
+    Keys.onShortcutOverride: e => { if ((e.modifiers & Qt.ControlModifier) && (e.key === Qt.Key_K || e.key === Qt.Key_Comma || e.key === Qt.Key_E)) e.accepted = false }
     background: Rectangle {
         radius: Th.rs
         color: Th.bg

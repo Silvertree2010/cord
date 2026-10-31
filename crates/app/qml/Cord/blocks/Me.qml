@@ -27,7 +27,7 @@ Rectangle {
             ring: Th.bg3
             sv: r.a ? S.tag(r.a.svc) : ""
             anchors.verticalCenter: parent.verticalCenter
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: sm.popup() }
+            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: m => { sm.show(av, 0, -sm.implicitHeight - 8) } }
         }
         Column {
             anchors.verticalCenter: parent.verticalCenter
@@ -35,8 +35,8 @@ Rectangle {
             Lbl { width: parent.width; text: r.a ? (r.a.me.disp || r.a.me.name) : "No account"; font.weight: Font.DemiBold; font.pixelSize: Th.fsS }
             Lbl {
                 width: parent.width
-                text: r.al.length > 1 ? r.al.length + " accounts" : (r.a ? r.a.me.name : "")
-                color: Th.tx3
+                text: r.mu || r.de ? (r.de ? "Deafened" : "Muted") : (r.al.length > 1 ? r.al.length + " accounts" : (r.a ? r.a.me.name : ""))
+                color: r.mu || r.de ? Th.err : Th.tx3
                 font.pixelSize: 11
             }
         }
@@ -50,25 +50,21 @@ Rectangle {
         IBtn { n: r.de ? "headoff" : "head"; red: r.de; tip: r.de ? "Undeafen" : "Deafen"; onClicked: S.c.vset(r.mu, !r.de) }
         IBtn { n: "cog"; tip: "Settings  (Ctrl+,)"; onClicked: S.showSet = true }
     }
-    Menu {
+    Ctx {
         id: sm
-        Repeater {
-            model: [["On", "Online"], ["Idle", "Idle"], ["Dnd", "Do not disturb"], ["Off", "Invisible"]]
-            MenuItem {
-                text: modelData[1]
-                onTriggered: { S.setUi("st", modelData[0]); S.c.set_st(modelData[0].toLowerCase() === "on" ? "on" : modelData[0].toLowerCase(), "") }
-            }
+        w: 230
+        model: {
+            const st = [["On", "Online"], ["Idle", "Idle"], ["Dnd", "Do not disturb"], ["Off", "Invisible"]].map(x => ({
+                text: x[1],
+                checked: (S.ui.st || "On") === x[0],
+                run: () => { S.setUi("st", x[0]); S.c.set_st(x[0].toLowerCase(), "") }
+            }))
+            const ac = r.al.map(x => ({
+                text: (x.me.disp || x.me.name) + "  ·  " + Th.svcName(x.svc),
+                checked: x.id === r.cur,
+                run: () => S.setUi("meAcc", x.id)
+            }))
+            return st.concat([{ sep: true }], ac, [{ text: "Add account", run: () => { S.setPage = "accounts"; S.showSet = true } }])
         }
-        MenuSeparator {}
-        Repeater {
-            model: r.al
-            MenuItem {
-                text: (modelData.me.disp || modelData.me.name) + "  ·  " + Th.svcName(modelData.svc)
-                checkable: true
-                checked: modelData.id === r.cur
-                onTriggered: S.setUi("meAcc", modelData.id)
-            }
-        }
-        MenuItem { text: "Add account"; onTriggered: { S.setPage = "accounts"; S.showSet = true } }
     }
 }

@@ -9,25 +9,55 @@ ColumnLayout {
     property string sv: "dc"
     property string mode: "qr"
     property bool busy: false
+    property string qerr: ""
+    property int age: 0
+    readonly property bool qrOn: visible && r.sv === "dc" && r.mode === "qr"
     signal done
+    function getQr() {
+        S.qr = ""
+        S.qrUsr = ""
+        qerr = ""
+        age = 0
+        S.c.dc_qr()
+    }
     Connections {
         target: S
         function onEv(d) {
             if (d.t === "Accs") { r.busy = false; r.done() }
-            if (d.t === "Err") r.busy = false
+            if (d.t === "Err") {
+                r.busy = false
+                if (r.qrOn && S.qr === "") r.qerr = d.d.msg
+            }
         }
     }
+    Timer {
+        interval: 1000
+        repeat: true
+        running: r.qrOn
+        onTriggered: {
+            r.age++
+            if (S.qr === "" && r.qerr === "" && r.age > 20) r.qerr = "No response from Discord"
+            else if (S.qr !== "" && r.age >= 100 && S.qrUsr === "") r.getQr()
+        }
+    }
+    onQrOnChanged: if (qrOn && !S.qr) getQr()
+    Component.onCompleted: if (qrOn && !S.qr) getQr()
     Row {
         spacing: 6
         Repeater {
             model: [["dc", "Discord"], ["mx", "Matrix"], ["st", "Stoat"]]
             Rectangle {
                 width: 130
-                height: 44
+                height: 40
                 radius: Th.rs
                 color: r.sv === modelData[0] ? Th.sel : sm.containsMouse ? Th.hov : Th.bg3
                 border.color: r.sv === modelData[0] ? Th.svcCol(modelData[0]) : "transparent"
                 border.width: 2
+                activeFocusOnTab: true
+                Accessible.role: Accessible.Button
+                Accessible.name: modelData[1]
+                Keys.onReturnPressed: sm.clicked(null)
+                Keys.onSpacePressed: sm.clicked(null)
                 Row {
                     anchors.centerIn: parent
                     spacing: 8
@@ -38,35 +68,56 @@ ColumnLayout {
             }
         }
     }
-    Row {
+    Seg {
         visible: r.sv === "dc"
-        spacing: 6
-        Btn { text: "QR code"; flat: r.mode !== "qr"; onClicked: r.mode = "qr" }
-        Btn { text: "Token"; flat: r.mode !== "tok"; onClicked: r.mode = "tok" }
+        opts: [["qr", "QR code"], ["tok", "Token"]]
+        cur: r.mode
+        onPick: v => r.mode = v
     }
     ColumnLayout {
         visible: r.sv === "dc" && r.mode === "qr"
         spacing: 10
-        Lbl { text: "Scan with the Discord mobile app: Settings, Scan QR code"; color: Th.tx2; wrapMode: Text.Wrap; Layout.preferredWidth: 400 }
         Rectangle {
-            width: 220
-            height: 220
+            Layout.preferredWidth: 244
+            Layout.preferredHeight: 244
             radius: Th.r
-            color: "#fff"
-            Image {
+            color: Th.bg3
+            border.color: Th.ln
+            Rectangle {
                 anchors.centerIn: parent
-                width: 196
-                height: 196
-                visible: S.qr !== ""
-                smooth: false
-                source: S.qr ? S.c.qr(S.qr) : ""
+                width: 212
+                height: 212
+                radius: Th.rs
+                color: "#fff"
+                Image {
+                    anchors.centerIn: parent
+                    width: 196
+                    height: 196
+                    visible: S.qr !== "" && r.qerr === ""
+                    smooth: false
+                    source: S.qr ? S.c.qr(S.qr) : ""
+                }
             }
-            BusyIndicator { anchors.centerIn: parent; running: S.qr === ""; visible: running }
+            Column {
+                anchors.centerIn: parent
+                spacing: 8
+                visible: S.qr === "" && r.qerr === ""
+                BusyIndicator { anchors.horizontalCenter: parent.horizontalCenter; running: parent.visible; width: 28; height: 28 }
+                Lbl { text: "Waiting for code"; color: Th.bg; anchors.horizontalCenter: parent.horizontalCenter }
+            }
+            Column {
+                anchors.centerIn: parent
+                spacing: 8
+                visible: r.qerr !== ""
+                width: 190
+                Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "Could not get a code"; color: Th.err; font.weight: Font.DemiBold }
+                Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: r.qerr; color: Th.bg; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone; maximumLineCount: 3 }
+                Btn { anchors.horizontalCenter: parent.horizontalCenter; text: "Retry"; pri: true; onClicked: r.getQr() }
+            }
         }
+        Lbl { visible: S.qr !== "" && S.qrUsr === "" && r.qerr === ""; text: "Scan with the Discord app: Settings, Scan QR code"; color: Th.tx2 }
         Lbl { visible: S.qrUsr !== ""; text: "Confirm the login on your phone as " + S.qrUsr; color: Th.ok }
-        Btn { text: S.qr ? "New code" : "Get code"; onClicked: { S.qr = ""; S.qrUsr = ""; S.c.dc_qr() } }
-        onVisibleChanged: if (visible && !S.qr) S.c.dc_qr()
-        Component.onCompleted: if (visible && !S.qr) S.c.dc_qr()
+        Btn { visible: S.qr !== "" && r.qerr === ""; text: "New code"; flat: true; onClicked: r.getQr() }
     }
     ColumnLayout {
         visible: r.sv === "dc" && r.mode === "tok"
@@ -98,6 +149,7 @@ ColumnLayout {
             text: r.busy ? "Signing in" : "Sign in"
             pri: true
             on: !r.busy
+            height: 36
             onClicked: {
                 r.busy = true
                 if (r.sv === "dc") S.c.add("dc", JSON.stringify({ token: dtok.text }))
@@ -111,6 +163,7 @@ ColumnLayout {
         visible: r.sv === "dc"
         Layout.preferredWidth: 420
         wrapMode: Text.Wrap
+        elide: Text.ElideNone
         text: "Third party clients are against Discord's terms. Your account could be suspended."
         color: Th.tx3
         font.pixelSize: 11

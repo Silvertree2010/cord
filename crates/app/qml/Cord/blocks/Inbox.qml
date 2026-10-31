@@ -76,11 +76,11 @@ Rectangle {
                     anchors.right: parent.right
                     anchors.rightMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
-                    height: 18
-                    width: Math.max(18, ml.implicitWidth + 8)
-                    radius: 9
+                    height: 16
+                    width: Math.max(16, ml.implicitWidth + 8)
+                    radius: 8
                     color: Th.err
-                    Lbl { id: ml; anchors.centerIn: parent; text: modelData.u.ment; color: "#fff"; font.pixelSize: 11; font.weight: Font.Bold }
+                    Lbl { id: ml; anchors.centerIn: parent; text: modelData.u.ment; color: "#fff"; font.pixelSize: 10; font.weight: Font.Bold }
                 }
                 MouseArea {
                     id: ma
@@ -90,7 +90,13 @@ Rectangle {
                     onClicked: { S.sel = modelData.c.grid || "home"; S.open(modelData.c.rid, S.hasBlk("inbox") && S.lay && JSON.stringify(S.lay).indexOf('"slot":1') >= 0 ? 1 : 0) }
                 }
             }
-            Lbl { anchors.centerIn: parent; visible: r.items.length === 0; text: "You are all caught up"; color: Th.tx3 }
+            Column {
+                anchors.centerIn: parent
+                visible: r.items.length === 0
+                spacing: 8
+                Ico { anchors.horizontalCenter: parent.horizontalCenter; n: "inbox"; sz: 28; col: Th.tx3 }
+                Lbl { text: "No unread mentions or messages"; color: Th.tx3 }
+            }
         }
     }
 }

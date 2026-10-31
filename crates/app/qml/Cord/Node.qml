@@ -55,7 +55,7 @@ Item {
                         cursorShape: Qt.SplitHCursor
                         property real sx: 0
                         property real sw: 0
-                        onPressed: m => { sx = mapToGlobal(m.x, 0).x; sw = parent.width }
+                        onPressed: m => { if (S.edit) U.push(); sx = mapToGlobal(m.x, 0).x; sw = parent.width }
                         onPositionChanged: m => {
                             if (!pressed) return
                             const dx = mapToGlobal(m.x, 0).x - sx

@@ -9,7 +9,9 @@ Rectangle {
     property bool vid: false
     color: "#e6000000"
     visible: url !== ""
-    MouseArea { anchors.fill: parent; onClicked: { mp.stop(); r.url = "" } }
+    function close() { mp.stop(); r.url = "" }
+    MouseArea { anchors.fill: parent; onClicked: r.close() }
+    IBtn { anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 16; z: 2; n: "x"; sz: 36; tip: "Close"; onClicked: r.close() }
     Image {
         visible: !r.vid
         anchors.centerIn: parent

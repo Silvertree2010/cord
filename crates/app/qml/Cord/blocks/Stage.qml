@@ -12,11 +12,25 @@ Rectangle {
     property string cid: cs.chan ? S.ridOf(cs.chan) : (S.chans[S.selC] && (S.chans[S.selC].k === "Voice" || S.chans[S.selC].k === "Stage") ? S.selC : "")
     property var ppl: cid ? S.vsIn(cid) : []
     property string focus: ""
-    Lbl {
+    property var vcs: r.cid ? [] : S.chList(S.sel).filter(c => c.k === "Voice" || c.k === "Stage").slice(0, 5)
+    Column {
         anchors.centerIn: parent
         visible: !r.cid
-        text: "Join a voice channel to see the call here"
-        color: Th.tx3
+        spacing: 10
+        width: Math.min(320, parent.width - 32)
+        Ico { anchors.horizontalCenter: parent.horizontalCenter; n: "voice"; sz: 32; col: Th.tx3 }
+        Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "No active call"; font.weight: Font.DemiBold }
+        Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "Join a voice channel to see participants and streams here."; color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone }
+        Repeater {
+            model: r.vcs
+            Btn {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width
+                text: "Join " + modelData.name
+                ico: "voice"
+                onClicked: S.c.join(modelData.rid)
+            }
+        }
     }
     Item {
         anchors.fill: parent
@@ -87,17 +101,11 @@ Rectangle {
                         anchors.fill: parent
                         z: -1
                         acceptedButtons: Qt.RightButton
-                        onClicked: vm.popup()
+                        onClicked: m => vm.show(parent, m.x, m.y)
                     }
-                    Menu {
+                    Ctx {
                         id: vm
-                        MenuItem {
-                            contentItem: Column {
-                                spacing: 4
-                                Lbl { text: "User volume"; font.pixelSize: Th.fsS }
-                                Slider { from: 0; to: 2; value: 1; onMoved: S.c.vol(uid, value) }
-                            }
-                        }
+                        model: [{ slider: true, text: "User volume", from: 0, to: 2, value: 1, run: v => S.c.vol(uid, v) }]
                     }
                 }
             }

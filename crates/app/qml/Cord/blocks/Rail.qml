@@ -10,11 +10,14 @@ Rectangle {
     implicitHeight: hz ? 56 : 300
     color: Th.bg
     readonly property real isz: Math.min(48, (hz ? height : width) - 22)
+    readonly property real fz: r.hz ? r.isz + 24 : r.isz + 20
 
     ListView {
         id: lv
-        anchors.fill: parent
-        anchors.margins: 0
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.right: r.hz ? gear.left : parent.right
+        anchors.bottom: r.hz ? parent.bottom : gear.top
         orientation: r.hz ? ListView.Horizontal : ListView.Vertical
         spacing: 6
         clip: true
@@ -31,7 +34,7 @@ Rectangle {
                     gid: "home"
                     name: "Home"
                     ico: "home"
-                    unrN: S.dmUnr().length
+                    dotN: S.dmUnr().length
                 }
                 Repeater {
                     model: S.dmUnr()
@@ -40,8 +43,8 @@ Rectangle {
                         name: S.chName(modelData.rid)
                         img: modelData.rcp && modelData.rcp.length ? (modelData.rcp[0].av || "") : (modelData.icon || "")
                         sv: S.svc(modelData.rid)
-                        ment: (S.unr[modelData.rid] || {}).ment || 1
-                        round: true
+                        ment: (S.unr[modelData.rid] || {}).ment || 0
+                        dotN: 1
                         onPick: { S.sel = "home"; S.open(modelData.rid) }
                     }
                 }
@@ -67,7 +70,7 @@ Rectangle {
                 img: modelData.icon || ""
                 sv: S.svc(modelData.rid)
                 property var u: S.gUnr(modelData.rid)
-                unrN: u.n
+                dotN: u.n
                 ment: u.m
             }
         }
@@ -86,6 +89,30 @@ Rectangle {
         ScrollBar.vertical: Scr {}
     }
 
+    Item {
+        id: gear
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        width: r.hz ? r.fz : parent.width
+        height: r.hz ? parent.height : r.fz
+        Rectangle {
+            visible: !r.hz
+            width: parent.width * 0.5
+            height: 1
+            color: Th.ln
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: 0
+        }
+        Ic {
+            x: (parent.width - r.isz) / 2
+            y: (parent.height - r.isz) / 2
+            gid: "cog"
+            name: "Settings  (Ctrl+,)"
+            ico: "cog"
+            onPick: S.showSet = true
+        }
+    }
+
     component Ic: Item {
         id: ic
         property string gid
@@ -93,18 +120,22 @@ Rectangle {
         property string img: ""
         property string ico: ""
         property string sv: ""
-        property int unrN: 0
+        property int dotN: 0
         property int ment: 0
-        property bool round: false
         property bool cur: S.sel === gid
         signal pick
         width: r.isz
         height: r.isz
+        activeFocusOnTab: true
+        Accessible.role: Accessible.Button
+        Accessible.name: ic.name
+        Keys.onReturnPressed: ic.pick()
+        Keys.onSpacePressed: ic.pick()
         onPick: S.pick(gid)
         Rectangle {
-            visible: !r.hz && (ic.cur || ic.unrN > 0 || ma.containsMouse)
+            visible: !r.hz && (ic.cur || ma.containsMouse)
             width: 4
-            height: ic.cur ? r.isz * 0.8 : ma.containsMouse ? r.isz * 0.4 : 8
+            height: ic.cur ? r.isz * 0.6 : r.isz * 0.3
             radius: 2
             color: Th.tx
             x: -((r.width - r.isz) / 2)
@@ -113,10 +144,9 @@ Rectangle {
         }
         Rectangle {
             anchors.fill: parent
-            radius: ic.cur || ma.containsMouse || ic.round ? Th.r * 1.4 : width / 2
+            radius: Th.r * 1.4
             color: ic.cur ? Th.ac : ma.containsMouse ? Th.bg4 : Th.bg3
             visible: ic.ico !== "" || ic.img === ""
-            Behavior on radius { NumberAnimation { duration: S.f("anim") ? 120 : 0 } }
             Ico {
                 visible: ic.ico !== ""
                 anchors.centerIn: parent
@@ -141,36 +171,65 @@ Rectangle {
             sz: r.isz
             src: ic.img
             name: ic.name
-            sq: !ic.round
+            sq: true
+        }
+        Rectangle {
+            anchors.fill: parent
+            radius: Th.r * 1.4
+            color: "transparent"
+            border.color: Th.ac
+            border.width: 2
+            visible: ic.cur && ic.ico === "" || ic.activeFocus
+        }
+        Rectangle {
+            visible: ic.sv !== "" && S.ui.badges !== false
+            width: 3
+            height: parent.height * 0.5
+            radius: 1.5
+            x: 2
+            anchors.verticalCenter: parent.verticalCenter
+            color: Th.svcCol(ic.sv)
         }
         Badge {
             visible: ic.sv !== "" && S.ui.badges !== false
             sv: ic.sv
-            sz: 16
+            sz: 20
             ring: Th.bg
             anchors.left: parent.left
             anchors.bottom: parent.bottom
-            anchors.margins: -3
+            anchors.margins: -5
         }
         Rectangle {
             visible: ic.ment > 0
-            height: 18
-            width: Math.max(18, mt.implicitWidth + 8)
-            radius: 9
+            height: 16
+            width: Math.max(16, mt.implicitWidth + 8)
+            radius: 8
             color: Th.err
             border.color: Th.bg
-            border.width: 3
+            border.width: 2
             anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            anchors.margins: -4
+            anchors.top: parent.top
+            anchors.margins: -5
             Lbl {
                 id: mt
                 anchors.centerIn: parent
                 text: ic.ment > 99 ? "99+" : ic.ment
                 color: "#fff"
-                font.pixelSize: 11
+                font.pixelSize: 10
                 font.weight: Font.Bold
             }
+        }
+        Rectangle {
+            visible: ic.ment === 0 && ic.dotN > 0 && !ic.cur
+            width: 10
+            height: 10
+            radius: 5
+            color: Th.tx
+            border.color: Th.bg
+            border.width: 2
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: -3
         }
         MouseArea {
             id: ma
@@ -178,32 +237,22 @@ Rectangle {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             acceptedButtons: Qt.LeftButton | Qt.RightButton
+            onPressed: tp.cancel()
             onClicked: m => {
-                if (m.button === Qt.RightButton && ic.gid.indexOf(":") > 0) cm.popup()
+                if (m.button === Qt.RightButton && ic.gid.indexOf(":") > 0 && ic.gid.indexOf("dm:") !== 0) cm.show(ma, m.x, m.y)
                 else ic.pick()
             }
         }
-        ToolTip.visible: ma.containsMouse
-        ToolTip.text: ic.name + (ic.sv ? "  ·  " + Th.svcName(ic.sv) : "")
-        ToolTip.delay: 300
-        Menu {
+        Tip { id: tp; text: ic.name + (ic.sv ? "  ·  " + Th.svcName(ic.sv) : ""); hov: ma.containsMouse }
+        Ctx {
             id: cm
-            MenuItem {
-                text: "Mark as read"
-                onTriggered: { for (const c of S.chList(ic.gid)) if (S.unr[c.rid]) S.c.ack(c.rid) }
-            }
-            MenuItem {
-                text: "Move up"
-                onTriggered: ic.mv(-1)
-            }
-            MenuItem {
-                text: "Move down"
-                onTriggered: ic.mv(1)
-            }
-            MenuItem {
-                text: "Copy ID"
-                onTriggered: S.copy(S.raw(ic.gid))
-            }
+            model: [
+                { text: "Mark as read", run: () => { for (const c of S.chList(ic.gid)) if (S.unr[c.rid]) S.c.ack(c.rid) } },
+                { text: "Move up", run: () => ic.mv(-1) },
+                { text: "Move down", run: () => ic.mv(1) },
+                { sep: true },
+                { text: "Copy server ID", run: () => S.copy(S.raw(ic.gid)) }
+            ]
         }
         function mv(d) {
             const o = S.glds.map(g => g.rid)

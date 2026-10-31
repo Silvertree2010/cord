@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 import Cord
 
 Rectangle {
@@ -10,10 +9,17 @@ Rectangle {
     property bool red: false
     property real sz: 32
     property real isz: 18
+    property int mods: 0
     signal clicked
     width: sz
     height: sz
     radius: Th.rs
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Button
+    Accessible.name: tip !== "" ? tip : n
+    Keys.onReturnPressed: r.clicked()
+    Keys.onEnterPressed: r.clicked()
+    Keys.onSpacePressed: r.clicked()
     color: red ? (ma.containsMouse ? Qt.lighter(Th.err, 1.1) : Th.a(Th.err, 0.2)) : act ? Th.sel : ma.containsMouse ? Th.hov : "transparent"
     Ico {
         anchors.centerIn: parent
@@ -21,14 +27,21 @@ Rectangle {
         sz: r.isz
         col: r.red ? (ma.containsMouse ? "#fff" : Th.err) : r.act ? Th.tx : ma.containsMouse ? Th.tx : Th.tx2
     }
+    Rectangle {
+        anchors.fill: parent
+        radius: r.radius
+        color: "transparent"
+        border.color: Th.ac
+        border.width: 2
+        visible: r.activeFocus
+    }
     MouseArea {
         id: ma
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: r.clicked()
+        onPressed: tp.cancel()
+        onClicked: m => { r.mods = m.modifiers; r.clicked() }
     }
-    ToolTip.visible: tip !== "" && ma.containsMouse
-    ToolTip.text: tip
-    ToolTip.delay: 500
+    Tip { id: tp; text: r.tip; hov: ma.containsMouse && r.tip !== "" }
 }

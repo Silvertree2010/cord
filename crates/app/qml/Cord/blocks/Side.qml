@@ -59,6 +59,16 @@ Rectangle {
                     color: Th.tx3
                     font.pixelSize: Th.fsS
                 }
+                Rectangle {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 6
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: kh.implicitWidth + 10
+                    height: 18
+                    radius: 4
+                    color: Th.bg3
+                    Lbl { id: kh; anchors.centerIn: parent; text: "Ctrl+K"; color: Th.tx3; font.pixelSize: 10; font.family: Th.mono }
+                }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: S.quick() }
             }
         }
@@ -86,12 +96,14 @@ Rectangle {
             MouseArea {
                 anchors.fill: parent
                 acceptedButtons: Qt.RightButton
-                onClicked: gm.popup()
+                onClicked: m => gm.show(parent, m.x, m.y)
             }
-            Menu {
+            Ctx {
                 id: gm
-                MenuItem { text: "Mark server as read"; onTriggered: { for (const c of S.chList(S.sel)) if (S.unr[c.rid]) S.c.ack(c.rid) } }
-                MenuItem { text: "Copy server ID"; onTriggered: S.copy(S.raw(S.sel)) }
+                model: [
+                    { text: "Mark server as read", run: () => { for (const c of S.chList(S.sel)) if (S.unr[c.rid]) S.c.ack(c.rid) } },
+                    { text: "Copy server ID", run: () => S.copy(S.raw(S.sel)) }
+                ]
             }
         }
     }
@@ -105,11 +117,10 @@ Rectangle {
             Item { width: 1; height: 10 }
             Lbl {
                 x: 16
-                text: "DIRECT MESSAGES"
-                color: Th.tx3
-                font.pixelSize: 11
+                text: "Direct messages"
+                color: Th.tx2
+                font.pixelSize: Th.fsS
                 font.weight: Font.DemiBold
-                font.letterSpacing: 0.4
             }
             Item { width: 1; height: 4 }
         }
@@ -150,11 +161,10 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Lbl {
-                    text: ch.name.toUpperCase()
-                    color: cm.containsMouse ? Th.tx2 : Th.tx3
-                    font.pixelSize: 11
+                    text: ch.name
+                    color: cm.containsMouse ? Th.tx : Th.tx2
+                    font.pixelSize: Th.fsS
                     font.weight: Font.DemiBold
-                    font.letterSpacing: 0.4
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -187,15 +197,6 @@ Rectangle {
                 radius: Th.rs
                 color: cur ? Th.sel : ma.containsMouse ? Th.hov : "transparent"
                 opacity: ch.hidden ? 0.55 : 1
-                Rectangle {
-                    visible: u && u.n && !cur
-                    width: 4
-                    height: 8
-                    radius: 2
-                    x: -10
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: Th.tx
-                }
                 Row {
                     x: 8
                     spacing: 6
@@ -220,6 +221,20 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 4
                     Lbl {
+                        visible: vc && S.call.chan && S.ridOf(S.call.chan) === ch.rid && !S.call.up
+                        text: "Connecting"
+                        color: Th.tx2
+                        font.pixelSize: Th.fsS
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Ico {
+                        visible: vc && S.call.chan && S.ridOf(S.call.chan) === ch.rid && !!S.call.up
+                        n: "voice"
+                        sz: 14
+                        col: Th.ok
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Lbl {
                         visible: ty.length > 0
                         text: "···"
                         color: Th.tx2
@@ -241,18 +256,22 @@ Rectangle {
                     cursorShape: Qt.PointingHandCursor
                     acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                     onClicked: m => {
-                        if (m.button === Qt.RightButton) { chm.popup(); return }
+                        if (m.button === Qt.RightButton) { chm.show(ma, m.x, m.y); return }
                         if (vc) { S.c.join(ch.rid); return }
                         S.open(ch.rid, (m.button === Qt.MiddleButton || (m.modifiers & Qt.ControlModifier)) ? 1 : 0)
                     }
                     onDoubleClicked: if (vc) S.open(ch.rid)
                 }
-                Menu {
+                Ctx {
                     id: chm
-                    MenuItem { text: "Mark as read"; onTriggered: S.c.ack(ch.rid) }
-                    MenuItem { text: "Open in second chat"; onTriggered: S.open(ch.rid, 1) }
-                    MenuItem { text: "Copy channel ID"; onTriggered: S.copy(S.raw(ch.rid)) }
-                    MenuItem { text: "Copy link"; visible: S.svc(ch.rid) === "dc"; onTriggered: S.copy("https://discord.com/channels/" + S.raw(ch.grid) + "/" + S.raw(ch.rid)) }
+                    model: [
+                        { text: "Mark as read", run: () => S.c.ack(ch.rid) },
+                        { text: "Open in second chat", run: () => S.open(ch.rid, 1) },
+                        { text: "Copy", items: [
+                            { text: "Channel ID", run: () => S.copy(S.raw(ch.rid)) },
+                            { text: "Link", when: S.svc(ch.rid) === "dc", run: () => S.copy("https://discord.com/channels/" + S.raw(ch.grid) + "/" + S.raw(ch.rid)) }
+                        ] }
+                    ]
                 }
             }
             Repeater {
@@ -362,26 +381,24 @@ Rectangle {
                 cursorShape: Qt.PointingHandCursor
                 acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                 onClicked: m => {
-                    if (m.button === Qt.RightButton) { dm.popup(); return }
+                    if (m.button === Qt.RightButton) { dm.show(ma, m.x, m.y); return }
                     S.open(ch.rid, (m.button === Qt.MiddleButton || (m.modifiers & Qt.ControlModifier)) ? 1 : 0)
                 }
             }
-            Menu {
+            Ctx {
                 id: dm
-                MenuItem {
-                    text: (S.ui.pins || []).indexOf(ch.rid) >= 0 ? "Unpin" : "Pin to top"
-                    visible: S.f("pinDms")
-                    onTriggered: {
+                model: [
+                    { text: (S.ui.pins || []).indexOf(ch.rid) >= 0 ? "Unpin" : "Pin to top", when: S.f("pinDms"), run: () => {
                         const p = (S.ui.pins || []).slice()
                         const i = p.indexOf(ch.rid)
                         if (i >= 0) p.splice(i, 1); else p.unshift(ch.rid)
                         S.setUi("pins", p)
                         S.ver++
-                    }
-                }
-                MenuItem { text: "Mark as read"; onTriggered: S.c.ack(ch.rid) }
-                MenuItem { text: "Call"; visible: S.svc(ch.rid) === "dc"; onTriggered: S.c.join(ch.rid) }
-                MenuItem { text: "Copy user ID"; onTriggered: S.copy(usr && usr.id ? usr.id.raw : "") }
+                    } },
+                    { text: "Mark as read", run: () => S.c.ack(ch.rid) },
+                    { text: "Call", when: S.svc(ch.rid) === "dc", run: () => S.c.join(ch.rid) },
+                    { text: "Copy user ID", run: () => S.copy(usr && usr.id ? usr.id.raw : "") }
+                ]
             }
         }
     }

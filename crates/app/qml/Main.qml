@@ -16,15 +16,17 @@ ApplicationWindow {
     font.family: Th.font
     font.pixelSize: Th.fs
 
+    readonly property bool bar: U.inCall && !S.setup && !S.hasBlk("call")
+
     Component.onCompleted: {
         S.boot()
         const sh = Qt.application.arguments.indexOf("--shot")
         const sp = Qt.application.arguments.indexOf("--page")
         if (sp >= 0) { S.setPage = Qt.application.arguments[sp + 1]; S.showSet = true }
-        if (Qt.application.arguments.indexOf("--edit") >= 0) S.edit = true
-        if (Qt.application.arguments.indexOf("--quick") >= 0) S.qk = true
         const sl = Qt.application.arguments.indexOf("--preset")
         if (sl >= 0) S.lay = L.cp(L.presets[Qt.application.arguments[sl + 1]])
+        if (Qt.application.arguments.indexOf("--edit") >= 0) { S.edit = true; U.onEdit() }
+        if (Qt.application.arguments.indexOf("--quick") >= 0) S.qk = true
         const so = Qt.application.arguments.indexOf("--open")
         if (so >= 0) { const g = Qt.application.arguments[so + 1]; Qt.callLater(() => S.pick(g)) }
         if (sh >= 0) shotT.out = Qt.application.arguments[sh + 1] || "/tmp/cord.png"
@@ -42,19 +44,67 @@ ApplicationWindow {
     Node {
         id: root
         anchors.fill: parent
+        anchors.bottomMargin: win.bar ? callBar.height : 0
         n: S.lay
         p: []
         visible: !S.setup
     }
 
     Rectangle {
-        anchors.top: parent.top
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.topMargin: 8
-        visible: S.edit
-        z: 50
-        width: er.implicitWidth + 16
+        id: callBar
+        visible: win.bar
+        anchors.bottom: parent.bottom
+        width: parent.width
         height: 40
+        color: Th.bg3
+        z: 40
+        Rectangle { width: parent.width; height: 1; color: Th.ln }
+        property var ch: S.call.chan ? S.chans[S.ridOf(S.call.chan)] : null
+        Row {
+            x: 16
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 10
+            Ico { n: "voice"; sz: 16; col: S.call.err ? Th.err : S.call.up ? Th.ok : Th.tx2; anchors.verticalCenter: parent.verticalCenter }
+            Lbl {
+                text: S.call.err ? "Call failed" : S.call.up ? "Connected" : "Connecting"
+                color: S.call.err ? Th.err : S.call.up ? Th.ok : Th.tx2
+                font.weight: Font.DemiBold
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Lbl {
+                text: (callBar.ch ? S.chName(callBar.ch.rid) : "") + (callBar.ch && callBar.ch.grid && S.gmap[callBar.ch.grid] ? " / " + S.gmap[callBar.ch.grid].name : "")
+                color: Th.tx
+                anchors.verticalCenter: parent.verticalCenter
+                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (callBar.ch) { S.sel = callBar.ch.grid || "home"; S.open(callBar.ch.rid) } }
+            }
+            Lbl { visible: S.f("callTimer"); text: U.callEl; color: Th.tx2; anchors.verticalCenter: parent.verticalCenter }
+        }
+        Row {
+            anchors.right: parent.right
+            anchors.rightMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 2
+            IBtn { n: S.call.mute ? "micoff" : "mic"; red: !!S.call.mute; tip: S.call.mute ? "Unmute" : "Mute"; onClicked: S.c.vset(!S.call.mute, !!S.call.deaf) }
+            IBtn { n: S.call.deaf ? "headoff" : "head"; red: !!S.call.deaf; tip: S.call.deaf ? "Undeafen" : "Deafen"; onClicked: S.c.vset(!!S.call.mute, !S.call.deaf) }
+            IBtn { n: "screen"; act: !!S.call.live; tip: S.call.live ? "Stop sharing" : "Share screen"; onClicked: S.call.live ? S.c.golive(false, "{}") : S.goLive() }
+            IBtn { n: "hang"; red: true; tip: "Leave call"; onClicked: S.c.leave() }
+        }
+    }
+
+    Ctx {
+        id: addM
+        model: U.addItems()
+    }
+
+    Rectangle {
+        id: tb
+        visible: S.edit
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 16 + (win.bar ? callBar.height : 0)
+        anchors.horizontalCenter: parent.horizontalCenter
+        z: 50
+        width: er.implicitWidth + 24
+        height: 48
         radius: Th.r
         color: Th.bg3
         border.color: Th.ln
@@ -62,19 +112,12 @@ ApplicationWindow {
             id: er
             anchors.centerIn: parent
             spacing: 8
-            Lbl { text: "Edit layout: drag blocks onto an edge of another block"; color: Th.tx2; anchors.verticalCenter: parent.verticalCenter }
-            Btn { text: "Add block"; ico: "plus"; onClicked: addM.popup() }
-            Btn { text: "Done"; pri: true; onClicked: S.edit = false }
-        }
-        Menu {
-            id: addM
-            Repeater {
-                model: S.allBlks()
-                MenuItem {
-                    text: modelData.name
-                    onTriggered: S.setLay(L.ins(S.lay, [], "r", { b: modelData.id, w: 280 }))
-                }
-            }
+            Lbl { text: "Editing layout"; color: Th.tx2; anchors.verticalCenter: parent.verticalCenter; rightPadding: 4 }
+            Btn { text: "Add block"; ico: "plus"; height: 32; onClicked: { addM.show(tb, 0, 0); addM.y = tb.mapToItem(null, 0, 0).y - addM.implicitHeight - 8 } }
+            Btn { text: "Undo"; ico: "undo"; height: 32; on: U.undo.length > 0; onClicked: U.undoLay() }
+            Btn { text: "Reset layout"; height: 32; onClicked: U.resetLay() }
+            Btn { text: "Cancel"; height: 32; onClicked: U.cancelEdit() }
+            Btn { text: "Done"; pri: true; height: 32; onClicked: S.edit = false }
         }
     }
 
@@ -104,38 +147,61 @@ ApplicationWindow {
         anchors.bottom: parent.bottom
         anchors.right: parent.right
         anchors.margins: 16
+        anchors.bottomMargin: 16 + (win.bar ? callBar.height : 0)
         spacing: 8
         z: 90
         Repeater {
-            model: S.errs.filter(e => Date.now() - e.at < 8000)
+            model: U.toasts
             Rectangle {
-                width: Math.min(420, tx.implicitWidth + 24)
-                height: tx.implicitHeight + 16
+                width: 420
+                height: Math.max(40, tx.implicitHeight + 20)
                 radius: Th.rs
                 color: Th.bg3
                 border.color: Th.err
                 Lbl {
                     id: tx
-                    anchors.centerIn: parent
-                    width: Math.min(396, implicitWidth)
+                    x: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width - 52
                     text: modelData.msg
                     wrapMode: Text.Wrap
+                    elide: Text.ElideNone
                     color: Th.tx
+                }
+                IBtn {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 6
+                    anchors.verticalCenter: parent.verticalCenter
+                    n: "x"
+                    sz: 26
+                    isz: 14
+                    tip: "Dismiss"
+                    onClicked: U.dismiss(modelData.id)
                 }
             }
         }
-    }
-    Timer {
-        interval: 2000
-        repeat: true
-        running: S.errs.length > 0
-        onTriggered: S.errs = S.errs.filter(e => Date.now() - e.at < 8000)
     }
 
     Feats {}
     Emo { id: emoP }
     Prof { id: profP }
+    Dlg { id: dlg }
     View { id: viewP; anchors.fill: parent; z: 95 }
+
+    Rectangle {
+        id: tipR
+        visible: U.tipText !== "" && U.tipOk
+        z: 300
+        width: tt.implicitWidth + 16
+        height: 26
+        radius: Th.rs
+        color: Th.bg4
+        border.color: Th.ln
+        x: Math.max(4, Math.min(win.width - width - 4, U.tipBox.x + U.tipBox.w / 2 - width / 2))
+        y: U.tipBox.y + U.tipBox.h + 6 + height > win.height - 4 ? U.tipBox.y - height - 6 : U.tipBox.y + U.tipBox.h + 6
+        Lbl { id: tt; anchors.centerIn: parent; text: U.tipText; color: Th.tx; font.pixelSize: Th.fsS; elide: Text.ElideNone }
+    }
+
     Connections {
         target: S
         function onEmoReq(at, cb) {
@@ -149,11 +215,22 @@ ApplicationWindow {
             if (!u) return
             profP.u = u
             const p = at.mapToItem(win.contentItem, 0, 0)
-            profP.x = Math.max(8, Math.min(win.width - profP.width - 8, p.x + at.width + 8))
-            profP.y = Math.max(8, Math.min(win.height - 320, p.y))
+            const rx = p.x + at.width + 12
+            profP.x = rx + profP.width + 8 <= win.width ? rx : Math.max(8, p.x - profP.width - 12)
+            profP.y = Math.max(8, Math.min(win.height - 340, p.y - 36))
             profP.open()
         }
-        function onViewReq(u, v) { viewP.vid = v; viewP.url = u }
+        function onViewReq(u, v) { U.closePop(); viewP.vid = v; viewP.url = u }
+        function onEditChanged() { U.onEdit() }
+        function onQkChanged() { U.hideTip(); if (S.qk) U.closePop() }
+        function onSelChanged() { U.hideTip() }
+        function onSelCChanged() { U.hideTip() }
+        function onShowSetChanged() { U.hideTip() }
+        function onEv(d) { if (d.t === "Err") U.err(d.d) }
+    }
+    Connections {
+        target: U
+        function onAskReq(o) { dlg.show(o) }
     }
 
     Instantiator {
@@ -164,24 +241,28 @@ ApplicationWindow {
         }
     }
 
+    function esc() {
+        if (U.pop) { U.pop.close(); return }
+        if (viewP.url !== "") { viewP.close(); return }
+        if (S.qk) { S.qk = false; return }
+        if (S.edit) { U.cancelEdit(); return }
+        if (S.showSet) { S.showSet = false; return }
+        S.reply = ""
+        S.editing = ""
+    }
+
     Item {
         focus: true
         Keys.onPressed: e => { if (e.key === Qt.Key_QuoteLeft && (e.modifiers & Qt.ControlModifier) && !e.isAutoRepeat) S.c.ptt(true) }
         Keys.onReleased: e => { if (e.key === Qt.Key_QuoteLeft && !e.isAutoRepeat) S.c.ptt(false) }
     }
-    Shortcut { sequence: "Ctrl+K"; onActivated: S.qk = !S.qk }
-    Shortcut { sequence: "Ctrl+,"; onActivated: S.showSet = !S.showSet }
-    Shortcut { sequence: "Ctrl+E"; onActivated: S.edit = !S.edit }
-    Shortcut { sequence: "Escape"; onActivated: { if (S.qk) S.qk = false; else if (S.showSet) S.showSet = false; else if (S.edit) S.edit = false; else { S.reply = ""; S.editing = "" } } }
-    Shortcut { sequence: "Shift+Escape"; onActivated: S.c.ack(S.selC) }
-    Shortcut {
-        sequence: "Alt+Down"
-        onActivated: win.step(1)
-    }
-    Shortcut {
-        sequence: "Alt+Up"
-        onActivated: win.step(-1)
-    }
+    Shortcut { sequence: "Ctrl+K"; context: Qt.ApplicationShortcut; onActivated: { if (!S.setup) S.qk = !S.qk } }
+    Shortcut { sequence: "Ctrl+,"; context: Qt.ApplicationShortcut; onActivated: { if (!S.setup) { if (S.edit) U.cancelEdit(); S.showSet = !S.showSet } } }
+    Shortcut { sequence: "Ctrl+E"; context: Qt.ApplicationShortcut; onActivated: { if (S.setup) return; if (S.edit) S.edit = false; else { S.showSet = false; S.edit = true } } }
+    Shortcut { sequence: "Escape"; context: Qt.ApplicationShortcut; onActivated: win.esc() }
+    Shortcut { sequence: "Shift+Escape"; context: Qt.ApplicationShortcut; onActivated: S.c.ack(S.selC) }
+    Shortcut { sequence: "Alt+Down"; context: Qt.ApplicationShortcut; onActivated: win.step(1) }
+    Shortcut { sequence: "Alt+Up"; context: Qt.ApplicationShortcut; onActivated: win.step(-1) }
     function step(d) {
         const l = (S.sel === "home" ? S.dms() : S.chList(S.sel)).filter(c => c.k !== "Cat" && c.k !== "Voice" && c.k !== "Stage")
         const i = l.findIndex(c => c.rid === S.selC)

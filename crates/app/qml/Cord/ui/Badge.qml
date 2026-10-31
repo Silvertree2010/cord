@@ -1,25 +1,48 @@
 import QtQuick
 import Cord
 
-Rectangle {
+Item {
     id: r
     property string sv: "dc"
     property real sz: 14
     property color ring: Th.bg2
     property bool txt: false
-    width: txt ? lb.implicitWidth + 8 : sz
-    height: sz
-    radius: height / 2
-    color: Th.svcCol(sv)
-    border.color: ring
-    border.width: txt ? 0 : Math.max(1.5, sz * 0.14)
+    readonly property string k: sv === "Mx" || sv === "mx" ? "mx" : sv === "St" || sv === "st" ? "st" : "dc"
+    width: txt ? lb2.implicitWidth + 10 : sz
+    height: txt ? 16 : sz
     visible: S.ui.badges !== false
-    Text {
-        id: lb
+    Rectangle {
+        visible: r.txt
+        anchors.fill: parent
+        radius: 4
+        color: Th.svcCol(r.sv)
+        Text {
+            id: lb2
+            anchors.centerIn: parent
+            text: Th.svcName(r.sv)
+            color: "#fff"
+            font.pixelSize: 10
+            font.family: Th.font
+            font.weight: Font.Bold
+        }
+    }
+    Rectangle {
+        visible: !r.txt
         anchors.centerIn: parent
-        text: r.txt ? Th.svcName(r.sv) : (r.sv === "Mx" || r.sv === "mx" ? "M" : r.sv === "St" || r.sv === "st" ? "S" : "D")
+        width: r.k === "st" ? r.sz * 0.78 : r.sz
+        height: width
+        rotation: r.k === "st" ? 45 : 0
+        radius: r.k === "dc" ? width / 2 : r.k === "mx" ? r.sz * 0.24 : 2
+        color: Th.svcCol(r.sv)
+        border.color: r.ring
+        border.width: Math.max(1.5, r.sz * 0.12)
+    }
+    Text {
+        visible: !r.txt
+        anchors.centerIn: parent
+        text: r.k === "mx" ? "M" : r.k === "st" ? "S" : "D"
         color: "#fff"
-        font.pixelSize: r.txt ? 10 : r.sz * 0.55
+        font.pixelSize: r.sz * (r.k === "st" ? 0.46 : 0.56)
         font.family: Th.font
         font.weight: Font.Bold
     }

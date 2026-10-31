@@ -8,10 +8,11 @@ Rectangle {
     color: Th.bg2
     property string tab: "on"
     property string q: ""
+    readonly property var rank: ({ On: 0, Idle: 1, Dnd: 2, Off: 3 })
     property var list: {
         void S.ver
         const ps = S.pres
-        return S.rels.filter(x => {
+        const f = S.rels.filter(x => {
             const id = x.usr.id ? S.ridOf(x.usr.id) : ""
             const p = ps[id]
             if (tab === "on") return x.k === "Friend" && p && p.st !== "Off"
@@ -19,7 +20,28 @@ Rectangle {
             if (tab === "pend") return x.k === "In" || x.k === "Out"
             return x.k === "Block"
         }).filter(x => !q || (x.usr.disp || x.usr.name).toLowerCase().indexOf(q.toLowerCase()) >= 0)
-          .sort((a, b) => (a.usr.disp || a.usr.name).localeCompare(b.usr.disp || b.usr.name))
+        const g = {}
+        const out = []
+        for (const x of f) {
+            const k = (x.usr.disp || x.usr.name).toLowerCase() + "|" + x.k
+            if (!g[k]) {
+                g[k] = { name: x.usr.disp || x.usr.name, items: [] }
+                out.push(g[k])
+            }
+            g[k].items.push(x)
+        }
+        for (const e of out) e.items.sort((a, b) => {
+            const pa = ps[a.usr.id ? S.ridOf(a.usr.id) : ""], pb = ps[b.usr.id ? S.ridOf(b.usr.id) : ""]
+            return (r.rank[pa ? pa.st : "Off"] || 0) - (r.rank[pb ? pb.st : "Off"] || 0)
+        })
+        return out.sort((a, b) => a.name.localeCompare(b.name))
+    }
+    function dmOf(uid) {
+        return S.dms().find(c => c.k === "Dm" && c.rcp && c.rcp[0] && c.rcp[0].id && S.ridOf(c.rcp[0].id) === uid)
+    }
+    function msg(uid) {
+        const d = dmOf(uid)
+        if (d) { S.sel = "home"; S.open(d.rid) }
     }
     ColumnLayout {
         anchors.fill: parent
@@ -43,7 +65,13 @@ Rectangle {
                         radius: Th.rs
                         color: r.tab === modelData[0] ? Th.sel : tm.containsMouse ? Th.hov : "transparent"
                         anchors.verticalCenter: parent.verticalCenter
+                        activeFocusOnTab: true
+                        Accessible.role: Accessible.Button
+                        Accessible.name: modelData[1]
+                        Keys.onReturnPressed: r.tab = modelData[0]
+                        Keys.onSpacePressed: r.tab = modelData[0]
                         Lbl { id: tl; anchors.centerIn: parent; text: modelData[1]; color: r.tab === modelData[0] ? Th.tx : Th.tx2 }
+                        Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: Th.ac; border.width: 2; visible: parent.activeFocus }
                         MouseArea { id: tm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: r.tab = modelData[0] }
                     }
                 }
@@ -58,9 +86,9 @@ Rectangle {
         }
         Lbl {
             Layout.leftMargin: 20
-            text: ({ on: "ONLINE", all: "ALL FRIENDS", pend: "PENDING", blk: "BLOCKED" })[r.tab] + "  ·  " + r.list.length
-            color: Th.tx3
-            font.pixelSize: 11
+            text: ({ on: "Online", all: "All friends", pend: "Pending", blk: "Blocked" })[r.tab] + "  ·  " + r.list.length
+            color: Th.tx2
+            font.pixelSize: Th.fsS
             font.weight: Font.DemiBold
         }
         ListView {
@@ -72,63 +100,104 @@ Rectangle {
             model: r.list
             ScrollBar.vertical: Scr {}
             delegate: Rectangle {
-                property string uid: modelData.usr.id ? S.ridOf(modelData.usr.id) : ""
+                id: row
+                property var f: modelData.items[0]
+                property string uid: f.usr.id ? S.ridOf(f.usr.id) : ""
                 property var p: S.pres[uid] || null
+                property bool off: !p || p.st === "Off"
                 x: 12
                 width: lv.width - 24
-                height: 60
+                height: 52
                 radius: Th.rs
-                color: ma.containsMouse ? Th.hov : "transparent"
-                Rectangle { width: parent.width - 16; x: 8; height: 1; color: Th.ln; visible: index > 0 }
+                color: ma.containsMouse || dots.containsMouse ? Th.hov : "transparent"
+                Rectangle { width: parent.width - 16; x: 8; height: 1; color: Th.ln; visible: index > 0 && !ma.containsMouse }
+                MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; z: -1; onClicked: S.prof(row.f.usr, av) }
                 Av {
                     id: av
                     x: 8
                     anchors.verticalCenter: parent.verticalCenter
-                    sz: 36
-                    src: modelData.usr.av || ""
-                    name: modelData.usr.name
-                    st: p ? p.st : "Off"
-                    sv: S.svc(uid)
+                    sz: 34
+                    opacity: row.off && r.tab !== "pend" ? 0.6 : 1
+                    src: row.f.usr.av || ""
+                    name: row.f.usr.name
+                    st: row.p && row.f.k !== "In" && row.f.k !== "Out" ? row.p.st : ""
+                    ring: row.color.a > 0 ? Th.bg3 : Th.bg2
                 }
                 Column {
                     anchors.left: av.right
                     anchors.leftMargin: 12
+                    anchors.right: acts.left
+                    anchors.rightMargin: 8
                     anchors.verticalCenter: parent.verticalCenter
                     Row {
                         spacing: 6
-                        Lbl { text: modelData.usr.disp || modelData.usr.name; font.weight: Font.DemiBold }
-                        Lbl { text: modelData.usr.name; color: Th.tx3; visible: ma.containsMouse }
+                        Lbl { text: modelData.name; font.weight: Font.DemiBold; color: row.off && r.tab === "all" ? Th.tx2 : Th.tx; anchors.verticalCenter: parent.verticalCenter }
+                        Repeater {
+                            model: modelData.items
+                            Badge { sv: S.svc(modelData.usr.id ? S.ridOf(modelData.usr.id) : ""); sz: 16; ring: row.color.a > 0 ? Th.bg3 : Th.bg2; anchors.verticalCenter: parent.verticalCenter }
+                        }
+                        Lbl { text: row.f.usr.name; color: Th.tx3; visible: ma.containsMouse && row.f.usr.name !== modelData.name; anchors.verticalCenter: parent.verticalCenter }
                     }
                     Lbl {
-                        text: modelData.k === "In" ? "Incoming request" : modelData.k === "Out" ? "Outgoing request" : p && p.act ? p.act : p ? ({ On: "Online", Idle: "Idle", Dnd: "Do not disturb", Off: "Offline" })[p.st] : "Offline"
+                        width: parent.width
+                        text: row.f.k === "In" ? "Incoming request" : row.f.k === "Out" ? "Outgoing request" : row.f.k === "Block" ? "Blocked" : row.p && row.p.act ? row.p.act : row.p ? ({ On: "Online", Idle: "Idle", Dnd: "Do not disturb", Off: "Offline" })[row.p.st] : "Offline"
                         color: Th.tx3
                         font.pixelSize: Th.fsS
                     }
                 }
                 Row {
+                    id: acts
                     anchors.right: parent.right
                     anchors.rightMargin: 8
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 6
+                    spacing: 4
                     IBtn {
+                        id: mb
                         n: "thread"
                         tip: "Message"
-                        visible: modelData.k === "Friend"
+                        visible: row.f.k === "Friend"
                         onClicked: {
-                            const d = S.dms().find(c => c.k === "Dm" && c.rcp && c.rcp[0] && c.rcp[0].id && S.ridOf(c.rcp[0].id) === uid)
-                            if (d) S.open(d.rid)
+                            if (modelData.items.length === 1) r.msg(row.uid)
+                            else mm.show(mb, 0, mb.height + 4)
                         }
                     }
-                    IBtn { n: "check"; tip: "Accept"; visible: modelData.k === "In"; onClicked: S.c.rel(uid, "accept") }
-                    IBtn { n: "x"; tip: "Remove"; red: modelData.k !== "Friend"; onClicked: S.c.rel(uid, "remove") }
+                    IBtn { n: "check"; tip: "Accept"; visible: row.f.k === "In"; onClicked: S.c.rel(row.uid, "accept") }
+                    IBtn { n: "x"; tip: "Ignore request"; red: true; visible: row.f.k === "In" || row.f.k === "Out"; onClicked: S.c.rel(row.uid, "remove") }
+                    IBtn { id: dots; n: "dots"; tip: "More"; visible: row.f.k === "Friend" || row.f.k === "Block"; onClicked: dm.show(dots, 0, dots.height + 4) }
                 }
-                MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; z: -1; onClicked: S.prof(modelData.usr, av) }
+                Ctx {
+                    id: mm
+                    model: modelData.items.map(x => ({ text: Th.svcName(S.svc(x.usr.id ? S.ridOf(x.usr.id) : "")), run: () => r.msg(x.usr.id ? S.ridOf(x.usr.id) : "") }))
+                }
+                Ctx {
+                    id: dm
+                    model: {
+                        const a = []
+                        if (row.f.k === "Friend") {
+                            a.push({ text: "Message", run: () => mb.clicked() })
+                            a.push({ text: "View profile", run: () => S.prof(row.f.usr, av) })
+                            a.push({ sep: true })
+                            for (const x of modelData.items) {
+                                const id = x.usr.id ? S.ridOf(x.usr.id) : ""
+                                const nm = x.usr.disp || x.usr.name
+                                a.push({ text: "Remove friend" + (modelData.items.length > 1 ? " (" + Th.svcName(S.svc(id)) + ")" : ""), danger: true, run: () => U.ask({ title: "Remove friend", body: "Remove " + nm + " from your " + Th.svcName(S.svc(id)) + " friends?", ok: "Remove", danger: true, run: () => S.c.rel(id, "remove") }) })
+                            }
+                        } else {
+                            a.push({ text: "Unblock", run: () => S.c.rel(row.uid, "remove") })
+                        }
+                        return a
+                    }
+                }
             }
-            Lbl {
+            Column {
                 anchors.centerIn: parent
                 visible: r.list.length === 0
-                text: r.tab === "on" ? "Nobody is online right now" : "Nothing here"
-                color: Th.tx3
+                spacing: 6
+                Ico { anchors.horizontalCenter: parent.horizontalCenter; n: "users"; sz: 28; col: Th.tx3 }
+                Lbl {
+                    text: r.q ? "No matches" : ({ on: "Nobody is online right now", all: "Your friends list is empty", pend: "No pending requests", blk: "You have not blocked anyone" })[r.tab]
+                    color: Th.tx3
+                }
             }
         }
     }

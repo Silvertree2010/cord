@@ -1,6 +1,12 @@
 module Cord
 singleton Th 1.0 Th.qml
 singleton S 1.0 S.qml
+singleton U 1.0 U.qml
+Ctx 1.0 ui/Ctx.qml
+Tip 1.0 ui/Tip.qml
+Seg 1.0 ui/Seg.qml
+Sld 1.0 ui/Sld.qml
+Dlg 1.0 ui/Dlg.qml
 Ico 1.0 ui/Ico.qml
 Av 1.0 ui/Av.qml
 Badge 1.0 ui/Badge.qml

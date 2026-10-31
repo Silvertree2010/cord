@@ -67,6 +67,10 @@ Image {
         music: "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
         moon: "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z",
         mute: "M11 5 6 9H3v6h3l5 4zM23 9l-6 6M17 9l6 6",
+        undo: "M3 7v6h6M3 13a9 9 0 1 0 3-7.7L3 8",
+        keyboard: "M2 6h20v12H2zM6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10",
+        package: "M12 2 3 7v10l9 5 9-5V7zM3 7l9 5 9-5M12 12v10",
+        info: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01",
         grid: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"
     })
     source: "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="' + col + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"><path d="' + (pth[n] || pth.hash) + '"/></svg>')
