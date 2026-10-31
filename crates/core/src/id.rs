@@ -1,0 +1,57 @@
+use serde::{Deserialize, Serialize};
+use std::{fmt, str::FromStr, sync::Arc};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum Svc {
+    Dc,
+    Mx,
+    St,
+}
+
+impl Svc {
+    pub fn tag(self) -> &'static str {
+        match self {
+            Svc::Dc => "dc",
+            Svc::Mx => "mx",
+            Svc::St => "st",
+        }
+    }
+    pub fn from_tag(s: &str) -> Option<Self> {
+        match s {
+            "dc" => Some(Svc::Dc),
+            "mx" => Some(Svc::Mx),
+            "st" => Some(Svc::St),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct Rid {
+    pub svc: Svc,
+    pub acc: u32,
+    pub raw: Arc<str>,
+}
+
+impl Rid {
+    pub fn new(svc: Svc, acc: u32, raw: impl Into<Arc<str>>) -> Self {
+        Self { svc, acc, raw: raw.into() }
+    }
+}
+
+impl fmt::Display for Rid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}:{}", self.svc.tag(), self.acc, self.raw)
+    }
+}
+
+impl FromStr for Rid {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut it = s.splitn(3, ':');
+        let sv = it.next().and_then(Svc::from_tag).ok_or_else(|| anyhow::anyhow!("bad svc"))?;
+        let a = it.next().ok_or_else(|| anyhow::anyhow!("no acc"))?.parse()?;
+        let r = it.next().ok_or_else(|| anyhow::anyhow!("no raw"))?;
+        Ok(Rid::new(sv, a, r))
+    }
+}
