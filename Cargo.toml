@@ -14,6 +14,7 @@ cord-dc = { path = "crates/dc" }
 cord-mx = { path = "crates/mx" }
 cord-st = { path = "crates/st" }
 cord-store = { path = "crates/store" }
+cord-hub = { path = "crates/hub" }
 tokio = { version = "1", features = ["full"] }
 async-trait = "0.1"
 serde = { version = "1", features = ["derive", "rc"] }
