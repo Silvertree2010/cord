@@ -9,7 +9,8 @@ Item {
     property bool row: n.t === "row"
     implicitWidth: ld.item ? ld.item.implicitWidth : 0
     implicitHeight: ld.item ? ld.item.implicitHeight : 0
-    visible: ld.item ? ld.item.visible : true
+    property bool shown: ld.item ? ld.item.shown !== false : true
+    visible: shown
 
     Loader {
         id: ld
@@ -28,14 +29,15 @@ Item {
             spacing: 0
             Repeater {
                 model: r.n.ch || []
-                delegate: Node {
+                delegate: Loader {
                     required property var modelData
                     required property int index
-                    n: modelData
-                    p: r.p.concat([index])
+                    property var p: r.p.concat([index])
+                    Component.onCompleted: setSource(Qt.resolvedUrl("Node.qml"), { n: modelData, p: p })
+                    visible: item ? item.shown !== false : true
                     Layout.fillHeight: true
                     Layout.fillWidth: !!modelData.grow
-                    Layout.preferredWidth: modelData.grow ? 200 : (modelData.w || implicitWidth)
+                    Layout.preferredWidth: modelData.grow ? 200 : (modelData.w || (item ? item.implicitWidth : 0))
                     Layout.minimumWidth: modelData.grow ? 240 : 0
                     Rectangle {
                         visible: index > 0 && parent.visible && parent.width > 0
@@ -73,14 +75,15 @@ Item {
             spacing: 0
             Repeater {
                 model: r.n.ch || []
-                delegate: Node {
+                delegate: Loader {
                     required property var modelData
                     required property int index
-                    n: modelData
-                    p: r.p.concat([index])
+                    property var p: r.p.concat([index])
+                    Component.onCompleted: setSource(Qt.resolvedUrl("Node.qml"), { n: modelData, p: p })
+                    visible: item ? item.shown !== false : true
                     Layout.fillWidth: true
                     Layout.fillHeight: !!modelData.grow
-                    Layout.preferredHeight: modelData.grow ? 100 : (modelData.h || implicitHeight)
+                    Layout.preferredHeight: modelData.grow ? 100 : (modelData.h || (item ? item.implicitHeight : 0))
                     Rectangle {
                         visible: index > 0 && parent.visible && parent.height > 0
                         height: 1
@@ -123,7 +126,11 @@ Item {
                 currentIndex: parent.cur
                 Repeater {
                     model: r.n.ch || []
-                    Node { n: modelData; p: r.p.concat([index]) }
+                    Loader {
+                        required property var modelData
+                        required property int index
+                        Component.onCompleted: setSource(Qt.resolvedUrl("Node.qml"), { n: modelData, p: r.p.concat([index]) })
+                    }
                 }
             }
         }

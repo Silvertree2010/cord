@@ -5,9 +5,10 @@ Rectangle {
     id: r
     property var o: ({})
     property var p: S.media || null
-    visible: S.f("spotify") && !!p && !!p.title
+    property bool shown: S.f("spotify") && !!p && !!p.title
+    visible: shown
     implicitWidth: 248
-    implicitHeight: visible ? 76 : 0
+    implicitHeight: shown ? 76 : 0
     color: Th.bg3
     Image {
         id: art

@@ -11,14 +11,20 @@ Rectangle {
     property var ch: S.chans[S.selC] || null
     property string g: ch && ch.grid ? ch.grid : ""
     property var ms: []
-    visible: !!ch && S.selC !== "inbox"
+    property bool shown: !!ch && S.selC !== "inbox"
+    visible: shown
     function ld() {
         if (!g) {
             ms = ch && ch.rcp ? ch.rcp.map(u => ({ m: { usr: u, nick: null, roles: [] }, p: S.presOf(u.id) || { st: "Off" } })) : []
             return
         }
         ms = JSON.parse(S.c.mems(g))
+        if (!ms.length && !asked[g]) {
+            asked[g] = true
+            S.c.load_mems(g)
+        }
     }
+    property var asked: ({})
     onGChanged: ld()
     onChChanged: ld()
     Connections {

@@ -9,8 +9,8 @@ QtObject {
     property color bg2: "#15171a"
     property color bg3: "#1c1f23"
     property color bg4: "#252930"
-    property color hov: "#ffffff0d"
-    property color sel: "#ffffff17"
+    property color hov: "#0dffffff"
+    property color sel: "#17ffffff"
     property color ln: "#24272c"
     property color tx: "#e7e9ec"
     property color tx2: "#a3a8b0"
@@ -20,7 +20,7 @@ QtObject {
     property color ok: "#4fbf7f"
     property color warn: "#d9a441"
     property color err: "#e5605a"
-    property color ment: "#8fb3ff26"
+    property color ment: "#268fb3ff"
     property color dc: "#5865f2"
     property color mx: "#0dbd8b"
     property color st: "#ff6b4a"
@@ -39,10 +39,17 @@ QtObject {
     function svcCol(s) { return s === "Mx" || s === "mx" ? mx : s === "St" || s === "st" ? st : dc }
     function svcName(s) { return s === "Mx" || s === "mx" ? "Matrix" : s === "St" || s === "st" ? "Stoat" : "Discord" }
     function stCol(s) { return s === "On" ? ok : s === "Idle" ? warn : s === "Dnd" ? err : tx3 }
+    function a(c, x) {
+        const q = Qt.color(c)
+        return Qt.rgba(q.r, q.g, q.b, x)
+    }
+    function cv(v) {
+        return typeof v === "string" && /^#[0-9a-fA-F]{8}$/.test(v) ? "#" + v.slice(7) + v.slice(1, 7) : v
+    }
     function apply(o) {
         if (!o) return
         for (const k in o) {
-            if (k in t && typeof t[k] !== "function") t[k] = o[k]
+            if (k in t && typeof t[k] !== "function") t[k] = cv(o[k])
         }
     }
     function fromScheme(j) {
@@ -53,7 +60,7 @@ QtObject {
             name: "Caelestia", dark: j.mode !== "light",
             bg: h(c.surfaceContainerLowest || c.background), bg2: h(c.surface), bg3: h(c.surfaceContainer), bg4: h(c.surfaceContainerHighest),
             ln: h(c.outlineVariant), tx: h(c.onSurface), tx2: h(c.onSurfaceVariant), tx3: h(c.outline),
-            ac: h(c.primary), acTx: h(c.onPrimary), err: h(c.error), ment: h(c.primary) + "26"
+            ac: h(c.primary), acTx: h(c.onPrimary), err: h(c.error), ment: a(h(c.primary), 0.15)
         })
     }
 }

@@ -14,7 +14,7 @@ Rectangle {
     width: sz
     height: sz
     radius: Th.rs
-    color: red ? (ma.containsMouse ? Qt.lighter(Th.err, 1.1) : Th.err + "33") : act ? Th.sel : ma.containsMouse ? Th.hov : "transparent"
+    color: red ? (ma.containsMouse ? Qt.lighter(Th.err, 1.1) : Th.a(Th.err, 0.2)) : act ? Th.sel : ma.containsMouse ? Th.hov : "transparent"
     Ico {
         anchors.centerIn: parent
         n: r.n

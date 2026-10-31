@@ -15,6 +15,7 @@ Rectangle {
         width: Math.min(parent.width - 64, 960)
         Column {
             spacing: 6
+            width: parent.width
             Lbl { text: r.step === 0 ? "Choose a layout" : "Connect your accounts"; font.pixelSize: Th.fsXL + 8; font.weight: Font.Bold }
             Lbl {
                 text: r.step === 0 ? "Every panel is a block. You can change sides, hide blocks or rearrange everything later in Settings, Layout." : "Discord, Matrix and Stoat share one server bar and one friends list. Add as many accounts as you like."

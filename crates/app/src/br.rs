@@ -73,6 +73,14 @@ pub mod q {
         #[qinvokable]
         fn qr(self: &Core, t: &QString) -> QString;
         #[qinvokable]
+        fn mpris(self: &Core) -> QString;
+        #[qinvokable]
+        fn load_mems(self: &Core, g: &QString);
+        #[qinvokable]
+        fn media(self: &Core, cmd: &QString);
+        #[qinvokable]
+        fn rel(self: &Core, u: &QString, act: &QString);
+        #[qinvokable]
         fn qml(self: &Core) -> QString;
     }
     impl cxx_qt::Threading for Core {}
@@ -328,16 +336,49 @@ impl q::Core {
         let lq: Lq = serde_json::from_str(&qs(q)).unwrap_or_default();
         self.go(move |h, _| async move {
             let cur = h.st.read().await.call.chan.clone();
-            match cur {
-                Some(o) => h.bk(o.acc).await?.golive(on, lq).await,
-                None => anyhow::bail!("not in a call"),
+            let Some(o) = cur else { anyhow::bail!("not in a call") };
+            h.bk(o.acc).await?.golive(on, lq).await?;
+            if let (true, Some(d), Some(me)) = (on, crate::bks::dc_of(o.acc), h.st.read().await.accs.get(&o.acc).and_then(|a| a.me.id.clone())) {
+                let mut rx = d.frames(&me);
+                tokio::spawn(async move {
+                    while rx.changed().await.is_ok() {
+                        let f = rx.borrow().clone();
+                        match f {
+                            Some(f) => crate::frames::put("me", f),
+                            None => break,
+                        }
+                    }
+                });
+            } else if !on {
+                crate::frames::drop_k("me");
             }
+            Ok(())
         });
     }
 
     pub fn watch(&self, u: &QString, on: bool) {
         let Some(u) = rid(u) else { return };
-        self.go(move |h, _| async move { h.bk(u.acc).await?.watch(&u, on).await });
+        self.go(move |h, _| async move {
+            h.bk(u.acc).await?.watch(&u, on).await?;
+            let k = u.to_string();
+            if !on {
+                crate::frames::drop_k(&k);
+                return Ok(());
+            }
+            if let Some(d) = crate::bks::dc_of(u.acc) {
+                let mut rx = d.frames(&u);
+                tokio::spawn(async move {
+                    while rx.changed().await.is_ok() {
+                        let f = rx.borrow().clone();
+                        match f {
+                            Some(f) => crate::frames::put(&k, f),
+                            None => break,
+                        }
+                    }
+                });
+            }
+            Ok(())
+        });
     }
 
     pub fn set_st(&self, st: &QString, act: &QString) {
@@ -507,6 +548,45 @@ impl q::Core {
         let Ok(c) = qrcode::QrCode::new(qs(t).as_bytes()) else { return QString::default() };
         let svg = c.render::<qrcode::render::svg::Color>().min_dimensions(400, 400).quiet_zone(false).build();
         QString::from(&format!("data:image/svg+xml;utf8,{}", svg.replace('#', "%23")))
+    }
+
+    pub fn load_mems(&self, g: &QString) {
+        let Some(g) = rid(g) else { return };
+        self.go(move |h, _| async move {
+            let v = h.bk(g.acc).await?.mems(&g).await?;
+            let tx = h.tx();
+            for m in v {
+                let _ = tx.send(Ev::Mem(m));
+            }
+            Ok(())
+        });
+    }
+
+    pub fn mpris(&self) -> QString {
+        let o = std::process::Command::new("playerctl").args(["metadata", "--format", "{{status}}\u{1f}{{title}}\u{1f}{{artist}}\u{1f}{{mpris:artUrl}}\u{1f}{{xesam:url}}\u{1f}{{position}}\u{1f}{{mpris:length}}"]).output();
+        let Ok(o) = o else { return QString::default() };
+        let t = String::from_utf8_lossy(&o.stdout).trim().to_string();
+        let p: Vec<&str> = t.split('\u{1f}').collect();
+        if p.len() < 7 || p[1].is_empty() {
+            return QString::default();
+        }
+        let n = |s: &str| s.parse::<f64>().unwrap_or(0.0);
+        js(&json!({"playing": p[0] == "Playing", "title": p[1], "artist": p[2], "art": p[3], "url": p[4], "pos": n(p[5]), "len": n(p[6])}))
+    }
+
+    pub fn media(&self, cmd: &QString) {
+        let c = match qs(cmd).as_str() {
+            "prev" => "previous",
+            "next" => "next",
+            _ => "play-pause",
+        };
+        let _ = std::process::Command::new("playerctl").arg(c).spawn();
+    }
+
+    pub fn rel(&self, u: &QString, act: &QString) {
+        let Some(u) = rid(u) else { return };
+        let on = qs(act) == "accept";
+        self.go(move |h, _| async move { h.bk(u.acc).await?.rel(&u, on).await });
     }
 
     pub fn home(&self) -> QString {

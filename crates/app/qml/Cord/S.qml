@@ -189,6 +189,7 @@ QtObject {
         vs = j.vs || []
         call = j.call || {}
         ver++
+        if (sel !== "home" && !selC && gm[sel]) Qt.callLater(() => { if (!selC) pick(sel) })
     }
 
     property Timer deb: Timer {
@@ -383,7 +384,7 @@ QtObject {
     function lastTs(ch) {
         const r = ch.last && ch.last.raw
         if (!r) return 0
-        if (ch.rid.startsWith("dc") && /^\d+$/.test(r)) return Number(BigInt(r) >> 22n) + 1420070400000
+        if (ch.rid.startsWith("dc") && /^\d+$/.test(r)) return Math.floor(Number(r) / 4194304) + 1420070400000
         return parseInt(r.replace(/\D/g, "")) || 0
     }
     function gUnr(g) {

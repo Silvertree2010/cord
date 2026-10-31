@@ -37,6 +37,9 @@ pub trait Bk: Send + Sync {
     async fn watch(&self, _usr: &Rid, _on: bool) -> Res<()> {
         anyhow::bail!("streaming unsupported")
     }
+    async fn rel(&self, _usr: &Rid, _on: bool) -> Res<()> {
+        anyhow::bail!("not supported on this network")
+    }
     async fn set_st(&self, _st: St, _act: Option<String>) -> Res<()> {
         Ok(())
     }

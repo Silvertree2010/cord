@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex, OnceLock},
 };
 
-pub type Fr = (u32, u32, Arc<Vec<u8>>);
+pub type Fr = Arc<cord_cap::Frame>;
 
 static F: OnceLock<Mutex<HashMap<String, Fr>>> = OnceLock::new();
 

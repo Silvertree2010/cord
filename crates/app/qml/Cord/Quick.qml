@@ -4,7 +4,7 @@ import Cord
 
 Rectangle {
     id: r
-    color: "#00000088"
+    color: "#88000000"
     MouseArea { anchors.fill: parent; onClicked: S.qk = false }
     property var res: {
         const q = fl.text.toLowerCase().replace(/^[#@*]/, "")

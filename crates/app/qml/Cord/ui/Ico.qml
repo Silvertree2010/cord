@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import Cord
 
 Image {
@@ -9,9 +10,13 @@ Image {
     property real sw: 2
     width: sz
     height: sz
+    Layout.preferredWidth: sz
+    Layout.preferredHeight: sz
+    Layout.maximumWidth: sz
+    Layout.maximumHeight: sz
     sourceSize: Qt.size(sz * 2, sz * 2)
     smooth: true
-    readonly property var P: ({
+    readonly property var pth: ({
         hash: "M5 9h14M5 15h14M10 3 8 21M16 3l-2 18",
         voice: "M11 5 6 9H3v6h3l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13",
         home: "M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z",
@@ -64,5 +69,5 @@ Image {
         mute: "M11 5 6 9H3v6h3l5 4zM23 9l-6 6M17 9l6 6",
         grid: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"
     })
-    source: "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="' + col + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"><path d="' + (P[n] || P.hash) + '"/></svg>')
+    source: "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="' + col + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"><path d="' + (pth[n] || pth.hash) + '"/></svg>')
 }

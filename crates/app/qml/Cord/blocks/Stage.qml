@@ -66,7 +66,7 @@ Rectangle {
                         width: nl.implicitWidth + 16
                         height: 24
                         radius: 6
-                        color: "#000000aa"
+                        color: "#aa000000"
                         Row {
                             id: nl
                             anchors.centerIn: parent

@@ -7,7 +7,7 @@ Rectangle {
     id: r
     property string url: ""
     property bool vid: false
-    color: "#000000e6"
+    color: "#e6000000"
     visible: url !== ""
     MouseArea { anchors.fill: parent; onClicked: { mp.stop(); r.url = "" } }
     Image {

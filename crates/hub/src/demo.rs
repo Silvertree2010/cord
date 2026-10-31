@@ -156,6 +156,15 @@ impl Bk for Demo {
         }
         Ok(())
     }
+    async fn mems(&self, g: &Rid) -> Res<Vec<Mem>> {
+        if let Some(tx) = self.tx.get() {
+            for i in 0..8u32 {
+                let u = self.u(i);
+                let _ = tx.send(Ev::Pres { usr: u.id.clone().unwrap(), p: Pres { st: [St::On, St::Idle, St::Dnd, St::Off][i as usize % 4], desk: true, mob: i % 3 == 0, ..Default::default() } });
+            }
+        }
+        Ok((0..8u32).map(|i| Mem { usr: self.u(i), gld: g.clone(), nick: None, roles: vec![] }).collect())
+    }
     async fn react(&self, _c: &Rid, _m: &Rid, _e: &Emo, _on: bool) -> Res<()> {
         Ok(())
     }

@@ -8,21 +8,22 @@ Item {
     property var p: []
     implicitWidth: ld.item ? ld.item.implicitWidth : 0
     implicitHeight: ld.item ? ld.item.implicitHeight : 0
-    visible: S.edit || (ld.item ? ld.item.visible : false)
+    property bool shown: S.edit || !ld.item || ld.item.shown !== false
+    visible: shown
     clip: !S.edit
 
     Loader {
         id: ld
         anchors.fill: parent
         source: S.blkUrl(r.n.b)
-        onLoaded: if (item && "o" in item) item.o = r.n.o || {}
+        onLoaded: { if (item && "o" in item) item.o = r.n.o || {} }
         onStatusChanged: if (status === Loader.Error) console.warn("block failed:", r.n.b)
     }
 
     Rectangle {
         anchors.fill: parent
         visible: S.edit
-        color: Th.bg + "cc"
+        color: Th.a(Th.bg, 0.8)
         border.color: dz.containsDrag ? Th.ac : Th.ln
         border.width: dz.containsDrag ? 2 : 1
         z: 20
@@ -57,7 +58,7 @@ Item {
         }
         Rectangle {
             id: hl
-            color: Th.ac + "40"
+            color: Th.a(Th.ac, 0.25)
             visible: dz.containsDrag
             property string zn: "c"
             x: zn === "r" ? parent.width / 2 : 0

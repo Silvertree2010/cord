@@ -8,9 +8,10 @@ Rectangle {
     property var ch: cs.chan ? S.chans[S.ridOf(cs.chan)] : null
     property real t0: 0
     property string el: ""
-    visible: !!cs.chan
+    property bool shown: !!cs.chan
+    visible: shown
     implicitWidth: 248
-    implicitHeight: visible ? 92 : 0
+    implicitHeight: shown ? 92 : 0
     color: Th.bg3
     onVisibleChanged: if (visible) t0 = Date.now()
     Timer {

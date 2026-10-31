@@ -5,7 +5,7 @@ function esc(s) {
 }
 
 function inl(s, o) {
-    const ac = o.ac || "#8fb3ff", cb = o.cb || "#ffffff14", mono = o.mono || "monospace", nm = o.names || {}
+    const ac = o.ac || "#8fb3ff", cb = o.cb || "rgba(255,255,255,0.08)", mono = o.mono || "monospace", nm = o.names || {}
     const em = o.em || 22
     const keep = []
     const k = h => { keep.push(h); return "\u0000" + (keep.length - 1) + "\u0000" }
@@ -33,7 +33,7 @@ function html(src, o) {
     let s = esc(src)
     const blocks = []
     s = s.replace(/```(\w*)\n?([\s\S]*?)```/g, (m, l, c) => {
-        blocks.push('<table width="100%" style="background:' + (o.cb || "#ffffff14") + '" cellpadding="8"><tr><td><pre style="font-family:\'' + (o.mono || "monospace") + '\'">' + c.replace(/\n$/, "") + '</pre></td></tr></table>')
+        blocks.push('<table width="100%" style="background:' + (o.cb || "rgba(255,255,255,0.08)") + '" cellpadding="8"><tr><td><pre style="font-family:\'' + (o.mono || "monospace") + '\'">' + c.replace(/\n$/, "") + '</pre></td></tr></table>')
         return "\u0001" + (blocks.length - 1) + "\u0001"
     })
     const ls = s.split("\n")

@@ -26,9 +26,9 @@ fn media_get(u: &str) -> Vec<u8> {
 fn frame_get(u: &str, w: &mut u32, h: &mut u32) -> Vec<u8> {
     match crate::frames::get(u) {
         Some(f) => {
-            *w = f.0;
-            *h = f.1;
-            f.2.to_vec()
+            *w = f.w;
+            *h = f.h;
+            f.rgba.clone()
         }
         None => vec![],
     }

@@ -181,6 +181,16 @@ impl Bk for Dc {
         Ok(())
     }
 
+    async fn rel(&self, usr: &Rid, on: bool) -> Res<()> {
+        let p = format!("/users/@me/relationships/{}", usr.raw);
+        if on {
+            self.0.rest.js(Method::PUT, &p, Some(serde_json::json!({}))).await?;
+        } else {
+            self.0.rest.js(Method::DELETE, &p, None).await?;
+        }
+        Ok(())
+    }
+
     async fn react(&self, chan: &Rid, msg: &Rid, e: &Emo, on: bool) -> Res<()> {
         let raw = match &e.id {
             Some(i) => format!("{}:{}", e.name, i.raw),

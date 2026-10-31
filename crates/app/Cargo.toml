@@ -13,6 +13,7 @@ cord-hub.workspace = true
 cord-dc.workspace = true
 cord-mx.workspace = true
 cord-st.workspace = true
+cord-cap.workspace = true
 async-trait.workspace = true
 tokio.workspace = true
 serde.workspace = true

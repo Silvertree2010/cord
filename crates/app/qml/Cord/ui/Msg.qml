@@ -20,7 +20,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: r.m.del ? Th.err + "14" : r.ment ? Th.ment : r.hov ? Th.hov : "transparent"
+        color: r.m.del ? Th.a(Th.err, 0.08) : r.ment ? Th.ment : r.hov ? Th.hov : "transparent"
         Rectangle { visible: r.ment && !r.m.del; width: 2; height: parent.height; color: Th.ac }
     }
     readonly property bool ment: {
@@ -214,7 +214,7 @@ Item {
                             height: 26
                             width: rr.implicitWidth + 14
                             radius: 8
-                            color: modelData.me ? Th.ac + "33" : Th.bg3
+                            color: modelData.me ? Th.a(Th.ac, 0.2) : Th.bg3
                             border.color: modelData.me ? Th.ac : rm.containsMouse ? Th.tx3 : "transparent"
                             Row {
                                 id: rr

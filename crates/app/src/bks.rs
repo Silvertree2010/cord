@@ -6,6 +6,12 @@ use std::{
     sync::{Arc, Mutex, OnceLock},
 };
 
+static DC: OnceLock<Mutex<HashMap<u32, Arc<cord_dc::Dc>>>> = OnceLock::new();
+
+pub fn dc_of(a: u32) -> Option<Arc<cord_dc::Dc>> {
+    DC.get_or_init(Default::default).lock().ok()?.get(&a).cloned()
+}
+
 static MX: OnceLock<Mutex<HashMap<u32, Arc<cord_mx::Mx>>>> = OnceLock::new();
 
 fn mx() -> &'static Mutex<HashMap<u32, Arc<cord_mx::Mx>>> {
@@ -28,7 +34,13 @@ fn mdir(id: u32) -> std::path::PathBuf {
 
 pub async fn mk(a: &Ac, sec: String) -> Option<Arc<dyn Bk>> {
     match a.svc {
-        Svc::Dc => Some(Arc::new(cord_dc::Dc::new(a.id, sec))),
+        Svc::Dc => {
+            let d = Arc::new(cord_dc::Dc::new(a.id, sec));
+            if let Ok(mut g) = DC.get_or_init(Default::default).lock() {
+                g.insert(a.id, d.clone());
+            }
+            Some(d)
+        }
         Svc::St => {
             let v: Value = serde_json::from_str(&sec).unwrap_or(json!({"tok": sec}));
             let base = v["base"].as_str().map(String::from).unwrap_or_else(|| if a.base.is_empty() { "https://api.stoat.chat".into() } else { a.base.clone() });

@@ -19,6 +19,10 @@ ApplicationWindow {
     Component.onCompleted: {
         S.boot()
         const sh = Qt.application.arguments.indexOf("--shot")
+        const sp = Qt.application.arguments.indexOf("--page")
+        if (sp >= 0) { S.setPage = Qt.application.arguments[sp + 1]; S.showSet = true }
+        const so = Qt.application.arguments.indexOf("--open")
+        if (so >= 0) { const g = Qt.application.arguments[so + 1]; Qt.callLater(() => S.pick(g)) }
         if (sh >= 0) shotT.out = Qt.application.arguments[sh + 1] || "/tmp/cord.png"
     }
 
@@ -28,7 +32,7 @@ ApplicationWindow {
         property string preset: ""
         interval: 2500
         running: out !== ""
-        onTriggered: win.contentItem.grabToImage(r => { r.saveToFile(out); Qt.quit() })
+        onTriggered: (S.setup ? stp : S.showSet ? setL : root).grabToImage(r => { r.saveToFile(out); Qt.quit() })
     }
 
     Node {
@@ -71,12 +75,14 @@ ApplicationWindow {
     }
 
     Loader {
+        id: stp
         anchors.fill: parent
         active: S.setup
         source: "Cord/Setup.qml"
         z: 80
     }
     Loader {
+        id: setL
         anchors.fill: parent
         active: S.showSet
         source: "Cord/Settings.qml"
