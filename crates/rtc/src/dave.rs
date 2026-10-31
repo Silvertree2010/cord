@@ -1,3 +1,4 @@
+use crate::vrtp::Codec;
 use serde_json::{Value, json};
 
 pub enum Out {
@@ -180,6 +181,28 @@ impl Dv {
     pub fn dec(&mut self, uid: u64, p: &[u8]) -> Option<Vec<u8>> {
         self.s.decrypt(uid, davey::MediaType::AUDIO, p).ok()
     }
+
+    pub fn encv(&mut self, c: Codec, p: &[u8]) -> Vec<u8> {
+        if self.s.can_encrypt() {
+            if let Ok(e) = self.s.encrypt(davey::MediaType::VIDEO, dcodec(c), p) {
+                return e.into_owned();
+            }
+        }
+        p.to_vec()
+    }
+
+    pub fn decv(&mut self, uid: u64, p: &[u8]) -> Option<Vec<u8>> {
+        self.s.decrypt(uid, davey::MediaType::VIDEO, p).ok()
+    }
+}
+
+#[cfg(feature = "dave")]
+fn dcodec(c: Codec) -> davey::Codec {
+    match c {
+        Codec::H264 => davey::Codec::H264,
+        Codec::Vp8 => davey::Codec::VP8,
+        Codec::Av1 => davey::Codec::AV1,
+    }
 }
 
 #[cfg(not(feature = "dave"))]
@@ -209,6 +232,12 @@ impl Dv {
         p.to_vec()
     }
     pub fn dec(&mut self, _: u64, p: &[u8]) -> Option<Vec<u8>> {
+        Some(p.to_vec())
+    }
+    pub fn encv(&mut self, _: Codec, p: &[u8]) -> Vec<u8> {
+        p.to_vec()
+    }
+    pub fn decv(&mut self, _: u64, p: &[u8]) -> Option<Vec<u8>> {
         Some(p.to_vec())
     }
 }

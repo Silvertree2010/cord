@@ -112,6 +112,15 @@ pub fn nals(b: &[u8]) -> Vec<&[u8]> {
     o
 }
 
+pub fn norm4(au: &[u8]) -> Vec<u8> {
+    let mut o = Vec::with_capacity(au.len() + 8);
+    for n in nals(au) {
+        o.extend_from_slice(&[0, 0, 0, 1]);
+        o.extend_from_slice(n);
+    }
+    o
+}
+
 pub fn is_key(au: &[u8]) -> bool {
     nals(au).iter().any(|n| n[0] & 31 == 5)
 }
