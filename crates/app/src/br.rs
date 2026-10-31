@@ -114,15 +114,11 @@ fn js<T: serde::Serialize>(v: &T) -> QString {
     QString::from(&serde_json::to_string(v).unwrap_or_default())
 }
 
-pub fn mk(a: &acc::Ac, sec: Option<String>) -> Option<Arc<dyn Bk>> {
+pub async fn mk(a: &acc::Ac, sec: Option<String>) -> Option<Arc<dyn Bk>> {
     if a.base == "demo" {
         return Some(Arc::new(cord_hub::demo::Demo::new(a.id, a.svc)));
     }
-    let sec = sec?;
-    match a.svc {
-        Svc::Dc => Some(Arc::new(cord_dc::Dc::new(a.id, sec))),
-        _ => crate::bks::mk(a, sec),
-    }
+    crate::bks::mk(a, sec?).await
 }
 
 impl CoreR {
@@ -185,7 +181,7 @@ impl q::Core {
         rt().spawn(async move {
             for a in accs.into_iter().filter(|a| a.on) {
                 let s = acc::get(a.id);
-                if let Some(b) = mk(&a, s) {
+                if let Some(b) = mk(&a, s).await {
                     if let Err(x) = hh.add(b).await {
                         e4.s(json!({"t":"Err","d":{"acc":a.id,"msg":x.to_string()}}));
                     }
@@ -377,7 +373,7 @@ impl q::Core {
             }
             l.push(ac.clone());
             acc::save(&l);
-            if let Some(b) = mk(&ac, Some(sec)) {
+            if let Some(b) = mk(&ac, Some(sec)).await {
                 h.add(b).await?;
             }
             e.s(json!({"t":"Accs"}));
@@ -404,7 +400,7 @@ impl q::Core {
             let ac = acc::Ac { id, svc: Svc::Dc, lbl: String::new(), base: String::new(), on: true };
             l.push(ac.clone());
             acc::save(&l);
-            if let Some(b) = mk(&ac, Some(tok)) {
+            if let Some(b) = mk(&ac, Some(tok)).await {
                 h.add(b).await?;
             }
             e.s(json!({"t":"Accs"}));

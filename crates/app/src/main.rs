@@ -1,6 +1,8 @@
 mod acc;
 mod bks;
 mod feat;
+mod frames;
+mod img;
 mod br;
 mod cfg;
 mod rt;
@@ -19,6 +21,7 @@ fn main() {
     if let Some(mut e) = eng.as_mut() {
         e.as_mut().add_import_path(&QString::from(cfg::qml_dir().to_string_lossy().as_ref()));
         e.as_mut().add_import_path(&QString::from(cfg::dir().join("mods").to_string_lossy().as_ref()));
+        img::reg_img(e.as_mut());
         e.load(&QUrl::from_local_file(&QString::from(p.to_string_lossy().as_ref())));
     }
     if let Some(a) = app.as_mut() {
