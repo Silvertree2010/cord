@@ -4,6 +4,31 @@ function esc(s) {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
 }
 
+function rel(ms, now) {
+    const d = Math.round((ms - now) / 1000), a = Math.abs(d)
+    const u = a < 60 ? [a, "second"] : a < 3600 ? [Math.round(a / 60), "minute"] : a < 86400 ? [Math.round(a / 3600), "hour"] : a < 2592000 ? [Math.round(a / 86400), "day"] : a < 31536000 ? [Math.round(a / 2592000), "month"] : [Math.round(a / 31536000), "year"]
+    const w = u[0] + " " + u[1] + (u[0] === 1 ? "" : "s")
+    return d >= 0 ? "in " + w : w + " ago"
+}
+
+function stamp(ms, f, now) {
+    const d = new Date(ms)
+    const M = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    const W = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    const p = n => (n < 10 ? "0" : "") + n
+    const hm = p(d.getHours()) + ":" + p(d.getMinutes())
+    const dl = d.getDate() + " " + M[d.getMonth()] + " " + d.getFullYear()
+    switch (f) {
+    case "t": return hm
+    case "T": return hm + ":" + p(d.getSeconds())
+    case "d": return p(d.getDate()) + "/" + p(d.getMonth() + 1) + "/" + d.getFullYear()
+    case "D": return dl
+    case "F": return W[d.getDay()] + ", " + dl + " " + hm
+    case "R": return rel(ms, now || Date.now())
+    default: return dl + " " + hm
+    }
+}
+
 function inl(s, o) {
     const ac = o.ac || "#8fb3ff", cb = o.cb || "rgba(255,255,255,0.08)", mono = o.mono || "monospace", nm = o.names || {}
     const em = o.em || 22
@@ -14,7 +39,7 @@ function inl(s, o) {
     s = s.replace(/&lt;@!?(\d+)&gt;/g, (m, id) => k('<a href="cord:usr/' + id + '" style="color:' + ac + ';text-decoration:none;background:' + cb + '">@' + esc(nm[id] || id) + '</a>'))
     s = s.replace(/&lt;#(\d+)&gt;/g, (m, id) => k('<a href="cord:chan/' + id + '" style="color:' + ac + ';text-decoration:none">#' + esc(nm[id] || id) + '</a>'))
     s = s.replace(/&lt;@&amp;(\d+)&gt;/g, (m, id) => k('<span style="color:' + ac + ';text-decoration:none">@' + esc(nm[id] || "role") + '</span>'))
-    s = s.replace(/&lt;t:(\d+)(?::\w)?&gt;/g, (m, t) => k('<span style="background:' + cb + '">' + new Date(parseInt(t) * 1000).toLocaleString() + '</span>'))
+    s = s.replace(/&lt;t:(-?\d+)(?::([tTdDfFR]))?&gt;/g, (m, t, f) => k('<span style="background:' + cb + '">' + stamp(parseInt(t) * 1000, f || "f", o.now) + '</span>'))
     s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (m, t, u) => k('<a href="' + u + '" style="color:' + ac + ';text-decoration:none">' + t + '</a>'))
     s = s.replace(/&lt;(https?:\/\/[^\s<]+?)&gt;/g, (m, u) => k('<a href="' + u + '" style="color:' + ac + ';text-decoration:none">' + u + '</a>'))
     s = s.replace(/(https?:\/\/(?:[^\s<&]|&(?!gt;|lt;))+[^\s<.,:;"')\]&])/g, (m, u) => k('<a href="' + u + '" style="color:' + ac + ';text-decoration:none">' + u + '</a>'))

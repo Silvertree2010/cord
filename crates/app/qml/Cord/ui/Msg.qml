@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Effects
 import Cord
 import "../Fmt.js" as F
 
@@ -111,7 +112,7 @@ Item {
                 }
                 Lbl {
                     width: parent.width - 200
-                    text: r.rep ? r.rep.body.replace(/\n/g, " ") : ""
+                    text: r.rep ? r.rep.body.replace(/\n/g, " ").replace(/<@!?(\d+)>/g, (m, i) => "@" + (S.names[i] || i)).replace(/<#(\d+)>/g, (m, i) => "#" + (S.names[i] || i)).replace(/<a?:(\w+):\d+>/g, ":$1:") : ""
                     color: Th.tx3
                     font.pixelSize: Th.fsS
                     anchors.verticalCenter: parent.verticalCenter
@@ -309,15 +310,29 @@ Item {
     Component {
         id: imgA
         Image {
+            id: ia
             property real k: a.w && a.h ? Math.min(1, 420 / a.w, 320 / a.h) : 1
+            property bool sp: /^SPOILER_/.test(a.name || "") && !S.f("spoilers")
             width: a.w ? a.w * k : 320
             height: a.h ? a.h * k : 200
             source: S.u(a.url)
             fillMode: Image.PreserveAspectFit
             asynchronous: true
             sourceSize: Qt.size(width * 2, height * 2)
+            layer.enabled: sp
+            layer.effect: MultiEffect { blurEnabled: true; blur: 1.0; blurMax: 64; brightness: -0.25 }
             Rectangle { anchors.fill: parent; color: Th.bg3; radius: Th.rs; visible: parent.status !== Image.Ready; z: -1 }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: S.view(a.url) }
+            Rectangle {
+                visible: ia.sp
+                anchors.centerIn: parent
+                width: spl.implicitWidth + 20
+                height: 26
+                radius: 13
+                color: Th.a("#000000", 0.7)
+                z: 2
+                Lbl { id: spl; anchors.centerIn: parent; text: "SPOILER"; color: "#fff"; font.pixelSize: 12; font.weight: Font.Bold }
+            }
+            MouseArea { anchors.fill: parent; z: 3; cursorShape: Qt.PointingHandCursor; onClicked: ia.sp ? ia.sp = false : S.view(a.url) }
         }
     }
     Component {

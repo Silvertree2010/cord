@@ -1,6 +1,6 @@
 const fs = require("fs")
 const a = require("assert")
-const src = fs.readFileSync(__dirname + "/Fmt.js", "utf8").replace(".pragma library", "") + "\nmodule.exports={emoEncode,emoDecode,html,onlyEmoji};"
+const src = fs.readFileSync(__dirname + "/Fmt.js", "utf8").replace(".pragma library", "") + "\nmodule.exports={emoEncode,emoDecode,html,onlyEmoji,stamp};"
 const m = { exports: {} }
 new Function("module", "Qt", src)(m, {})
 const F = m.exports
@@ -20,4 +20,9 @@ for (const t of ["<:a:1>", "x<a:b:22>y<:c:333>z", "no emoji"]) a.strictEqual(F.e
 const gh = F.html("[`0c90ef7`](https://github.com/a/b/commit/0c90ef7) chore(models): use x", {})
 a.ok(gh.indexOf("\u0000") < 0 && gh.indexOf("0c90ef7") > 0 && gh.indexOf('href="https://github.com/a/b/commit/0c90ef7"') > 0)
 a.ok(F.html("<@42> hi", { names: { 42: "Kai" } }).indexOf("@Kai") > 0)
+const T = Date.UTC(2026, 10, 4, 12, 0, 0)
+a.strictEqual(F.stamp(T - 7200000, "R", T), "2 hours ago")
+a.strictEqual(F.stamp(T + 86400000 * 3, "R", T), "in 3 days")
+a.ok(F.html("<t:1700000000:R>", { now: 1700000000000 + 60000 }).indexOf("1 minute ago") > 0)
+a.ok(/\d{2}:\d{2}/.test(F.html("<t:1700000000:t>", {})))
 console.log("fmt ok")
