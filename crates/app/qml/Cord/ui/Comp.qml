@@ -126,19 +126,34 @@ Item {
             cmpI = 0
             return
         }
+        m = /(^|\s)#([^\s#]*)$/.exec(b)
+        if (m && r.ch && r.ch.grid) {
+            const q = m[2].toLowerCase()
+            const l = S.chList(r.ch.grid).filter(c => c.k !== "Cat" && !c.hidden && (!q || c.name.toLowerCase().indexOf(q) >= 0))
+                .sort((a, c) => (a.name.toLowerCase().indexOf(q) === 0 ? 0 : 1) - (c.name.toLowerCase().indexOf(q) === 0 ? 0 : 1) || a.name.localeCompare(c.name))
+                .slice(0, 8)
+                .map(c => ({ t: "#" + c.name, ins: S.svc(r.cid) === "dc" ? "<#" + S.raw(c.rid) + "> " : "#" + c.name + " " }))
+            cmp = l.length ? { st: b.length - m[2].length - 1, l: l, k: "#" } : null
+            cmpI = 0
+            return
+        }
         m = /(^|\s):([\w+\-]{2,})$/.exec(b)
         if (m) {
             const q = m[2].toLowerCase()
-            const l = []
-            for (const g of S.glds) for (const e of g.emos || []) {
-                if (l.length >= 8) break
-                if (e.name.toLowerCase().indexOf(q) >= 0) l.push({ t: ":" + e.name + ":", url: e.url || "", ins: e.id ? "<" + (e.anim ? "a" : "") + ":" + e.name + ":" + e.id.raw + "> " : "" })
+            const c = []
+            const sc = n => { n = n.toLowerCase(); return n === q ? 0 : n.indexOf(q) === 0 ? 1 : n.split(/[_\-\s]/).some(w => w.indexOf(q) === 0) ? 2 : n.indexOf(q) >= 0 ? 3 : 9 }
+            const gs = r.ch && r.ch.grid ? [S.gmap[r.ch.grid]].concat(S.glds.filter(g => g.rid !== r.ch.grid)) : S.glds
+            for (const g of gs) if (g) for (const e of g.emos || []) {
+                const v = sc(e.name)
+                if (v < 9) c.push({ v: v + (g.rid === (r.ch && r.ch.grid) ? 0 : 0.5), t: ":" + e.name + ":", url: e.url || "", ins: e.id ? "<" + (e.anim ? "a" : "") + ":" + e.name + ":" + e.id.raw + "> " : "" })
+                if (c.length > 400) break
             }
-            const ws = x => x[1].split(" ").some(w => w.indexOf(q) === 0)
-            for (const x of E.all.filter(ws).concat(E.all.filter(x => !ws(x) && x[1].indexOf(q) >= 0))) {
-                if (l.length >= 8) break
-                l.push({ t: x[1], g: x[0], ins: x[0] + " " })
+            for (const x of E.all) {
+                const v = Math.min(...x[1].split(" ").map(sc))
+                if (v < 9) c.push({ v: v - 0.25, t: x[1], g: x[0], ins: x[0] + " " })
             }
+            c.sort((a, d) => a.v - d.v || a.t.length - d.t.length)
+            const l = c.slice(0, 8)
             cmp = l.length ? { st: b.length - m[2].length - 1, l: l, k: ":" } : null
             cmpI = 0
             return
