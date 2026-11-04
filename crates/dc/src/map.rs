@@ -287,6 +287,23 @@ pub fn stk(s_: &Value) -> Att {
     Att { url: u, name: s(s_, "name").unwrap_or("").to_string(), mime: Some(m.into()), size: 0, w: Some(160), h: Some(160) }
 }
 
+pub fn gal(l: Vec<Emb>) -> Vec<Emb> {
+    let mut o: Vec<Emb> = vec![];
+    for e in l {
+        let side = e.title.is_none() && e.desc.is_none() && e.img.is_some() && e.url.is_some();
+        if side {
+            if let Some(p) = o.iter_mut().rev().find(|p| p.url == e.url && p.img.is_some()) {
+                if let Some(i) = e.img {
+                    p.more.push(i);
+                }
+                continue;
+            }
+        }
+        o.push(e);
+    }
+    o
+}
+
 pub fn emb(e: &Value) -> Emb {
     let u = |k: &str| e.get(k).and_then(|x| s(x, "proxy_url").or_else(|| s(x, "url"))).map(str::to_string);
     let n = |k: &str, f: &str| e.get(k).and_then(|x| s(x, f)).map(str::to_string);
@@ -300,6 +317,12 @@ pub fn emb(e: &Value) -> Emb {
         vid: u("video"),
         kind: s(e, "type").map(str::to_string),
         auth_ic: e.get("author").and_then(|x| s(x, "proxy_icon_url").or_else(|| s(x, "icon_url"))).map(str::to_string),
+        auth_url: n("author", "url"),
+        foot_ic: e.get("footer").and_then(|x| s(x, "proxy_icon_url").or_else(|| s(x, "icon_url"))).map(str::to_string),
+        ts: s(e, "timestamp").and_then(ts),
+        iw: ["image", "video", "thumbnail"].iter().find_map(|k| e[*k]["width"].as_u64()).unwrap_or(0) as u32,
+        ih: ["image", "video", "thumbnail"].iter().find_map(|k| e[*k]["height"].as_u64()).unwrap_or(0) as u32,
+        more: vec![],
         auth: n("author", "name"),
         foot: n("footer", "text"),
         prov: n("provider", "name"),
@@ -350,7 +373,7 @@ pub fn msg_p(a: u32, v: &Value, need: bool) -> Option<Msg> {
         ts: s(v, "timestamp").and_then(ts).unwrap_or(0),
         ed: s(v, "edited_timestamp").and_then(ts),
         atts: sarr("attachments").iter().map(att).collect(),
-        embs: sarr("embeds").iter().map(emb).collect(),
+        embs: if v["flags"].as_u64().unwrap_or(0) & 4 != 0 { vec![] } else { gal(sarr("embeds").iter().map(emb).collect()) },
         reacts: arr("reactions")
             .iter()
             .map(|r| React { emo: emo(a, &r["emoji"]), n: r["count"].as_u64().unwrap_or(0) as u32, me: r["me"].as_bool().unwrap_or(false) })

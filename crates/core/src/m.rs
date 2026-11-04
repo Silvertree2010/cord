@@ -122,6 +122,18 @@ pub struct Emb {
     pub kind: Option<String>,
     #[serde(default)]
     pub auth_ic: Option<String>,
+    #[serde(default)]
+    pub auth_url: Option<String>,
+    #[serde(default)]
+    pub foot_ic: Option<String>,
+    #[serde(default)]
+    pub ts: Option<i64>,
+    #[serde(default)]
+    pub iw: u32,
+    #[serde(default)]
+    pub ih: u32,
+    #[serde(default)]
+    pub more: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

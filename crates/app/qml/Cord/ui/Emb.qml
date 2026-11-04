@@ -53,7 +53,15 @@ Rectangle {
             spacing: 8
             width: parent.width
             Image { visible: !!r.e.auth_ic; source: r.e.auth_ic || ""; width: 22; height: 22; sourceSize: Qt.size(44, 44); asynchronous: true; anchors.verticalCenter: parent.verticalCenter }
-            Lbl { text: r.e.auth || ""; font.pixelSize: Th.fsS; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter; width: parent.width - (r.e.auth_ic ? 30 : 0) }
+            Lbl {
+                text: r.e.auth || ""
+                font.pixelSize: Th.fsS
+                font.weight: Font.DemiBold
+                font.underline: !!r.e.auth_url && am.containsMouse
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.min(implicitWidth, parent.width - (r.e.auth_ic ? 30 : 0))
+                MouseArea { id: am; anchors.fill: parent; enabled: !!r.e.auth_url; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: r.open(r.e.auth_url) }
+            }
         }
         Text {
             visible: !!r.e.title
@@ -91,10 +99,29 @@ Rectangle {
                 }
             }
         }
+        Grid {
+            visible: (r.e.more || []).length > 0
+            width: parent.width
+            columns: 2
+            spacing: 4
+            Repeater {
+                model: (r.e.more || []).length ? [r.e.img].concat(r.e.more) : []
+                Image {
+                    width: (cl.width - 4) / 2
+                    height: width * 0.75
+                    source: modelData
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: S.view(modelData) }
+                }
+            }
+        }
         Item {
-            visible: !!r.e.img || r.bigThumb
-            width: Math.min(parent.width, bi.implicitWidth > 0 ? bi.implicitWidth : parent.width)
-            height: bi.implicitWidth > 0 ? width * bi.implicitHeight / bi.implicitWidth : 0
+            visible: (!!r.e.img && !(r.e.more || []).length) || r.bigThumb
+            readonly property real nw: bi.implicitWidth > 0 ? bi.implicitWidth : r.e.iw || 0
+            readonly property real nh: bi.implicitWidth > 0 ? bi.implicitHeight : r.e.ih || 0
+            width: Math.min(parent.width, nw > 0 ? nw : parent.width)
+            height: nw > 0 ? Math.min(300, width * nh / nw) : 0
             Image {
                 id: bi
                 anchors.fill: parent
@@ -111,15 +138,27 @@ Rectangle {
                 color: Th.a("#000000", 0.6)
                 Ico { anchors.centerIn: parent; n: "play"; sz: 24; col: "#ffffff" }
             }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: r.vidCard ? r.open(r.e.url) : S.view(bi.source) }
+            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: r.vidCard ? (r.e.vid && !/youtube|twitch|vimeo|spotify/.test(r.e.vid) ? S.view(r.e.vid, true) : r.open(r.e.url)) : S.view(bi.source) }
         }
-        Lbl { visible: !!r.e.foot; text: r.e.foot || ""; color: Th.tx3; font.pixelSize: 11; width: parent.width }
+        Row {
+            visible: !!r.e.foot || !!r.e.ts
+            spacing: 6
+            width: parent.width
+            Image { visible: !!r.e.foot_ic; source: r.e.foot_ic || ""; width: 18; height: 18; sourceSize: Qt.size(36, 36); asynchronous: true; anchors.verticalCenter: parent.verticalCenter }
+            Lbl {
+                text: (r.e.foot || "") + (r.e.foot && r.e.ts ? "  •  " : "") + (r.e.ts ? F.time(r.e.ts) : "")
+                color: Th.tx3
+                font.pixelSize: 11
+                width: parent.width - (r.e.foot_ic ? 24 : 0)
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
     }
     Item {
         id: mw
         visible: r.media
-        property real iw: r.gifv && gv.item && gv.item.vw > 0 ? gv.item.vw : im.implicitWidth
-        property real ih: r.gifv && gv.item && gv.item.vh > 0 ? gv.item.vh : im.implicitHeight
+        property real iw: r.gifv && gv.item && gv.item.vw > 0 ? gv.item.vw : im.implicitWidth > 0 ? im.implicitWidth : r.e.iw || 0
+        property real ih: r.gifv && gv.item && gv.item.vh > 0 ? gv.item.vh : im.implicitHeight > 0 ? im.implicitHeight : r.e.ih || 0
         property real k: iw > 0 ? Math.min(1, Math.min(r.maxW, 420) / iw, 320 / ih) : 1
         width: iw > 0 ? iw * k : (r.media && (r.mediaSrc || r.e.vid) ? 240 : 0)
         height: ih > 0 ? ih * k : (r.media && (r.mediaSrc || r.e.vid) ? 135 : 0)

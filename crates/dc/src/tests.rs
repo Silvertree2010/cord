@@ -291,3 +291,26 @@ fn forward_poll_reply() {
     assert_eq!(m.rqb, "orig");
     assert_eq!(m.rq.unwrap().name, "kai");
 }
+
+#[test]
+fn embed_gallery_and_suppress() {
+    let e = |i: &str, t: Option<&str>| {
+        let mut v = serde_json::json!({"type":"rich","url":"https://x.com/a/1","image":{"url":i,"width":800,"height":600}});
+        if let Some(t) = t {
+            v["description"] = t.into();
+        }
+        v
+    };
+    let m = serde_json::json!({
+        "id":"5","channel_id":"20","content":"https://x.com/a/1","timestamp":"2024-02-29T12:00:00+00:00","type":0,
+        "author":{"id":"200","username":"bob","discriminator":"0"},
+        "embeds":[e("http://i/1", Some("post")), e("http://i/2", None), e("http://i/3", None)]
+    });
+    let x = map::msg(1, &m).unwrap();
+    assert_eq!(x.embs.len(), 1);
+    assert_eq!(x.embs[0].more, vec!["http://i/2".to_string(), "http://i/3".to_string()]);
+    assert_eq!((x.embs[0].iw, x.embs[0].ih), (800, 600));
+    let mut s = m.clone();
+    s["flags"] = 4.into();
+    assert!(map::msg(1, &s).unwrap().embs.is_empty());
+}

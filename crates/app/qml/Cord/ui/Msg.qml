@@ -212,7 +212,12 @@ Item {
                 TextEdit {
                     id: tx
                     width: parent.width
-                    visible: (r.m.body || "") !== ""
+                    readonly property bool linkOnly: {
+                        const b = (r.m.body || "").trim()
+                        if (!b || /\s/.test(b) || !/^https?:\/\//.test(b)) return false
+                        return (r.m.embs || []).some(e => (e.kind === "image" || e.kind === "gifv") && (e.url === b || e.img === b))
+                    }
+                    visible: (r.m.body || "") !== "" && !linkOnly
                     readOnly: true
                     selectByMouse: true
                     wrapMode: TextEdit.Wrap

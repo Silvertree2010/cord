@@ -52,7 +52,23 @@ impl Demo {
             ts,
             ed: None,
             atts: vec![],
-            embs: vec![],
+            embs: if i % 8 == 6 {
+                vec![Emb {
+                    title: Some("[shell] Branch `fix/x` was force-pushed to `2f1d668`".into()),
+                    desc: Some("[`0c90ef7`](https://example.org) chore: tidy up - kai".into()),
+                    url: Some("https://example.org".into()),
+                    col: Some(0xe5484d),
+                    auth: Some("kai".into()),
+                    auth_url: Some("https://example.org".into()),
+                    foot: Some("GitHub".into()),
+                    ts: Some(ts),
+                    fields: vec![("Status".into(), "passed".into(), true), ("Time".into(), "2m".into(), true), ("Runner".into(), "linux".into(), true)],
+                    kind: Some("rich".into()),
+                    ..Default::default()
+                }]
+            } else {
+                vec![]
+            },
             reacts: if i % 4 == 0 {
                 vec![React { emo: Emo { id: None, name: "👍".into(), url: None, anim: false }, n: 2, me: false }]
             } else {
