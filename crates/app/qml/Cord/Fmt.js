@@ -65,9 +65,12 @@ function html(src, o) {
     })
     const ls = s.split("\n")
     const out = []
+    let all = false
     for (let i = 0; i < ls.length; i++) {
         let l = ls[i]
         let m
+        if (!all && (m = l.match(/^&gt;&gt;&gt; ?(.*)$/))) { all = true; l = "&gt; " + m[1] }
+        else if (all) l = "&gt; " + l
         if ((m = l.match(/^&gt; (.*)$/)) || l === "&gt;") {
             out.push('<table cellpadding="0" cellspacing="0"><tr><td width="3" style="background:' + (o.qb || "#555") + '"></td><td width="8"></td><td>' + inl(m ? m[1] : "", o) + '</td></tr></table>')
             continue
@@ -79,6 +82,10 @@ function html(src, o) {
         }
         if ((m = l.match(/^-# (.*)$/))) {
             out.push('<span style="font-size:' + Math.round((o.fs || 14) * 0.8) + 'px;color:' + (o.sub || "#888") + '">' + inl(m[1], o) + '</span>')
+            continue
+        }
+        if ((m = l.match(/^\s*(\d{1,3})\. (.*)$/))) {
+            out.push("&nbsp;" + m[1] + ".&nbsp;" + inl(m[2], o))
             continue
         }
         if ((m = l.match(/^\s*[-*] (.*)$/))) {

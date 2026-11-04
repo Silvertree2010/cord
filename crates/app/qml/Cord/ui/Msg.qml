@@ -427,7 +427,7 @@ Item {
         property bool hov: bm.containsMouse
         visible: r.hov && !r.m.del && !(U.pop && U.pop.objectName === "prof")
         anchors.right: parent.right
-        anchors.rightMargin: 8
+        anchors.rightMargin: 18
         y: r.ListView.view && r.y - r.ListView.view.contentY < 18 ? 2 : -14
         z: 10
         height: 32
