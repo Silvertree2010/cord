@@ -19,6 +19,9 @@ pub trait Bk: Send + Sync {
     async fn mems(&self, _gld: &Rid) -> Res<Vec<Mem>> {
         Ok(vec![])
     }
+    async fn mems_at(&self, _gld: &Rid, _at: u32) -> Res<()> {
+        Ok(())
+    }
     async fn join(&self, _chan: &Rid) -> Res<()> {
         anyhow::bail!("voice unsupported")
     }

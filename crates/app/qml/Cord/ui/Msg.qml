@@ -8,6 +8,7 @@ Item {
     property var m: ({})
     property bool grp: false
     property bool day: false
+    property bool nw: false
     property var rep: null
     property string cid: ""
     property bool mine: S.isMe(m.auth, S.acc(cid))
@@ -76,9 +77,19 @@ Item {
             width: parent.width
             height: 28
             spacing: 8
-            Rectangle { width: (parent.width - dl.implicitWidth - 16) / 2; height: 1; color: Th.ln; anchors.verticalCenter: parent.verticalCenter }
-            Lbl { id: dl; text: F.day(r.m.ts || 0); color: Th.tx3; font.pixelSize: 11; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
-            Rectangle { width: (parent.width - dl.implicitWidth - 16) / 2; height: 1; color: Th.ln; anchors.verticalCenter: parent.verticalCenter }
+            Rectangle { width: (parent.width - dl.implicitWidth - 16 - (r.nw ? nwp.width + 8 : 0)) / 2; height: 1; color: r.nw ? Th.err : Th.ln; anchors.verticalCenter: parent.verticalCenter }
+            Lbl { id: dl; text: F.day(r.m.ts || 0); color: r.nw ? Th.err : Th.tx3; font.pixelSize: 11; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
+            Rectangle { width: (parent.width - dl.implicitWidth - 16 - (r.nw ? nwp.width + 8 : 0)) / 2; height: 1; color: r.nw ? Th.err : Th.ln; anchors.verticalCenter: parent.verticalCenter }
+            Rectangle {
+                id: nwp
+                visible: r.nw
+                width: nwl.implicitWidth + 12
+                height: 16
+                radius: 8
+                color: Th.err
+                anchors.verticalCenter: parent.verticalCenter
+                Lbl { id: nwl; anchors.centerIn: parent; text: "NEW"; color: "white"; font.pixelSize: 10; font.weight: Font.Bold }
+            }
         }
 
         Item {

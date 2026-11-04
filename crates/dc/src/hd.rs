@@ -53,6 +53,8 @@ fn out(sh: &Sh, tx: &Tx, mut e: Ev) {
         if let Some(g) = &c.gld {
             sh.cg.lock().insert(c.id.raw.to_string(), g.raw.to_string());
         }
+        let mu = sh.mu.lock();
+        c.mute = mu.contains(&*c.id.raw) || c.par.as_ref().is_some_and(|p| mu.contains(&*p.raw)) || c.gld.as_ref().is_some_and(|g| mu.contains(&*g.raw));
     }
     let _ = tx.send(e);
 }
@@ -193,14 +195,16 @@ fn ready(sh: &Sh, tx: &Tx, d: &Value) {
     let _ = tx.send(Ev::Conn { acc: a, up: true });
     {
         let mut mu = sh.mu.lock();
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0);
+        let on = |x: &Value| x["muted"].as_bool() == Some(true) && s(&x["mute_config"], "end_time").and_then(ts).is_none_or(|e| e > now);
         for e in ents(&d["user_guild_settings"]) {
-            if e["muted"].as_bool() == Some(true) {
+            if on(&e) {
                 if let Some(g) = s(&e, "guild_id") {
                     mu.insert(g.to_string());
                 }
             }
             for o in arr(&e, "channel_overrides") {
-                if o["muted"].as_bool() == Some(true) {
+                if on(&o) {
                     if let Some(c) = s(&o, "channel_id") {
                         mu.insert(c.to_string());
                     }
@@ -254,9 +258,10 @@ fn ready(sh: &Sh, tx: &Tx, d: &Value) {
         sh.ak.lock().insert(id.to_string(), (la.to_string(), ment));
         let lm = sh.lm.lock().get(id).cloned().unwrap_or_default();
         let g = sh.cg.lock().get(id).cloned();
+        let par = g.as_ref().and_then(|g| sh.gs.lock().get(g).and_then(|x| x.chs.iter().find(|c| s(c, "id") == Some(id)).and_then(|c| s(c, "parent_id").map(str::to_string))));
         let mt = {
             let mu = sh.mu.lock();
-            mu.contains(id) || g.map(|g| mu.contains(&g)).unwrap_or(false)
+            mu.contains(id) || g.map(|g| mu.contains(&g)).unwrap_or(false) || par.is_some_and(|p| mu.contains(&p))
         };
         let n = if !mt && sn(&lm) > sn(la) { 1 } else { 0 };
         if n > 0 || ment > 0 {

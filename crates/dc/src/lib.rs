@@ -55,6 +55,21 @@ pub struct Sh {
 pub struct Dc(Arc<Sh>);
 
 impl Dc {
+    fn ml_req(&self, gld: &Rid, rg: Vec<[u32; 2]>) -> Res<()> {
+        let c = {
+            let uid = self.0.me.lock().clone();
+            let m = self.0.gs.lock();
+            let g = m.get(&*gld.raw).ok_or_else(|| anyhow::anyhow!("unknown guild"))?;
+            g.chs
+                .iter()
+                .find(|c| c["type"].as_u64() == Some(0) && perm::view(&g.g, &g.my, &uid, c))
+                .and_then(|c| map::s(c, "id").map(str::to_string))
+        };
+        let Some(c) = c else { return Ok(()) };
+        self.gsend(json!({"op": 14, "d": {"guild_id": &*gld.raw, "typing": true, "activities": true, "threads": true, "channels": {c: rg}}}))?;
+        Ok(())
+    }
+
     pub fn new(acc: u32, tok: String) -> Res<Dc> {
         Ok(Dc(Arc::new(Sh {
             a: acc,
@@ -249,18 +264,19 @@ impl Bk for Dc {
     }
 
     async fn mems(&self, gld: &Rid) -> Res<Vec<Mem>> {
-        let c = {
-            let uid = self.0.me.lock().clone();
-            let m = self.0.gs.lock();
-            let g = m.get(&*gld.raw).ok_or_else(|| anyhow::anyhow!("unknown guild"))?;
-            g.chs
-                .iter()
-                .find(|c| c["type"].as_u64() == Some(0) && perm::view(&g.g, &g.my, &uid, c))
-                .and_then(|c| map::s(c, "id").map(str::to_string))
-        };
-        let Some(c) = c else { return Ok(vec![]) };
-        self.gsend(json!({"op": 14, "d": {"guild_id": &*gld.raw, "typing": true, "activities": true, "threads": true, "channels": {c: [[0, 99]]}}}))?;
+        self.ml_req(gld, vec![[0, 99]])?;
         Ok(vec![])
+    }
+
+    async fn mems_at(&self, gld: &Rid, at: u32) -> Res<()> {
+        let k = at / 100;
+        let mut r = vec![[0, 99]];
+        for x in [k, k + 1] {
+            if x > 0 {
+                r.push([x * 100, x * 100 + 99]);
+            }
+        }
+        self.ml_req(gld, r)
     }
 
     async fn join(&self, chan: &Rid) -> Res<()> {

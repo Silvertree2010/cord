@@ -77,6 +77,8 @@ pub struct Chan {
     pub icon: Option<String>,
     #[serde(default)]
     pub enc: bool,
+    #[serde(default)]
+    pub mute: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

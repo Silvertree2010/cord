@@ -250,6 +250,7 @@ pub fn chan(a: u32, gid: Option<&str>, c: &Value, hid: bool, us: &HashMap<String
         rcp,
         icon: if k == ChK::Grp { ic("channel-icons", id, s(c, "icon")) } else { None },
         enc: false,
+        mute: false,
     })
 }
 
@@ -359,10 +360,28 @@ pub fn pres(v: &Value) -> Pres {
     let has = |k: &str| cs.map(|c| c.get(k).is_some()).unwrap_or(false);
     let acts = v.get("activities").and_then(|x| x.as_array());
     let act = acts.and_then(|l| {
-        l.iter()
-            .find(|x| x["type"].as_u64() == Some(4))
-            .and_then(|x| s(x, "state").map(str::to_string))
-            .or_else(|| l.iter().find_map(|x| s(x, "name").map(str::to_string)))
+        let cust = l.iter().find(|x| x["type"].as_u64() == Some(4)).and_then(|x| {
+            let st = s(x, "state").filter(|t| !t.is_empty());
+            let em = x.get("emoji").filter(|e| e.get("id").map(|i| i.is_null()).unwrap_or(true)).and_then(|e| s(e, "name"));
+            match (em, st) {
+                (Some(e), Some(t)) => Some(format!("{e} {t}")),
+                (None, Some(t)) => Some(t.to_string()),
+                (Some(e), None) => Some(e.to_string()),
+                _ => None,
+            }
+        });
+        cust.or_else(|| {
+            l.iter().filter(|x| x["type"].as_u64() != Some(4)).find_map(|x| {
+                let n = s(x, "name")?;
+                Some(match x["type"].as_u64().unwrap_or(0) {
+                    1 => format!("Streaming {}", s(x, "details").unwrap_or(n)),
+                    2 => format!("Listening to {n}"),
+                    3 => format!("Watching {n}"),
+                    5 => format!("Competing in {n}"),
+                    _ => format!("Playing {n}"),
+                })
+            })
+        })
     });
     Pres { st, act, mob: has("mobile"), web: has("web"), desk: has("desktop") }
 }

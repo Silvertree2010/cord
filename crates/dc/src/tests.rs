@@ -252,3 +252,12 @@ fn guild_folders_proto() {
     assert_eq!(l[1].id, None);
     assert_eq!(l[1].glds[0].raw.as_ref(), "333");
 }
+
+#[test]
+fn activity_text() {
+    let p = |a: serde_json::Value| map::pres(&serde_json::json!({"status":"online","activities":a})).act;
+    assert_eq!(p(serde_json::json!([{"type":4,"name":"Custom Status","emoji":{"name":"🔥"}}])), Some("🔥".into()));
+    assert_eq!(p(serde_json::json!([{"type":4,"name":"Custom Status"},{"type":0,"name":"Roblox"}])), Some("Playing Roblox".into()));
+    assert_eq!(p(serde_json::json!([{"type":2,"name":"Spotify"}])), Some("Listening to Spotify".into()));
+    assert_eq!(p(serde_json::json!([{"type":4,"name":"Custom Status","state":"hi","emoji":{"id":"5","name":"pog"}}])), Some("hi".into()));
+}

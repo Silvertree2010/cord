@@ -93,7 +93,7 @@ fn msg(id: &str, ts: i64, body: &str) -> Msg {
 }
 
 fn chan(id: &str, enc: bool) -> Chan {
-    Chan { id: rid(id), gld: None, par: None, k: ChK::Txt, name: id.into(), topic: None, pos: 0, nsfw: false, hidden: false, last: Some(rid("9")), rcp: vec![], icon: None, enc }
+    Chan { id: rid(id), gld: None, par: None, k: ChK::Txt, name: id.into(), topic: None, pos: 0, nsfw: false, hidden: false, last: Some(rid("9")), rcp: vec![], icon: None, enc, mute: false }
 }
 
 async fn settle() {

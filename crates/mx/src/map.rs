@@ -379,6 +379,7 @@ fn chan(cx: &Cx, r: &RoomInfo, k: ChK) -> Chan {
         rcp: r.others.clone(),
         icon: r.av.clone(),
         enc: r.enc,
+        mute: false,
     }
 }
 

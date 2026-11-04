@@ -134,6 +134,9 @@ impl Bk for MxB {
     async fn mems(&self, g: &Rid) -> Res<Vec<Mem>> {
         self.0.mems(g).await
     }
+    async fn mems_at(&self, g: &Rid, at: u32) -> Res<()> {
+        self.0.mems_at(g, at).await
+    }
     async fn set_st(&self, s: St, a: Option<String>) -> Res<()> {
         self.0.set_st(s, a).await
     }

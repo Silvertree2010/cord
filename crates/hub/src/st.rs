@@ -476,14 +476,23 @@ impl Sta {
             if let Some(me) = me {
                 if !dup && !m.sys && !m.del && m.auth.id.as_ref() != Some(&me) {
                     let men = is_ment(&me, &m.body);
-                    let u = self.bump(&m.chan, men);
-                    ex = Some(Dl::Unr { chan: m.chan.to_string(), u });
+                    let mt = self.chans.get(&m.chan).is_some_and(|c| c.mute);
+                    if !mt || men {
+                        let u = if mt { self.bump_ment(&m.chan) } else { self.bump(&m.chan, men) };
+                        ex = Some(Dl::Unr { chan: m.chan.to_string(), u });
+                    }
                 }
             }
         }
         let mut o = self.apply(e);
         o.extend(ex);
         o
+    }
+
+    pub fn bump_ment(&mut self, chan: &Rid) -> Unr {
+        let u = self.unr.entry(chan.clone()).or_default();
+        u.ment += 1;
+        u.clone()
     }
 
     pub fn bump(&mut self, chan: &Rid, ment: bool) -> Unr {
@@ -764,6 +773,7 @@ mod tests {
             rcp: vec![],
             icon: None,
             enc: false,
+            mute: false,
         };
         s.apply(Ev::Chan(c(Some("90"))));
         s.apply(Ev::Msg(msg("100", "200", "x")));
@@ -794,7 +804,7 @@ mod tests {
     #[test]
     fn golden_chan_and_msg_entities() {
         let mut s = sta();
-        let c = Chan { id: rid("c"), gld: Some(rid("g")), par: None, k: ChK::Txt, name: "gen".into(), topic: None, pos: 0, nsfw: false, hidden: false, last: None, rcp: vec![], icon: None, enc: false };
+        let c = Chan { id: rid("c"), gld: Some(rid("g")), par: None, k: ChK::Txt, name: "gen".into(), topic: None, pos: 0, nsfw: false, hidden: false, last: None, rcp: vec![], icon: None, enc: false, mute: false };
         let d = s.apply(Ev::Chan(c));
         match &d[0] {
             Dl::Chan(v) => {
@@ -819,7 +829,7 @@ mod tests {
     #[test]
     fn hidden_chan_emits_del() {
         let mut s = sta();
-        let c = Chan { id: rid("h"), gld: None, par: None, k: ChK::Txt, name: "h".into(), topic: None, pos: 0, nsfw: false, hidden: true, last: None, rcp: vec![], icon: None, enc: false };
+        let c = Chan { id: rid("h"), gld: None, par: None, k: ChK::Txt, name: "h".into(), topic: None, pos: 0, nsfw: false, hidden: true, last: None, rcp: vec![], icon: None, enc: false, mute: false };
         assert!(matches!(s.apply(Ev::Chan(c.clone()))[0], Dl::ChanDel(_)));
         s.cfg.show_hid = true;
         assert!(matches!(s.apply(Ev::Chan(c))[0], Dl::Chan(_)));

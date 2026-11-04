@@ -17,6 +17,7 @@ Rectangle {
     property var grp: []
     property int total: 0
     property var rows: null
+    property int asked: 0
     function gName(id) {
         if (id === "online") return "Online"
         if (id === "offline") return "Offline"
@@ -36,6 +37,7 @@ Rectangle {
         grp = []
         total = 0
         rows = null
+        asked = 0
         if (g) {
             S.c.load_mems(g)
             return
@@ -171,6 +173,14 @@ Rectangle {
         id: lv
         visible: !r.dmU
         anchors.fill: parent
+        onContentYChanged: {
+            if (!r.rows || !r.g || r.rows.length < 100) return
+            if (contentY + height < contentHeight - 600) return
+            const at = r.rows.length
+            if (at <= r.asked) return
+            r.asked = at
+            S.c.more_mems(r.g, at)
+        }
         anchors.topMargin: 8
         clip: true
         model: r.grp

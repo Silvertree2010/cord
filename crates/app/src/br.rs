@@ -24,6 +24,8 @@ pub mod q {
         #[qinvokable]
         fn load_mems(self: &Core, g: &QString);
         #[qinvokable]
+        fn more_mems(self: &Core, g: &QString, at: i32);
+        #[qinvokable]
         fn hist(self: &Core, c: &QString, b: &QString);
         #[qinvokable]
         fn send(self: &Core, c: &QString, body: &QString, reply: &QString, files: &QString, silent: bool);
@@ -397,6 +399,11 @@ impl q::Core {
             e.s(&Out::Msgs { chan: c.to_string(), list, synced });
             Ok(())
         });
+    }
+
+    pub fn more_mems(&self, g: &QString, at: i32) {
+        let Some(g) = rid(g) else { return };
+        self.go("members", g.acc, move |h, _e| async move { h.bk(g.acc).await?.mems_at(&g, at.max(0) as u32).await });
     }
 
     pub fn load_mems(&self, g: &QString) {

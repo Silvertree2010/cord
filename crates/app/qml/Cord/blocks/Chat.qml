@@ -305,8 +305,9 @@ Rectangle {
             section.delegate: Item {
                 required property string section
                 width: lv.width
-                height: section === "1" ? 28 : 0
-                visible: section === "1"
+                readonly property bool onDay: { const w = r.arr.find(x => x.mid === r.markId); return !!w && w.d }
+                height: section === "1" && !onDay ? 28 : 0
+                visible: section === "1" && !onDay
                 Rectangle { anchors.verticalCenter: parent.verticalCenter; x: 16; width: parent.width - 32; height: 1; color: Th.err }
                 Rectangle {
                     anchors.centerIn: parent
@@ -346,6 +347,7 @@ Rectangle {
                 m: x_ ? x_.m : r.nil
                 grp: x_ ? x_.g : false
                 day: x_ ? x_.d : false
+                nw: !!x_ && x_.d && x_.mid === r.markId
                 cid: r.cid
                 rep: m.reply ? r.find(S.ridOf(m.reply)) : null
                 onJump: id => { const i = r.idx(id); if (i >= 0) lv.positionViewAtIndex(i, ListView.Center) }

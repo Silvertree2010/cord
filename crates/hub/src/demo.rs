@@ -92,13 +92,13 @@ impl Bk for Demo {
             let gid = self.r(format!("g{gi}"));
             tx.send(Ev::Gld(Gld { id: gid.clone(), name: gn.to_string(), icon: None, ban: None, owner: None, pos: gi as i64, roles: vec![], emos: vec![] }))?;
             let cat = self.r(format!("g{gi}cat"));
-            tx.send(Ev::Chan(Chan { id: cat.clone(), gld: Some(gid.clone()), par: None, k: ChK::Cat, name: "text channels".into(), topic: None, pos: 0, nsfw: false, hidden: false, last: None, rcp: vec![], icon: None, enc: false }))?;
+            tx.send(Ev::Chan(Chan { id: cat.clone(), gld: Some(gid.clone()), par: None, k: ChK::Cat, name: "text channels".into(), topic: None, pos: 0, nsfw: false, hidden: false, last: None, rcp: vec![], icon: None, enc: false, mute: false }))?;
             for (ci, cn) in cs.iter().enumerate() {
-                tx.send(Ev::Chan(Chan { id: self.r(format!("g{gi}c{ci}")), gld: Some(gid.clone()), par: Some(cat.clone()), k: ChK::Txt, name: cn.to_string(), topic: Some(format!("{cn} talk")), pos: ci as i64, nsfw: false, hidden: false, last: None, rcp: vec![], icon: None, enc: false }))?;
+                tx.send(Ev::Chan(Chan { id: self.r(format!("g{gi}c{ci}")), gld: Some(gid.clone()), par: Some(cat.clone()), k: ChK::Txt, name: cn.to_string(), topic: Some(format!("{cn} talk")), pos: ci as i64, nsfw: false, hidden: false, last: None, rcp: vec![], icon: None, enc: false, mute: false }))?;
             }
-            tx.send(Ev::Chan(Chan { id: self.r(format!("g{gi}v")), gld: Some(gid.clone()), par: None, k: ChK::Voice, name: "Voice".into(), topic: None, pos: 9, nsfw: false, hidden: false, last: None, rcp: vec![], icon: None, enc: false }))?;
+            tx.send(Ev::Chan(Chan { id: self.r(format!("g{gi}v")), gld: Some(gid.clone()), par: None, k: ChK::Voice, name: "Voice".into(), topic: None, pos: 9, nsfw: false, hidden: false, last: None, rcp: vec![], icon: None, enc: false, mute: false }))?;
             if gi == 0 {
-                tx.send(Ev::Chan(Chan { id: self.r(format!("g{gi}h")), gld: Some(gid.clone()), par: Some(cat.clone()), k: ChK::Txt, name: "mods-only".into(), topic: None, pos: 8, nsfw: false, hidden: true, last: None, rcp: vec![], icon: None, enc: false }))?;
+                tx.send(Ev::Chan(Chan { id: self.r(format!("g{gi}h")), gld: Some(gid.clone()), par: Some(cat.clone()), k: ChK::Txt, name: "mods-only".into(), topic: None, pos: 8, nsfw: false, hidden: true, last: None, rcp: vec![], icon: None, enc: false, mute: false }))?;
                 tx.send(Ev::Unread { chan: self.r(format!("g{gi}c1")), n: 3, ment: 1 })?;
             }
         }
@@ -110,7 +110,7 @@ impl Bk for Demo {
             tx.send(Ev::Rel(Rel { usr: u.clone(), k: if i == 2 { RelK::In } else { RelK::Friend } }))?;
             tx.send(Ev::Pres { usr: u.id.clone().unwrap(), p: Pres { st: [St::On, St::Idle, St::Dnd][i as usize], act: if i == 0 { Some("Playing Counter-Strike 2".into()) } else { None }, ..Default::default() } })?;
             if i == 0 {
-                tx.send(Ev::Chan(Chan { id: self.r(format!("dm{i}")), gld: None, par: None, k: ChK::Dm, name: u.shown().into(), topic: None, pos: 0, nsfw: false, hidden: false, last: None, rcp: vec![u], icon: None, enc: false }))?;
+                tx.send(Ev::Chan(Chan { id: self.r(format!("dm{i}")), gld: None, par: None, k: ChK::Dm, name: u.shown().into(), topic: None, pos: 0, nsfw: false, hidden: false, last: None, rcp: vec![u], icon: None, enc: false, mute: false }))?;
             }
         }
         let c = self.r("g0c0");
@@ -146,7 +146,7 @@ impl Bk for Demo {
         if let Some(tx) = self.tx.get() {
             let name = usr.raw.to_string();
             let u = Usr { id: Some(usr.clone()), name: name.clone(), ..Default::default() };
-            tx.send(Ev::Chan(Chan { id: c.clone(), gld: None, par: None, k: ChK::Dm, name, topic: None, pos: 0, nsfw: false, hidden: false, last: None, rcp: vec![u], icon: None, enc: false }))?;
+            tx.send(Ev::Chan(Chan { id: c.clone(), gld: None, par: None, k: ChK::Dm, name, topic: None, pos: 0, nsfw: false, hidden: false, last: None, rcp: vec![u], icon: None, enc: false, mute: false }))?;
         }
         Ok(c)
     }
