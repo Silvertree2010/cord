@@ -234,7 +234,7 @@ Rectangle {
             S.c.join_invite(jf.text.trim())
             close()
         }
-        background: Rectangle { color: Th.bg3; radius: Th.r; border.color: Th.ln }
+        background: Pane {}
         contentItem: Column {
             spacing: 12
             Lbl { width: parent.width; text: "Join a Discord server"; font.pixelSize: Th.fsL; font.weight: Font.DemiBold }

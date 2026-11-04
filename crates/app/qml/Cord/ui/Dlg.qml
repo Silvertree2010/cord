@@ -31,11 +31,7 @@ Popup {
         close()
         if (run) run()
     }
-    background: Rectangle {
-        color: Th.bg3
-        radius: Th.r
-        border.color: Th.ln
-    }
+    background: Pane {}
     contentItem: Column {
         spacing: 12
         Keys.onEscapePressed: r.close()

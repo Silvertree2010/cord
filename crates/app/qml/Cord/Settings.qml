@@ -6,7 +6,7 @@ import "Lay.js" as L
 
 Rectangle {
     id: r
-    color: Th.bg
+    color: Th.bgc
     MouseArea { anchors.fill: parent }
     readonly property var pages: [
         ["accounts", "Accounts", "users"], ["layout", "Layout", "layout"], ["look", "Appearance", "eye"],
@@ -154,7 +154,7 @@ Rectangle {
                     width: parent.width
                     height: 64
                     radius: Th.r
-                    color: Th.bg2
+                    color: Th.bg3
                     property var a: S.accs[modelData.id]
                     property string who: a ? (a.me.disp || a.me.name) : modelData.base === "demo" ? "Demo account" : "Not connected"
                     Av { id: aa; x: 14; anchors.verticalCenter: parent.verticalCenter; sz: 38; src: parent.a ? (parent.a.me.av || "") : ""; name: parent.a ? parent.a.me.name : "?" }
@@ -226,7 +226,7 @@ Rectangle {
                         width: (pgr.width - 24) / 3
                         height: 132
                         radius: Th.r
-                        color: Th.bg2
+                        color: Th.bg3
                         border.color: pm2.containsMouse || activeFocus ? Th.ac : Th.ln
                         border.width: activeFocus ? 2 : 1
                         activeFocusOnTab: true
@@ -303,7 +303,7 @@ Rectangle {
                         width: 150
                         height: 72
                         radius: Th.r
-                        color: Th.bg2
+                        color: Th.bg3
                         property var cs: r.tcols(modelData)
                         border.color: (S.ui.theme || "graphite") === modelData.id ? Th.ac : tm.containsMouse ? Th.tx3 : Th.ln
                         border.width: 1

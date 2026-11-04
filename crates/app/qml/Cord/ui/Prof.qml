@@ -13,7 +13,7 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     onAboutToShow: U.reg(r)
     onClosed: U.unreg(r)
-    background: Rectangle { color: Th.bg3; radius: Th.r; border.color: Th.ln }
+    background: Pane {}
     contentItem: Item {
         implicitWidth: 300
         implicitHeight: col.implicitHeight + 32

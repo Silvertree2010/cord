@@ -13,7 +13,7 @@ Popup {
     onAboutToShow: { U.reg(r); ef.text = "" }
     onOpened: ef.forceActiveFocus()
     onClosed: U.unreg(r)
-    background: Rectangle { color: Th.bg3; radius: Th.r; border.color: Th.ln; border.width: 1 }
+    background: Pane {}
     property string q: ""
     property var cust: {
         const out = []

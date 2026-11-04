@@ -29,3 +29,4 @@ Blk 1.0 Blk.qml
 Feats 1.0 Feats.qml
 LayPrev 1.0 ui/LayPrev.qml
 AccAdd 1.0 ui/AccAdd.qml
+Pane 1.0 ui/Pane.qml

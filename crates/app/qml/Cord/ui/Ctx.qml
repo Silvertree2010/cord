@@ -62,12 +62,7 @@ Popup {
         open()
     }
 
-    background: Rectangle {
-        color: Th.bg3
-        radius: Th.r
-        border.color: Th.ln
-        border.width: 1
-    }
+    background: Pane {}
 
     contentItem: Column {
         spacing: 0
@@ -96,7 +91,7 @@ Popup {
                 Rectangle {
                     visible: !modelData.sep && !modelData.slider
                     anchors.fill: parent
-                    radius: 4
+                    radius: Th.rs - 2
                     color: index === r.cur || ma.containsMouse ? Th.sel : "transparent"
                     Lbl {
                         x: 8
