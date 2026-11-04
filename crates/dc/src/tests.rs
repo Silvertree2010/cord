@@ -314,3 +314,11 @@ fn embed_gallery_and_suppress() {
     s["flags"] = 4.into();
     assert!(map::msg(1, &s).unwrap().embs.is_empty());
 }
+
+#[test]
+fn identify_uses_preset_status() {
+    let d = crate::Dc::new(1, "t".into()).unwrap();
+    d.pre_st(St::Off);
+    let p = crate::gw::idn("t", d.0.pst.lock().clone());
+    assert_eq!(p["d"]["presence"]["status"], "invisible");
+}

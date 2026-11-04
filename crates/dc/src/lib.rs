@@ -56,6 +56,16 @@ pub struct Sh {
 pub struct Dc(Arc<Sh>);
 
 impl Dc {
+    pub fn pre_st(&self, st: St) {
+        let s = match st {
+            St::On => "online",
+            St::Idle => "idle",
+            St::Dnd => "dnd",
+            St::Off => "invisible",
+        };
+        self.0.pst.lock()["status"] = s.into();
+    }
+
     fn ml_req(&self, gld: &Rid, rg: Vec<[u32; 2]>) -> Res<()> {
         let c = {
             let uid = self.0.me.lock().clone();

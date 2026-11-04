@@ -45,6 +45,9 @@ pub async fn mk(a: &Ac, sec: String) -> Res<Arc<dyn Bk>> {
     match a.svc {
         Svc::Dc => {
             let d = Arc::new(cord_dc::Dc::new(a.id, sec)?);
+            if let Some(s) = crate::cfg::rd("ui.json").and_then(|u| u["st"].as_str().map(crate::feat_ctl::parse_st)) {
+                d.pre_st(s);
+            }
             vapply(&d);
             if let Ok(mut g) = DC.get_or_init(Default::default).lock() {
                 g.insert(a.id, d.clone());
