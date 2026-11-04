@@ -22,7 +22,6 @@ serde_json.workspace = true
 anyhow.workspace = true
 dirs = "6"
 parking_lot = "0.12"
-keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
 notify = "8"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 notify-rust = "4"
@@ -30,3 +29,9 @@ rustls = { version = "0.23", default-features = false, features = ["ring"] }
 
 [build-dependencies]
 cxx-qt-build = "0.10"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }

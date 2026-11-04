@@ -2,6 +2,7 @@ use crate::{Au, Res, first, init, scr::Pipe};
 use gstreamer as gst;
 use gst::prelude::*;
 use gstreamer_app as app;
+#[cfg(target_os = "linux")]
 use std::os::fd::AsRawFd;
 use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
@@ -18,7 +19,7 @@ pub enum Src {
     Pw(Pipe),
 }
 
-pub const ENCS: &[&str] = &["nvh264enc", "nvautogpuh264enc", "vah264enc", "vah264lpenc", "vaapih264enc", "x264enc", "openh264enc"];
+pub const ENCS: &[&str] = &["vtenc_h264_hw", "vtenc_h264", "nvh264enc", "nvautogpuh264enc", "vah264enc", "vah264lpenc", "vaapih264enc", "x264enc", "openh264enc"];
 
 pub fn pick() -> Option<&'static str> {
     first(ENCS)
@@ -45,6 +46,12 @@ fn tune(e: &gst::Element, name: &str, c: &Cfg) {
             set(e, "gop-size", &g);
             set(e, "repeat-sequence-header", "true");
             set(e, "aud", "false");
+        }
+        "vtenc_h264_hw" | "vtenc_h264" => {
+            set(e, "bitrate", &b);
+            set(e, "max-keyframe-interval", &g);
+            set(e, "realtime", "true");
+            set(e, "allow-frame-reordering", "false");
         }
         "x264enc" => {
             set(e, "bitrate", &b);
@@ -79,7 +86,10 @@ fn tune(e: &gst::Element, name: &str, c: &Cfg) {
 pub fn src_str(s: &Src, fps: u32) -> String {
     match s {
         Src::Test => format!("videotestsrc is-live=true pattern=ball ! video/x-raw,framerate={fps}/1"),
+        #[cfg(target_os = "linux")]
         Src::Pw(p) => format!("pipewiresrc fd={} path={} always-copy=true do-timestamp=true", p.fd.as_raw_fd(), p.node),
+        #[cfg(not(target_os = "linux"))]
+        Src::Pw(p) => format!("avfvideosrc capture-screen=true capture-screen-cursor=true device-index={} do-timestamp=true", p.idx),
     }
 }
 
@@ -103,7 +113,7 @@ impl Enc {
     pub fn start(c: Cfg, s: Src) -> Res<(Enc, UnboundedReceiver<Au>)> {
         init()?;
         let name = pick().ok_or_else(|| anyhow::anyhow!("no H.264 encoder (nvh264enc, va, x264) available"))?;
-        if matches!(s, Src::Pw(_)) && !crate::has("pipewiresrc") {
+        if cfg!(target_os = "linux") && matches!(s, Src::Pw(_)) && !crate::has("pipewiresrc") {
             anyhow::bail!("gstreamer pipewiresrc missing (install gst-plugin-pipewire)");
         }
         let d = desc(&src_str(&s, c.fps), name, &c);

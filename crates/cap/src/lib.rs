@@ -1,6 +1,10 @@
 pub mod aud;
 pub mod dec;
 pub mod enc;
+#[cfg(target_os = "linux")]
+pub mod scr;
+#[cfg(not(target_os = "linux"))]
+#[path = "scr_mac.rs"]
 pub mod scr;
 
 use std::sync::Once;

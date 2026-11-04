@@ -458,7 +458,7 @@ Rectangle {
         Column {
             spacing: 0
             Repeater {
-                model: [["Ctrl+K", "Quick switcher"], ["Ctrl+,", "Settings"], ["Ctrl+E", "Edit layout"], ["Alt+Up / Alt+Down", "Previous or next channel"], ["Shift+Esc", "Mark channel as read"], ["Up", "Edit your last message"], ["Esc", "Close popup, cancel reply, edit or layout editing"], ["Shift+click Delete", "Delete a message without confirmation"], ["Middle click", "Open a channel in the second chat block"]]
+                model: [[Th.mod + "K", "Quick switcher"], [Th.mod + ",", "Settings"], [Th.mod + "E", "Edit layout"], ["Alt+Up / Alt+Down", "Previous or next channel"], ["Shift+Esc", "Mark channel as read"], ["Up", "Edit your last message"], ["Esc", "Close popup, cancel reply, edit or layout editing"], ["Shift+click Delete", "Delete a message without confirmation"], ["Middle click", "Open a channel in the second chat block"]]
                 Rectangle {
                     width: parent.width
                     height: 44

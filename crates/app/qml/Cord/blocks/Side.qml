@@ -71,7 +71,7 @@ Rectangle {
                     height: 18
                     radius: 4
                     color: Th.bg3
-                    Lbl { id: kh; anchors.centerIn: parent; text: "Ctrl+K"; color: Th.tx3; font.pixelSize: 10; font.family: Th.mono }
+                    Lbl { id: kh; anchors.centerIn: parent; text: Th.mod + "K"; color: Th.tx3; font.pixelSize: 10; font.family: Th.mono }
                 }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: S.quick() }
             }

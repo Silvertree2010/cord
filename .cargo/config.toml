@@ -1,2 +1,2 @@
 [env]
-QMAKE = "qmake6"
+QT_VERSION_MAJOR = "6"

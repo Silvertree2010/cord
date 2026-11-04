@@ -284,7 +284,7 @@ Rectangle {
                     act: S.hasBlk("mems")
                     onClicked: S.toggleBlk("mems", !S.hasBlk("mems"))
                 }
-                IBtn { n: "search"; tip: "Search  (Ctrl+K)"; onClicked: S.quick() }
+                IBtn { n: "search"; tip: "Search  (" + Th.mod + "K)"; onClicked: S.quick() }
             }
         }
 

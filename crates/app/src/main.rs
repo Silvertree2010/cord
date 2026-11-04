@@ -33,6 +33,9 @@ fn main() {
     let _lock = single();
     let _ = rustls::crypto::ring::default_provider().install_default();
     rt::init();
+    if std::env::var_os("QT_QUICK_CONTROLS_STYLE").is_none() {
+        unsafe { std::env::set_var("QT_QUICK_CONTROLS_STYLE", "Basic") };
+    }
     let mut app = QGuiApplication::new();
     if let Some(mut a) = app.as_mut() {
         a.as_mut().set_application_name(&QString::from("cord"));

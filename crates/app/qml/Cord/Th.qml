@@ -28,6 +28,7 @@ QtObject {
     property real rs: 6
     property string font: "Inter"
     property string mono: "JetBrains Mono"
+    readonly property string mod: Qt.platform.os === "osx" ? "⌘" : "Ctrl+"
     property real fs: 14
     property real dens: 1.0
     property real ui: 1.0
