@@ -8,6 +8,7 @@ Item {
     property string name: ""
     property real sz: 36
     property bool sq: false
+    property real rad: -1
     property string st: ""
     property color ring: Th.bg2
     property string sv: ""
@@ -18,7 +19,7 @@ Item {
     Rectangle {
         id: bgc
         anchors.fill: parent
-        radius: r.sq ? Th.r * (r.sz / 48) * 1.4 : width / 2
+        radius: r.rad >= 0 ? r.rad : r.sq ? Th.r * (r.sz / 48) * 1.4 : width / 2
         color: {
             let h = 0
             for (let i = 0; i < r.name.length; i++) h = (h * 31 + r.name.charCodeAt(i)) % 360

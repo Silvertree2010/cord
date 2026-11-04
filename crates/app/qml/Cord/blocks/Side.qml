@@ -133,10 +133,11 @@ Rectangle {
             Item { width: 1; height: 10 }
             Lbl {
                 x: 16
-                text: "Direct messages"
-                color: Th.tx2
-                font.pixelSize: Th.fsS
-                font.weight: Font.DemiBold
+                text: "DIRECT MESSAGES"
+                color: Th.tx3
+                font.pixelSize: Th.fsS - 1
+                font.weight: Font.Bold
+                font.letterSpacing: 0.4
             }
             Item { width: 1; height: 4 }
         }
@@ -177,10 +178,12 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Lbl {
-                    text: ch.name
-                    color: cm.containsMouse ? Th.tx : Th.tx2
-                    font.pixelSize: Th.fsS
-                    font.weight: Font.DemiBold
+                    text: ch.name.toUpperCase()
+                    color: cm.containsMouse ? Th.tx2 : Th.tx3
+                    font.pixelSize: Th.fsS - 1
+                    font.weight: Font.Bold
+                    font.letterSpacing: 0.4
+                    Behavior on color { ColorAnimation { duration: 90 } }
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -212,6 +215,7 @@ Rectangle {
                 height: 34 * Th.dens
                 radius: Th.rs
                 color: cur ? Th.sel : ma.containsMouse ? Th.hov : "transparent"
+                Behavior on color { ColorAnimation { duration: 90 } }
                 opacity: ch.hidden ? 0.55 : 1
                 Row {
                     x: 8

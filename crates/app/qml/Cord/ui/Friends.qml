@@ -5,7 +5,7 @@ import Cord
 
 Rectangle {
     id: r
-    color: Th.bg2
+    color: Th.bgc
     property string tab: "on"
     property string q: ""
     readonly property var rank: ({ On: 0, Idle: 1, Dnd: 2, Off: 3 })
@@ -88,10 +88,11 @@ Rectangle {
             Layout.maximumWidth: 720 - 32
             Layout.alignment: Qt.AlignHCenter
             leftPadding: 12
-            text: ({ on: "Online", all: "All friends", pend: "Pending", blk: "Blocked" })[r.tab] + "  ·  " + r.list.length
-            color: Th.tx2
-            font.pixelSize: Th.fsS
-            font.weight: Font.DemiBold
+            text: (({ on: "Online", all: "All friends", pend: "Pending", blk: "Blocked" })[r.tab] + " — " + r.list.length).toUpperCase()
+            color: Th.tx3
+            font.pixelSize: Th.fsS - 1
+            font.weight: Font.Bold
+            font.letterSpacing: 0.4
             bottomPadding: 4
         }
         ListView {

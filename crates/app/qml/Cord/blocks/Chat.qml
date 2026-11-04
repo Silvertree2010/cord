@@ -22,7 +22,7 @@ Rectangle {
     readonly property var nil: ({ auth: { name: "", bot: false }, body: "", ts: 0, atts: [], embs: [], reacts: [], hist: [], stks: [] })
     implicitWidth: 600
     implicitHeight: 400
-    color: Th.bg2
+    color: Th.bgc
 
     ListModel { id: mm }
 

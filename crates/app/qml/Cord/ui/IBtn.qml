@@ -21,6 +21,7 @@ Rectangle {
     Keys.onEnterPressed: r.clicked()
     Keys.onSpacePressed: r.clicked()
     color: red ? (ma.containsMouse ? Qt.lighter(Th.err, 1.1) : Th.a(Th.err, 0.2)) : act ? Th.sel : ma.containsMouse ? Th.hov : "transparent"
+    Behavior on color { ColorAnimation { duration: 90 } }
     Ico {
         anchors.centerIn: parent
         n: r.n

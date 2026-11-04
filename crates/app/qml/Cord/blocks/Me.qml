@@ -7,7 +7,7 @@ Rectangle {
     property var o: ({})
     implicitWidth: 248
     implicitHeight: 56
-    color: Th.bg3
+    color: Qt.darker(Th.bg2, Th.dark ? 1.35 : 1.04)
     property var al: Object.values(S.accs)
     property int cur: S.ui.meAcc && S.accs[S.ui.meAcc] ? S.ui.meAcc : (al.length ? al[0].id : 0)
     property var a: S.accs[cur] || null

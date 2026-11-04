@@ -79,7 +79,7 @@ Rectangle {
                 const out = []
                 let n = 0
                 for (const x of r.rows) {
-                    if (x.G) { if (x.G.n > 0) out.push({ h: r.gName(x.G.id) + "  ·  " + x.G.n }); continue }
+                    if (x.G) { if (x.G.n > 0) out.push({ h: r.gName(x.G.id) + " — " + x.G.n }); continue }
                     const k = S.ridOf(x.M)
                     const m = r.byId[k]
                     if (m) { out.push({ m: m, uid: k }); n++ }
@@ -99,8 +99,8 @@ Rectangle {
             on.sort(cmp)
             off.sort(cmp)
             const out = []
-            if (on.length) { out.push({ h: "Online  ·  " + on.length }); out.push(...on) }
-            if (off.length) { out.push({ h: "Offline  ·  " + off.length }); out.push(...off) }
+            if (on.length) { out.push({ h: "Online — " + on.length }); out.push(...on) }
+            if (off.length) { out.push({ h: "Offline — " + off.length }); out.push(...off) }
             r.total = on.length + off.length
             r.grp = out
         }
@@ -201,7 +201,7 @@ Rectangle {
         Item {
             width: lv.width
             height: 32
-            Lbl { x: 16; y: 12; text: it.h; color: Th.tx3; font.pixelSize: 12; font.weight: Font.DemiBold }
+            Lbl { x: 16; y: 14; text: it.h.toUpperCase(); color: Th.tx3; font.pixelSize: Th.fsS - 1; font.weight: Font.Bold; font.letterSpacing: 0.4 }
         }
     }
     Component {

@@ -244,6 +244,8 @@ Rectangle {
         property int dotN: 0
         property int ment: 0
         property bool cur: S.sel === gid
+        property real rad: cur || ma.containsMouse ? r.isz * 0.3 : r.isz / 2
+        Behavior on rad { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
         signal pick
         width: r.isz
         height: r.isz
@@ -271,15 +273,16 @@ Rectangle {
         }
         Rectangle {
             anchors.fill: parent
-            radius: Th.r * 1.4
-            color: ic.cur || ma.containsMouse ? Th.bg4 : Th.bg3
+            radius: ic.rad
+            color: ic.cur || ma.containsMouse ? (ic.ico !== "" ? Th.ac : Th.bg4) : Th.bg3
+            Behavior on color { ColorAnimation { duration: 120 } }
             visible: ic.ico !== "" || ic.img === ""
             Ico {
                 visible: ic.ico !== ""
                 anchors.centerIn: parent
                 n: ic.ico || "home"
                 sz: 22
-                col: ic.cur ? Th.ac : Th.tx
+                col: ic.cur || ma.containsMouse ? Th.acTx : Th.tx
             }
             Lbl {
                 visible: ic.ico === ""
@@ -299,10 +302,11 @@ Rectangle {
             src: ic.img
             name: ic.name
             sq: true
+            rad: ic.rad
         }
         Rectangle {
             anchors.fill: parent
-            radius: Th.r * 1.4
+            radius: ic.rad
             color: "transparent"
             border.color: Th.ac
             border.width: 2

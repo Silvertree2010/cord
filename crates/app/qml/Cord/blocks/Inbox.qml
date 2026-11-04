@@ -8,7 +8,7 @@ Rectangle {
     property var o: ({})
     implicitWidth: 300
     implicitHeight: 400
-    color: Th.bg2
+    color: Th.bgc
     property var items: {
         void S.uver
         return Object.keys(S.unr).filter(k => S.chans[k] && (S.unr[k].ment > 0 || S.chans[k].k === "Dm" || S.chans[k].k === "Grp"))

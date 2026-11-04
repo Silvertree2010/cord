@@ -4,13 +4,15 @@ import Cord
 
 ScrollBar {
     id: r
-    width: 8
+    width: 10
     policy: ScrollBar.AsNeeded
     contentItem: Rectangle {
-        implicitWidth: 6
-        radius: 3
-        color: r.pressed ? Th.tx3 : Th.bg4
-        opacity: r.active ? 1 : 0.6
+        implicitWidth: r.hovered || r.pressed ? 8 : 4
+        radius: width / 2
+        color: r.pressed ? Th.tx3 : r.hovered ? Th.tx3 : Th.bg4
+        opacity: r.active || r.hovered ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 220 } }
+        Behavior on implicitWidth { NumberAnimation { duration: 120 } }
     }
     background: Item {}
 }

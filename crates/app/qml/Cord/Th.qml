@@ -5,10 +5,11 @@ QtObject {
     id: t
     property string name: "Graphite"
     property bool dark: true
-    property color bg: "#0f1012"
-    property color bg2: "#15171a"
-    property color bg3: "#1c1f23"
-    property color bg4: "#252930"
+    property color bg: "#0b0c0e"
+    property color bg2: "#131518"
+    property color bg3: "#262a30"
+    property color bg4: "#30343b"
+    readonly property color bgc: dark ? Qt.lighter(bg2, 1.55) : Qt.lighter(bg2, 1.05)
     property color hov: "#0dffffff"
     property color sel: "#17ffffff"
     property color ln: "#24272c"

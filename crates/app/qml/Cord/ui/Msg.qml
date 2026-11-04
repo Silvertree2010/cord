@@ -31,7 +31,8 @@ Item {
         anchors.leftMargin: 8
         anchors.rightMargin: 8
         radius: Th.rs
-        color: r.ment ? Th.ment : r.hov ? Th.hov : "transparent"
+        color: r.ment ? Th.ment : r.hov ? Th.a("#000000", Th.dark ? 0.18 : 0.04) : "transparent"
+        Behavior on color { ColorAnimation { duration: 70 } }
         Rectangle { visible: r.ment && !r.m.del; width: 2; height: parent.height - 8; y: 4; x: 0; radius: 1; color: Th.ac }
         Rectangle { visible: !!r.m.del; width: 2; height: parent.height - 8; y: 4; x: 0; radius: 1; color: Th.a(Th.err, 0.6) }
     }
