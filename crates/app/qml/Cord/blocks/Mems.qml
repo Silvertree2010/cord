@@ -16,6 +16,14 @@ Rectangle {
     property var byId: ({})
     property var grp: []
     property int total: 0
+    property var rows: null
+    function gName(id) {
+        if (id === "online") return "Online"
+        if (id === "offline") return "Offline"
+        const gd = S.gmap[r.g]
+        const ro = gd && gd.roles ? gd.roles.find(x => S.raw(S.ridOf(x.id)) === id) : null
+        return ro ? ro.name : id
+    }
 
     function key(u) { return u && u.id ? S.ridOf(u.id) : "" }
     function pr(k, u) {
@@ -27,12 +35,15 @@ Rectangle {
         byId = ({})
         grp = []
         total = 0
+        rows = null
         if (g) {
             S.c.load_mems(g)
             return
         }
         const o = {}
         if (ch && ch.rcp) for (const u of ch.rcp) { const k = key(u); if (k) o[k] = { usr: u, nick: null, roles: [] } }
+        const mu = ch ? S.me(S.acc(ch.rid)) : null
+        if (mu && ch.k === "Grp") { const k = key(mu); if (k) o[k] = { usr: mu, nick: null, roles: [] } }
         byId = o
         regroup.restart()
     }
@@ -49,6 +60,11 @@ Rectangle {
             r.byId = o
             regroup.restart()
         }
+        function onMemList(gld, rs) {
+            if (gld !== r.g) return
+            r.rows = rs
+            regroup.restart()
+        }
         function onPresChanged() { regroup.restart() }
         function onUiChanged() { regroup.restart() }
     }
@@ -57,6 +73,19 @@ Rectangle {
         id: regroup
         interval: 200
         onTriggered: {
+            if (r.rows) {
+                const out = []
+                let n = 0
+                for (const x of r.rows) {
+                    if (x.G) { if (x.G.n > 0) out.push({ h: r.gName(x.G.id) + "  ·  " + x.G.n }); continue }
+                    const k = S.ridOf(x.M)
+                    const m = r.byId[k]
+                    if (m) { out.push({ m: m, uid: k }); n++ }
+                }
+                r.total = n
+                r.grp = out
+                return
+            }
             const on = [], off = []
             for (const k in r.byId) {
                 const p = r.pr(k, r.byId[k].usr)
@@ -75,8 +104,72 @@ Rectangle {
         }
     }
 
+    readonly property var dmU: ch && ch.k === "Dm" && ch.rcp && ch.rcp.length ? ch.rcp[0] : null
+    Item {
+        id: dmP
+        visible: !!r.dmU
+        anchors.fill: parent
+        readonly property string uid: r.dmU ? r.key(r.dmU) : ""
+        readonly property var p: S.presOf(uid)
+        readonly property string since: {
+            if (!r.dmU || !r.dmU.id || S.svc(uid) !== "dc") return ""
+            const ms = Math.floor(Number(r.dmU.id.raw) / 4194304) + 1420070400000
+            return new Date(ms).toLocaleDateString(Qt.locale(), "d MMM yyyy")
+        }
+        Rectangle { width: parent.width; height: 96; color: r.dmU && r.dmU.col ? "#" + ("000000" + r.dmU.col.toString(16)).slice(-6) : Th.bg4 }
+        Av {
+            id: dav
+            x: 16
+            y: 52
+            sz: 80
+            src: r.dmU ? (r.dmU.av || "") : ""
+            name: r.dmU ? r.dmU.name : ""
+            st: dmP.p ? dmP.p.st : "Off"
+            ring: Th.bg2
+        }
+        Column {
+            x: 16
+            y: dav.y + dav.sz + 12
+            width: parent.width - 32
+            spacing: 4
+            Lbl { width: parent.width; text: r.dmU ? (r.dmU.disp || r.dmU.name) : ""; font.pixelSize: Th.fsL; font.weight: Font.Bold }
+            Lbl { width: parent.width; text: r.dmU ? r.dmU.name : ""; color: Th.tx2 }
+            Item { width: 1; height: 8 }
+            Rectangle {
+                width: parent.width
+                height: ic.implicitHeight + 24
+                radius: Th.rs
+                color: Th.bg3
+                Column {
+                    id: ic
+                    x: 12
+                    y: 12
+                    width: parent.width - 24
+                    spacing: 10
+                    Column {
+                        visible: !!(dmP.p && dmP.p.act)
+                        width: parent.width
+                        spacing: 2
+                        Lbl { text: "Activity"; color: Th.tx3; font.pixelSize: 11; font.weight: Font.DemiBold }
+                        Lbl { width: parent.width; text: dmP.p && dmP.p.act ? dmP.p.act : ""; color: Th.tx; wrapMode: Text.Wrap; elide: Text.ElideNone }
+                    }
+                    Column {
+                        visible: dmP.since !== ""
+                        width: parent.width
+                        spacing: 2
+                        Lbl { text: "Member since"; color: Th.tx3; font.pixelSize: 11; font.weight: Font.DemiBold }
+                        Lbl { text: dmP.since; color: Th.tx }
+                    }
+                }
+            }
+            Item { width: 1; height: 4 }
+            Btn { width: parent.width; height: 34; text: "Copy user ID"; onClicked: S.copy(r.dmU && r.dmU.id ? r.dmU.id.raw : "") }
+        }
+    }
+
     ListView {
         id: lv
+        visible: !r.dmU
         anchors.fill: parent
         anchors.topMargin: 8
         clip: true

@@ -461,23 +461,67 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
         }
         "GUILD_MEMBER_LIST_UPDATE" => {
             let Some(g) = s(&d, "guild_id") else { return };
-            for op in arr(&d, "ops") {
-                let mut its = arr(&op, "items");
-                if let Some(i) = op.get("item") {
-                    its.push(i.clone());
+            let mut row = |it: &Value| -> Option<MRow> {
+                if let Some(gr) = it.get("group") {
+                    return Some(MRow::G { id: s(gr, "id").unwrap_or("").to_string(), n: gr["count"].as_u64().unwrap_or(0) as u32 });
                 }
-                for it in its {
-                    let Some(m) = it.get("member") else { continue };
-                    if let Some(x) = mem(a, g, m) {
-                        if let Some(p) = m.get("presence") {
-                            if let Some(i) = &x.usr.id {
-                                let _ = tx.send(Ev::Pres { usr: i.clone(), p: pres(p) });
+                let m = it.get("member")?;
+                let x = mem(a, g, m)?;
+                let id = x.usr.id.clone()?;
+                if let Some(p) = m.get("presence") {
+                    let _ = tx.send(Ev::Pres { usr: id.clone(), p: pres(p) });
+                }
+                let _ = tx.send(Ev::Mem(x));
+                Some(MRow::M(id))
+            };
+            let rows = {
+                let mut ml = sh.ml.lock();
+                let l = ml.entry(g.to_string()).or_default();
+                for op in arr(&d, "ops") {
+                    let ix = op["index"].as_u64().map(|i| i as usize);
+                    match s(&op, "op").unwrap_or("") {
+                        "SYNC" => {
+                            let st = op["range"][0].as_u64().unwrap_or(0) as usize;
+                            let its: Vec<MRow> = arr(&op, "items").iter().filter_map(&mut row).collect();
+                            if l.len() < st {
+                                l.truncate(st);
+                            }
+                            let end = (st + its.len()).min(l.len());
+                            if st <= l.len() {
+                                l.splice(st..end, its);
                             }
                         }
-                        let _ = tx.send(Ev::Mem(x));
+                        "INSERT" => {
+                            if let (Some(i), Some(r)) = (ix, op.get("item").and_then(&mut row)) {
+                                l.insert(i.min(l.len()), r);
+                            }
+                        }
+                        "UPDATE" => {
+                            if let (Some(i), Some(r)) = (ix, op.get("item").and_then(&mut row)) {
+                                if i < l.len() {
+                                    l[i] = r;
+                                }
+                            }
+                        }
+                        "DELETE" => {
+                            if let Some(i) = ix.filter(|i| *i < l.len()) {
+                                l.remove(i);
+                            }
+                        }
+                        _ => {}
                     }
                 }
-            }
+                let cnt: HashMap<String, u32> = arr(&d, "groups").iter().filter_map(|x| Some((s(x, "id")?.to_string(), x["count"].as_u64().unwrap_or(0) as u32))).collect();
+                for r in l.iter_mut() {
+                    if let MRow::G { id, n } = r {
+                        if let Some(c) = cnt.get(id.as_str()) {
+                            *n = *c;
+                        }
+                    }
+                }
+                l.clone()
+            };
+            let _ = tx.send(Ev::MemList { gld: rid(a, g), rows });
         }
         _ => {}
     }

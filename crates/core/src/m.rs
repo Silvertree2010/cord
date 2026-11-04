@@ -89,6 +89,12 @@ pub struct Att {
     pub h: Option<u32>,
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum MRow {
+    G { id: String, n: u32 },
+    M(Rid),
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Fold {
     pub id: Option<String>,
@@ -150,6 +156,8 @@ pub struct Msg {
     pub hist: Vec<String>,
     #[serde(default)]
     pub ments: Vec<Usr>,
+    #[serde(default)]
+    pub aroles: Vec<Rid>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

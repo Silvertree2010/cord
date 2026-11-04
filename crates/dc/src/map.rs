@@ -344,6 +344,7 @@ pub fn msg_p(a: u32, v: &Value, need: bool) -> Option<Msg> {
         del: false,
         hist: vec![],
         ments: arr("mentions").iter().map(|x| mem_usr(a, x)).collect(),
+        aroles: v.get("member").and_then(|m| m.get("roles")).and_then(|r| r.as_array()).map(|r| r.iter().filter_map(|x| x.as_str()).map(|x| rid(a, x)).collect()).unwrap_or_default(),
     })
 }
 

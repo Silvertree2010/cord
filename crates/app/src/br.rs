@@ -402,9 +402,15 @@ impl q::Core {
     pub fn load_mems(&self, g: &QString) {
         let Some(g) = rid(g) else { return };
         self.go("members", g.acc, move |h, e| async move {
-            let have: Vec<Mem> = h.st.read().await.mems.get(&g).map(|m| m.values().cloned().collect()).unwrap_or_default();
+            let (have, rows) = {
+                let st = h.st.read().await;
+                (st.mems.get(&g).map(|m| m.values().cloned().collect::<Vec<Mem>>()).unwrap_or_default(), st.mlist.get(&g).cloned())
+            };
             if !have.is_empty() {
                 e.s(&Out::Mems { gld: g.to_string(), list: have });
+            }
+            if let Some(rows) = rows {
+                e.s(&Out::MemList { gld: g.to_string(), rows });
             }
             let v = h.bk(g.acc).await?.mems(&g).await?;
             if !v.is_empty() {

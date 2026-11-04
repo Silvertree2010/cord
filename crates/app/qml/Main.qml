@@ -30,6 +30,8 @@ ApplicationWindow {
         if (Qt.application.arguments.indexOf("--emo") >= 0) Qt.callLater(() => { emoP.cb = null; emoP.x = win.width - emoP.width - 40; emoP.y = win.height - emoP.height - 90; emoP.open() })
         const so = Qt.application.arguments.indexOf("--open")
         if (so >= 0) { const g = Qt.application.arguments[so + 1]; Qt.callLater(() => S.pick(g)) }
+        const sd = Qt.application.arguments.indexOf("--dm")
+        if (sd >= 0) { const c = Qt.application.arguments[sd + 1]; Qt.callLater(() => { S.sel = "home"; S.open(c) }) }
         if (sh >= 0) shotT.out = Qt.application.arguments[sh + 1] || "/tmp/cord.png"
     }
 

@@ -317,6 +317,7 @@ pub fn msg(cx: &Cx, lk: &Lk, m: &w::Message, u: &w::User) -> Msg {
         del: false,
         hist: vec![],
         ments: vec![],
+        aroles: vec![],
     }
 }
 

@@ -97,6 +97,7 @@ QtObject {
     signal loaded(string chan, var list, bool synced)
     signal frameTick(string key, double seq)
     signal mems(string gld, var list)
+    signal memList(string gld, var rows)
     signal sent(string chan, bool ok, string err)
     signal dmOpened(string usr, string chan, bool ok, string err)
     signal fs(string path)
@@ -583,6 +584,7 @@ QtObject {
         case "QrUsr": qrUsr = p.name; break
         case "Cap": cap = p; break
         case "Folds": folds = p; break
+        case "MemList": memList(p.gld, p.rows); break
         case "Accs": cfgAccs = pj(c.accs(), []); secretBackend = c.secretBackend(); qr = ""; qrUsr = ""; cap = null; break
         case "AccGone": purgeAcc(p.acc); cfgAccs = pj(c.accs(), []); break
         case "Mpris": media = p; break

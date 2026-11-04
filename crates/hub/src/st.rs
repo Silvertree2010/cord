@@ -63,6 +63,7 @@ pub struct Sta {
     pub msgs: HashMap<Rid, VecDeque<Msg>>,
     pub rels: HashMap<Rid, Rel>,
     pub folds: BTreeMap<u32, Vec<Fold>>,
+    pub mlist: HashMap<Rid, Vec<MRow>>,
     pub pres: HashMap<Rid, Pres>,
     pub unr: HashMap<Rid, Unr>,
     pub mems: HashMap<Rid, HashMap<Rid, Mem>>,
@@ -98,6 +99,7 @@ pub enum Dl {
     Speak { chan: String, usr: String, on: bool },
     Call(CallSt),
     Folds(Vec<Fold>),
+    MemList { gld: String, rows: Vec<MRow> },
 }
 
 #[derive(Default, Debug)]
@@ -133,13 +135,29 @@ pub fn flake_ts(r: &str) -> i64 {
 }
 
 impl Sta {
+    pub fn role_col(&self, gld: &Rid, roles: &[Rid]) -> Option<u32> {
+        let g = self.glds.get(gld)?;
+        g.roles.iter().filter(|r| r.col.unwrap_or(0) != 0 && roles.contains(&r.id)).max_by_key(|r| r.pos).and_then(|r| r.col)
+    }
+
     pub fn all_folds(&self) -> Vec<Fold> {
         self.folds.values().flatten().cloned().collect()
     }
 
     pub fn msg_v(&self, m: &Msg) -> MsgV {
         let g = self.chans.get(&m.chan).and_then(|c| c.gld.clone());
-        MsgV { mid: m.id.to_string(), permalink: link(&m.chan, g.as_ref(), Some(&m.id)), rev: rev_of(m), m: m.clone() }
+        let mut m = m.clone();
+        if let Some(gl) = &g {
+            if m.auth.col.is_none() {
+                let rs = if m.aroles.is_empty() {
+                    m.auth.id.as_ref().and_then(|i| self.mems.get(gl).and_then(|x| x.get(i))).map(|x| x.roles.clone()).unwrap_or_default()
+                } else {
+                    m.aroles.clone()
+                };
+                m.auth.col = self.role_col(gl, &rs);
+            }
+        }
+        MsgV { mid: m.id.to_string(), permalink: link(&m.chan, g.as_ref(), Some(&m.id)), rev: rev_of(&m), m }
     }
 
     pub fn chan_v(&self, c: &Chan) -> ChanV {
@@ -400,7 +418,10 @@ impl Sta {
             Ev::Mem(m) => o.extend(self.apply(Ev::Mems(vec![m]))),
             Ev::Mems(v) => {
                 let mut by: BTreeMap<Rid, Vec<Mem>> = BTreeMap::new();
-                for m in v {
+                for mut m in v {
+                    if m.usr.col.is_none() {
+                        m.usr.col = self.role_col(&m.gld, &m.roles);
+                    }
                     if let Some(id) = m.usr.id.clone() {
                         self.mems.entry(m.gld.clone()).or_default().insert(id, m.clone());
                         by.entry(m.gld.clone()).or_default().push(m);
@@ -420,6 +441,10 @@ impl Sta {
                 o.push(Dl::Unr { chan: chan.to_string(), u: Unr::default() });
             }
             Ev::Err { acc, msg } => o.push(Dl::Err { acc, msg }),
+            Ev::MemList { gld, rows } => {
+                o.push(Dl::MemList { gld: gld.to_string(), rows: rows.clone() });
+                self.mlist.insert(gld, rows);
+            }
             Ev::Folds { acc, list } => {
                 self.folds.insert(acc, list);
                 o.push(Dl::Folds(self.all_folds()));
@@ -665,6 +690,7 @@ mod tests {
             del: false,
             hist: vec![],
             ments: vec![],
+            aroles: vec![],
         }
     }
 

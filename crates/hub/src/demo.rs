@@ -65,6 +65,7 @@ impl Demo {
             del: false,
             hist: vec![],
             ments: vec![],
+            aroles: vec![],
         }
     }
 }
