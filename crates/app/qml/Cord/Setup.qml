@@ -16,7 +16,7 @@ Rectangle {
         width: Math.min(640, parent.width - 32)
         height: Math.min(parent.height - 32, cc.implicitHeight + 64)
         radius: Th.r
-        color: Th.bg2
+        color: Th.bgc
         border.color: Th.ln
         ColumnLayout {
             id: cc
@@ -48,7 +48,7 @@ Rectangle {
                         width: (pg.width - 24) / 3
                         height: 120
                         radius: Th.r
-                        color: Th.bg
+                        color: Th.bg2
                         border.color: r.pre === modelData || activeFocus ? Th.ac : pm.containsMouse ? Th.tx3 : Th.ln
                         border.width: r.pre === modelData || activeFocus ? 2 : 1
                         activeFocusOnTab: true
