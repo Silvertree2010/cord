@@ -92,8 +92,11 @@ pub fn clear() {
 mod tests {
     use super::*;
 
+    static G: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn seq_increments_per_key() {
+        let _g = G.lock().unwrap_or_else(|e| e.into_inner());
         let f = Arc::new(cord_cap::Frame { w: 1, h: 1, rgba: vec![0; 4] });
         put("t-a", f.clone());
         put("t-a", f.clone());
@@ -107,6 +110,7 @@ mod tests {
 
     #[test]
     fn clear_drops_all_frames_and_bumps() {
+        let _g = G.lock().unwrap_or_else(|e| e.into_inner());
         let f = Arc::new(cord_cap::Frame { w: 1, h: 1, rgba: vec![0; 4] });
         put("t-c", f.clone());
         put("t-d", f);

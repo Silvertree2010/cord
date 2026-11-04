@@ -191,6 +191,7 @@ fn base(cx: &Cx, room: &str, id: &str, ts: i64, auth: Usr) -> Msg {
         sys: false,
         del: false,
         hist: vec![],
+        ments: vec![],
     }
 }
 

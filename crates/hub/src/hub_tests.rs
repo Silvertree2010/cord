@@ -87,6 +87,7 @@ fn msg(id: &str, ts: i64, body: &str) -> Msg {
         sys: false,
         del: false,
         hist: vec![],
+        ments: vec![],
     }
 }
 

@@ -58,20 +58,100 @@ Rectangle {
                 }
             }
         }
-        model: S.glds
+        model: S.rail
         delegate: Item {
+            id: row
+            readonly property var g: modelData.g || null
+            readonly property var f: modelData.f || null
+            readonly property var inF: modelData.inF || null
+            readonly property color fc: {
+                const fo = row.f || row.inF
+                return fo && fo.col ? "#" + ("000000" + fo.col.toString(16)).slice(-6) : Th.ac
+            }
             width: r.hz ? r.isz + 12 : lv.width
             height: r.hz ? lv.height : r.isz
+            Rectangle {
+                visible: !!row.inF || (!!row.f && !!S.foldOpen[row.f.id])
+                x: r.hz ? 0 : (parent.width - r.isz) / 2 - 4
+                y: r.hz ? (parent.height - r.isz) / 2 - 4 : -3
+                width: r.hz ? parent.width + lv.spacing : r.isz + 8
+                height: r.hz ? r.isz + 8 : parent.height + lv.spacing
+                color: Th.a(row.fc, 0.14)
+                radius: 0
+            }
             Ic {
+                visible: !!row.g
                 x: r.hz ? 6 : (parent.width - r.isz) / 2
                 y: r.hz ? (parent.height - r.isz) / 2 : 0
-                gid: modelData.rid
-                name: modelData.name
-                img: modelData.icon || ""
-                sv: S.svc(modelData.rid)
-                property var u: S.gUnr(modelData.rid)
+                gid: row.g ? row.g.rid : ""
+                name: row.g ? row.g.name : ""
+                img: row.g ? (row.g.icon || "") : ""
+                sv: row.g ? S.svc(row.g.rid) : ""
+                property var u: row.g ? S.gUnr(row.g.rid) : ({ n: 0, m: 0 })
                 dotN: u.n
                 ment: u.m
+            }
+            Item {
+                id: ft
+                visible: !!row.f
+                x: r.hz ? 6 : (parent.width - r.isz) / 2
+                y: r.hz ? (parent.height - r.isz) / 2 : 0
+                width: r.isz
+                height: r.isz
+                readonly property bool open: !!row.f && !!S.foldOpen[row.f.id]
+                readonly property var un: {
+                    let n = 0, m = 0
+                    for (const g of (row.f ? modelData.gs : [])) { const u = S.gUnr(g.rid); n += u.n; m += u.m }
+                    return { n: n, m: m }
+                }
+                Rectangle {
+                    anchors.fill: parent
+                    radius: Th.r * 1.4
+                    color: ft.open ? "transparent" : Th.a(row.fc, fm.containsMouse ? 0.5 : 0.35)
+                }
+                Ico { visible: ft.open; anchors.centerIn: parent; n: "layout"; sz: 22; col: row.fc }
+                Grid {
+                    visible: !ft.open
+                    anchors.centerIn: parent
+                    columns: 2
+                    spacing: 3
+                    Repeater {
+                        model: row.f ? modelData.gs.slice(0, 4) : []
+                        Av { sz: (ft.width - 15) / 2; src: modelData.icon || ""; name: modelData.name; sq: true }
+                    }
+                }
+                Rectangle {
+                    visible: !r.hz && !ft.open && !!row.f && modelData.gs.some(g => g.rid === S.sel)
+                    width: 3
+                    height: r.isz
+                    color: Th.ac
+                    x: -((r.width - r.isz) / 2)
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Rectangle {
+                    visible: !r.hz && ft.un.n > 0 && !ft.open && !(!!row.f && modelData.gs.some(g => g.rid === S.sel))
+                    width: 4
+                    height: 8
+                    radius: 2
+                    color: Th.tx
+                    x: -((r.width - r.isz) / 2)
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Rectangle {
+                    visible: ft.un.m > 0 && !ft.open
+                    height: 16
+                    width: Math.max(16, fmt.implicitWidth + 8)
+                    radius: 8
+                    color: Th.mr
+                    border.color: Th.bg
+                    border.width: 2
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.margins: -4
+                    Lbl { id: fmt; anchors.centerIn: parent; text: ft.un.m > 99 ? "99+" : ft.un.m; color: "#fff"; font.pixelSize: 10; font.weight: Font.Bold }
+                }
+                MouseArea { id: fm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.toggleFold(row.f.id) }
+                Tip { text: row.f ? (row.f.name || modelData.gs.map(g => g.name).slice(0, 3).join(", ")) : ""; hov: fm.containsMouse; side: r.hz ? "b" : "r" }
             }
         }
         footer: Item {
@@ -229,7 +309,7 @@ Rectangle {
             visible: ic.activeFocus
         }
         Badge {
-            visible: ic.sv !== "" && S.ui.badges !== false
+            visible: ic.sv !== "" && S.ui.badges !== false && S.multi
             sv: ic.sv
             sz: 14
             rw: 2
@@ -260,14 +340,22 @@ Rectangle {
             }
         }
         Rectangle {
-            visible: ic.ment === 0 && ic.dotN > 0 && !ic.cur
-            width: 8
-            height: 8
-            radius: 4
+            visible: !r.hz && ic.dotN > 0 && !ic.cur
+            width: 4
+            height: ma.containsMouse ? 20 : 8
+            radius: 2
             color: Th.tx
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: -2
+            x: -((r.width - r.isz) / 2)
+            anchors.verticalCenter: parent.verticalCenter
+        }
+        Rectangle {
+            visible: r.hz && ic.dotN > 0 && !ic.cur
+            height: 3
+            width: 8
+            radius: 2
+            color: Th.tx
+            y: parent.height + 3
+            anchors.horizontalCenter: parent.horizontalCenter
         }
         MouseArea {
             id: ma

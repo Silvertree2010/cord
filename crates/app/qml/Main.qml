@@ -27,6 +27,7 @@ ApplicationWindow {
         if (sl >= 0) S.lay = L.cp(L.presets[Qt.application.arguments[sl + 1]])
         if (Qt.application.arguments.indexOf("--edit") >= 0) { S.edit = true; U.onEdit() }
         if (Qt.application.arguments.indexOf("--quick") >= 0) S.qk = true
+        if (Qt.application.arguments.indexOf("--emo") >= 0) Qt.callLater(() => { emoP.cb = null; emoP.x = win.width - emoP.width - 40; emoP.y = win.height - emoP.height - 90; emoP.open() })
         const so = Qt.application.arguments.indexOf("--open")
         if (so >= 0) { const g = Qt.application.arguments[so + 1]; Qt.callLater(() => S.pick(g)) }
         if (sh >= 0) shotT.out = Qt.application.arguments[sh + 1] || "/tmp/cord.png"
@@ -38,7 +39,7 @@ ApplicationWindow {
         property string preset: ""
         interval: 2500
         running: out !== ""
-        onTriggered: (S.setup ? stp : S.showSet ? setL : root).grabToImage(r => { r.saveToFile(out); Qt.quit() })
+        onTriggered: (Qt.application.arguments.indexOf("--emo") >= 0 ? emoP.body : S.setup ? stp : S.showSet ? setL : root).grabToImage(r => { r.saveToFile(out); Qt.quit() })
     }
 
     Node {

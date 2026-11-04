@@ -30,6 +30,7 @@ QtObject {
     property int pver: 0
     property string uiBad: ""
     property var cfgAccs: []
+    readonly property bool multi: new Set(Object.values(accs).map(a => a.svc)).size > 1
     property var services: []
     property string secretBackend: ""
     property int ver: 0
@@ -51,6 +52,30 @@ QtObject {
     property string editing: ""
     property string qr: ""
     property string qrUsr: ""
+    property var cap: null
+    property var folds: []
+    property var foldOpen: ({})
+    readonly property var rail: {
+        const used = {}, out = []
+        const byId = {}
+        for (const g of glds) byId[g.rid] = g
+        for (const f of folds) {
+            const gs = f.glds.map(x => byId[ridOf(x)]).filter(g => g && !used[g.rid])
+            if (!gs.length) continue
+            for (const g of gs) used[g.rid] = true
+            if (!f.id) { for (const g of gs) out.push({ g: g }); continue }
+            out.push({ f: f, gs: gs })
+            if (foldOpen[f.id]) for (const g of gs) out.push({ g: g, inF: f })
+        }
+        for (const g of glds) if (!used[g.rid]) out.push({ g: g })
+        return out
+    }
+    function toggleFold(id) {
+        const o = Object.assign({}, foldOpen)
+        o[id] = !o[id]
+        foldOpen = o
+        setUi("foldOpen", o)
+    }
     property var errs: []
 
     property var ui: ({})
@@ -274,6 +299,8 @@ QtObject {
         for (const ch of j.chans || []) putChan(ch)
         for (const r of j.rels || []) if (r.usr.id) nm[raw(ridOf(r.usr.id))] = r.usr.disp || r.usr.name
         rels = j.rels || []
+        folds = j.folds || []
+        foldOpen = ui.foldOpen || {}
         pres = j.pres || {}
         unr = j.unr || {}
         vs = j.vs || []
@@ -315,8 +342,18 @@ QtObject {
         for (const r of m.reacts || []) n += r.n + (r.me ? 1000 : 0)
         return (m.ed || 0) + "|" + (m.body || "").length + "|" + n + "|" + (m.atts || []).length + "|" + (m.embs || []).length + "|" + (m.hist || []).length + "|" + (m.del ? 1 : 0) + (m.pin ? 1 : 0)
     }
+    function learn(us) {
+        let ch = false
+        for (const u of us) {
+            if (!u || !u.id) continue
+            const k = raw(ridOf(u.id)), n = u.disp || u.name
+            if (n && nm[k] !== n) { nm[k] = n; ch = true }
+        }
+        if (ch) mark(false, false, true)
+    }
     function rm(m) {
         if (!m || m._r) return m
+        learn((m.ments || []).concat(m.auth ? [m.auth] : []))
         const id = ridOf(m.id)
         const sg = rsig(m)
         const hit = rcache[id]
@@ -533,7 +570,7 @@ QtObject {
             mark(false, false, true)
             break
         }
-        case "Mems": mems(p.gld, p.list); break
+        case "Mems": learn(p.list.map(x => x.nick ? Object.assign({}, x.usr, { disp: x.nick }) : x.usr)); mems(p.gld, p.list); break
         case "Vs": {
             const id = p.usr.id ? ridOf(p.usr.id) : ""
             const v = vs.filter(x => !x.usr.id || ridOf(x.usr.id) !== id)
@@ -544,7 +581,9 @@ QtObject {
         case "Call": call = p; break
         case "Qr": qr = p; break
         case "QrUsr": qrUsr = p.name; break
-        case "Accs": cfgAccs = pj(c.accs(), []); secretBackend = c.secretBackend(); qr = ""; qrUsr = ""; break
+        case "Cap": cap = p; break
+        case "Folds": folds = p; break
+        case "Accs": cfgAccs = pj(c.accs(), []); secretBackend = c.secretBackend(); qr = ""; qrUsr = ""; cap = null; break
         case "AccGone": purgeAcc(p.acc); cfgAccs = pj(c.accs(), []); break
         case "Mpris": media = p; break
         case "Err": pushErr(p.ctx, p.msg, p.acc); break

@@ -11,22 +11,35 @@ use std::{
 
 pub const BN: u32 = 485000;
 pub const API: &str = "https://discord.com/api/v9";
+#[cfg(target_os = "macos")]
+pub const UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.360 Chrome/134.0.6998.205 Electron/35.3.0 Safari/537.36";
+#[cfg(not(target_os = "macos"))]
 pub const UA: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.80 Chrome/134.0.6998.205 Electron/35.3.0 Safari/537.36";
 
+#[cfg(target_os = "macos")]
+const OS: (&str, &str, &str, &str) = ("Mac OS X", "0.0.360", "25.6.0", "arm64");
+#[cfg(not(target_os = "macos"))]
+const OS: (&str, &str, &str, &str) = ("Linux", "0.0.80", "6.8.0-generic", "x64");
+
+pub fn sp() -> String {
+    B64.encode(props().to_string())
+}
+
 pub fn props() -> Value {
+    let wm = if cfg!(target_os = "macos") { Value::Null } else { json!("KDE,unknown") };
     json!({
-        "os": "Linux",
+        "os": OS.0,
         "browser": "Discord Client",
         "release_channel": "stable",
-        "client_version": "0.0.80",
-        "os_version": "6.8.0-generic",
-        "os_arch": "x64",
-        "app_arch": "x64",
+        "client_version": OS.1,
+        "os_version": OS.2,
+        "os_arch": OS.3,
+        "app_arch": OS.3,
         "system_locale": "en-US",
         "has_client_mods": false,
         "browser_user_agent": UA,
         "browser_version": "35.3.0",
-        "window_manager": "KDE,unknown",
+        "window_manager": wm,
         "client_build_number": BN,
         "native_build_number": null,
         "client_event_source": null

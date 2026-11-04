@@ -89,6 +89,14 @@ pub struct Att {
     pub h: Option<u32>,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Fold {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub col: Option<u32>,
+    pub glds: Vec<Rid>,
+}
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Emb {
     pub title: Option<String>,
@@ -102,6 +110,10 @@ pub struct Emb {
     pub foot: Option<String>,
     pub prov: Option<String>,
     pub fields: Vec<(String, String, bool)>,
+    #[serde(default)]
+    pub kind: Option<String>,
+    #[serde(default)]
+    pub auth_ic: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -136,6 +148,8 @@ pub struct Msg {
     pub sys: bool,
     pub del: bool,
     pub hist: Vec<String>,
+    #[serde(default)]
+    pub ments: Vec<Usr>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -2,6 +2,7 @@ use parking_lot::Mutex;
 pub mod gw;
 pub mod hd;
 pub mod map;
+pub mod pb;
 pub mod perm;
 pub mod ra;
 pub mod rest;

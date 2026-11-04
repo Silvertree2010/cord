@@ -85,6 +85,83 @@ pub fn usr(a: u32, v: &Value) -> Usr {
     }
 }
 
+const JOIN: &[&str] = &[
+    "{} joined the party.",
+    "{} is here.",
+    "Welcome, {}. We hope you brought pizza.",
+    "A wild {} appeared.",
+    "{} just landed.",
+    "{} just slid into the server.",
+    "{} just showed up!",
+    "Welcome {}. Say hi!",
+    "{} hopped into the server.",
+    "Everyone welcome {}!",
+    "Glad you're here, {}.",
+    "Good to see you, {}.",
+    "Yay you made it, {}!",
+];
+
+fn shown(v: &Value) -> String {
+    v.get("member")
+        .and_then(|m| s(m, "nick"))
+        .or_else(|| s(v, "global_name"))
+        .or_else(|| s(v, "username"))
+        .filter(|x| !x.is_empty())
+        .unwrap_or("Someone")
+        .to_string()
+}
+
+pub fn sys_txt(t: u64, v: &Value) -> Option<String> {
+    let a = v.get("member").and_then(|m| s(m, "nick")).filter(|n| !n.is_empty()).map(str::to_string).unwrap_or_else(|| v.get("author").map(shown).unwrap_or_else(|| "Someone".into()));
+    let c = s(v, "content").unwrap_or("");
+    let m0 = v.get("mentions").and_then(|m| m.as_array()).and_then(|m| m.first()).map(shown).unwrap_or_else(|| "someone".into());
+    let boost = |l: &str| {
+        let n = c.parse::<u32>().unwrap_or(1);
+        let x = if n > 1 { format!("{a} just boosted the server {n} times!") } else { format!("{a} just boosted the server!") };
+        if l.is_empty() { x } else { format!("{x} The server has achieved {l}!") }
+    };
+    Some(match t {
+        1 => format!("{a} added {m0} to the group."),
+        2 if m0 == a => format!("{a} left the group."),
+        2 => format!("{a} removed {m0} from the group."),
+        3 => {
+            let call = &v["call"];
+            match (s(v, "timestamp").and_then(ts), s(call, "ended_timestamp").and_then(ts)) {
+                (Some(b), Some(e)) => {
+                    let min = ((e - b) / 60_000).max(1);
+                    format!("{a} started a call that lasted {min} minute{}.", if min == 1 { "" } else { "s" })
+                }
+                _ => format!("{a} started a call."),
+            }
+        }
+        4 => format!("{a} changed the channel name: {c}"),
+        5 => format!("{a} changed the channel icon."),
+        6 => format!("{a} pinned a message to this channel."),
+        7 => {
+            let id: u64 = s(v, "id").and_then(|i| i.parse().ok()).unwrap_or(0);
+            let ms = (id >> 22) + 1_420_070_400_000;
+            JOIN[(ms % JOIN.len() as u64) as usize].replace("{}", &a)
+        }
+        8 => boost(""),
+        9 => boost("Level 1"),
+        10 => boost("Level 2"),
+        11 => boost("Level 3"),
+        12 => format!("{a} has added {c} to this channel. Its most important updates will show up here."),
+        18 => format!("{a} started a thread: {c}"),
+        24 => "AutoMod has blocked a message.".into(),
+        46 => "A poll has ended.".into(),
+        _ => return None,
+    })
+}
+
+pub fn mem_usr(a: u32, v: &Value) -> Usr {
+    let mut u = usr(a, v);
+    if let Some(n) = v.get("member").and_then(|m| s(m, "nick")).filter(|n| !n.is_empty()) {
+        u.disp = Some(n.to_string());
+    }
+    u
+}
+
 pub fn emo(a: u32, v: &Value) -> Emo {
     let an = v["animated"].as_bool().unwrap_or(false);
     let id = s(v, "id");
@@ -199,7 +276,7 @@ pub fn stk(s_: &Value) -> Att {
 }
 
 pub fn emb(e: &Value) -> Emb {
-    let u = |k: &str| e.get(k).and_then(|x| s(x, "url")).map(str::to_string);
+    let u = |k: &str| e.get(k).and_then(|x| s(x, "proxy_url").or_else(|| s(x, "url"))).map(str::to_string);
     let n = |k: &str, f: &str| e.get(k).and_then(|x| s(x, f)).map(str::to_string);
     Emb {
         title: s(e, "title").map(str::to_string),
@@ -209,6 +286,8 @@ pub fn emb(e: &Value) -> Emb {
         img: u("image"),
         thumb: u("thumbnail"),
         vid: u("video"),
+        kind: s(e, "type").map(str::to_string),
+        auth_ic: e.get("author").and_then(|x| s(x, "proxy_icon_url").or_else(|| s(x, "icon_url"))).map(str::to_string),
         auth: n("author", "name"),
         foot: n("footer", "text"),
         prov: n("provider", "name"),
@@ -240,8 +319,16 @@ pub fn msg_p(a: u32, v: &Value, need: bool) -> Option<Msg> {
     Some(Msg {
         id: rid(a, s(v, "id")?),
         chan: rid(a, s(v, "channel_id")?),
-        auth: if au.is_null() { Usr::default() } else { usr(a, au) },
-        body: s(v, "content").unwrap_or("").to_string(),
+        auth: if au.is_null() {
+            Usr::default()
+        } else {
+            let mut u = usr(a, au);
+            if let Some(n) = v.get("member").and_then(|m| s(m, "nick")).filter(|n| !n.is_empty()) {
+                u.disp = Some(n.to_string());
+            }
+            u
+        },
+        body: sys_txt(t, v).unwrap_or_else(|| s(v, "content").unwrap_or("").to_string()),
         ts: s(v, "timestamp").and_then(ts).unwrap_or(0),
         ed: s(v, "edited_timestamp").and_then(ts),
         atts: arr("attachments").iter().map(att).collect(),
@@ -256,6 +343,7 @@ pub fn msg_p(a: u32, v: &Value, need: bool) -> Option<Msg> {
         sys: !matches!(t, 0 | 19 | 20 | 21 | 23),
         del: false,
         hist: vec![],
+        ments: arr("mentions").iter().map(|x| mem_usr(a, x)).collect(),
     })
 }
 

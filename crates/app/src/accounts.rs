@@ -50,6 +50,13 @@ pub async fn add(h: Arc<Hub>, e: Em, sv: Svc, v: Value) -> Res<()> {
 }
 
 static QR: parking_lot::Mutex<Option<tokio::task::JoinHandle<()>>> = parking_lot::Mutex::new(None);
+static CAP: parking_lot::Mutex<Option<tokio::sync::mpsc::UnboundedSender<String>>> = parking_lot::Mutex::new(None);
+
+pub fn qr_cap(t: String) {
+    if let Some(s) = CAP.lock().as_ref() {
+        let _ = s.send(t);
+    }
+}
 
 pub fn qr_cancel() {
     if let Some(j) = QR.lock().take() {
@@ -73,12 +80,15 @@ fn fwd(e: &Em, r: cord_dc::ra::Ra) {
     match r {
         cord_dc::ra::Ra::Qr(u) => e.s(&Out::Qr(u)),
         cord_dc::ra::Ra::Usr(u) => e.s(&Out::QrUsr { name: u.name, id: u.id }),
+        cord_dc::ra::Ra::Cap { sk, rq } => e.s(&Out::Cap { sk, rq }),
     }
 }
 
 async fn qr_run(h: Arc<Hub>, e: Em) -> Res<()> {
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-    let login = cord_dc::ra::login(tx);
+    let (ct, cr) = tokio::sync::mpsc::unbounded_channel();
+    *CAP.lock() = Some(ct);
+    let login = cord_dc::ra::login(tx, cr);
     tokio::pin!(login);
     let tok = loop {
         tokio::select! {

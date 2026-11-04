@@ -316,6 +316,7 @@ pub fn msg(cx: &Cx, lk: &Lk, m: &w::Message, u: &w::User) -> Msg {
         sys: m.system.is_some(),
         del: false,
         hist: vec![],
+        ments: vec![],
     }
 }
 

@@ -25,4 +25,5 @@ pub enum Ev {
     Call(CallSt),
     Conn { acc: u32, up: bool },
     Err { acc: u32, msg: String },
+    Folds { acc: u32, list: Vec<Fold> },
 }

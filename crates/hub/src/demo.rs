@@ -64,6 +64,7 @@ impl Demo {
             sys: false,
             del: false,
             hist: vec![],
+            ments: vec![],
         }
     }
 }
@@ -99,6 +100,9 @@ impl Bk for Demo {
                 tx.send(Ev::Chan(Chan { id: self.r(format!("g{gi}h")), gld: Some(gid.clone()), par: Some(cat.clone()), k: ChK::Txt, name: "mods-only".into(), topic: None, pos: 8, nsfw: false, hidden: true, last: None, rcp: vec![], icon: None, enc: false }))?;
                 tx.send(Ev::Unread { chan: self.r(format!("g{gi}c1")), n: 3, ment: 1 })?;
             }
+        }
+        if self.sv == Svc::Dc {
+            tx.send(Ev::Folds { acc: self.a, list: vec![Fold { id: Some(format!("dcf:{}:1", self.a)), name: Some("Fun".into()), col: Some(0x5865f2), glds: vec![self.r("g0"), self.r("g1")] }] })?;
         }
         for i in 0..3u32 {
             let u = self.u(i + (self.a % 3));

@@ -44,6 +44,7 @@ ColumnLayout {
     function getQr() {
         S.qr = ""
         S.qrUsr = ""
+        S.cap = null
         qerr = ""
         age = 0
         qrStarted = true
@@ -77,7 +78,7 @@ ColumnLayout {
             if (d.t === "Err" && (d.d.ctx === "add" || d.d.ctx === "login")) {
                 const was = r.busy
                 r.busy = false
-                if (d.d.ctx === "login") { if (r.qrOn && S.qr === "") r.qerr = d.d.msg }
+                if (d.d.ctx === "login") { S.cap = null; if (r.qrOn) r.qerr = d.d.msg }
                 else if (was && r.visible) r.ferr = d.d.msg
             }
         }
@@ -95,7 +96,7 @@ ColumnLayout {
         onTriggered: {
             r.age++
             if (S.qr === "" && r.qerr === "" && r.age > 20) r.qerr = "No response from Discord"
-            else if (S.qr !== "" && r.age >= 100 && S.qrUsr === "") r.getQr()
+            else if (S.qr !== "" && r.age >= 100 && S.qrUsr === "" && !S.cap) r.getQr()
         }
     }
     Row {
@@ -200,7 +201,13 @@ ColumnLayout {
             }
         }
         Lbl { visible: S.qr !== "" && S.qrUsr === "" && r.qerr === ""; text: "Scan with the Discord app: Settings, Scan QR code"; color: Th.tx2 }
-        Lbl { visible: S.qrUsr !== ""; text: "Confirm the login on your phone as " + S.qrUsr; color: Th.ok }
+        Lbl { visible: S.qrUsr !== "" && !S.cap; text: "Confirm the login on your phone as " + S.qrUsr; color: Th.ok }
+        Lbl { visible: !!S.cap; text: "Discord wants a captcha. Solve it in the window that opened."; color: Th.tx2 }
+        Loader {
+            active: !!S.cap
+            source: "Cap.qml"
+            onStatusChanged: if (status === Loader.Error) r.qerr = "Captcha needs the QtWebView module"
+        }
         Btn { visible: S.qr !== "" && r.qerr === ""; text: "New code"; onClicked: r.getQr() }
     }
     ColumnLayout {

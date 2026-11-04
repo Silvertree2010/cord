@@ -75,7 +75,7 @@ fn ev_acc(e: &Ev) -> Option<u32> {
         Ev::Mems(_) => None,
         Ev::Vs(v) => v.usr.id.as_ref().map(|i| i.acc),
         Ev::Call(c) => c.chan.as_ref().map(|i| i.acc),
-        Ev::Conn { acc, .. } | Ev::Err { acc, .. } => Some(*acc),
+        Ev::Conn { acc, .. } | Ev::Err { acc, .. } | Ev::Folds { acc, .. } => Some(*acc),
     }
 }
 

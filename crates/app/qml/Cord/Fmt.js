@@ -25,7 +25,8 @@ function inl(s, o) {
     s = s.replace(/(^|[^\w])_([^_\n]+)_(?!\w)/g, "$1<i>$2</i>")
     s = s.replace(/~~(.+?)~~/g, "<s>$1</s>")
     s = s.replace(/\|\|(.+?)\|\|/g, (m, a) => o.spoil ? '<span style="background:' + cb + '">' + a + '</span>' : '<a href="cord:spoil" style="background:' + (o.sp || "#555") + ';color:' + (o.sp || "#555") + ';text-decoration:none">' + a + '</a>')
-    return s.replace(/\u0000(\d+)\u0000/g, (m, i) => keep[parseInt(i)])
+    for (let n = 0; n < 8 && s.indexOf("\u0000") >= 0; n++) s = s.replace(/\u0000(\d+)\u0000/g, (m, i) => keep[parseInt(i)])
+    return s
 }
 
 function html(src, o) {

@@ -111,10 +111,18 @@ Item {
 
         Item {
             width: parent.width
-            height: Math.max(r.grp ? 0 : 40, body.y + body.height)
+            height: Math.max(r.grp || r.m.sys ? 0 : 40, body.y + body.height)
 
+            Ico {
+                visible: !!r.m.sys
+                x: r.gut - 30
+                y: 3
+                n: r.m.body && /pinned/.test(r.m.body) ? "pin" : /call/.test(r.m.body || "") ? "phone" : /thread/.test(r.m.body || "") ? "thread" : "chevr"
+                sz: 16
+                col: /boost/.test(r.m.body || "") ? "#ff73fa" : Th.ok
+            }
             Av {
-                visible: !r.grp
+                visible: !r.grp && !r.m.sys
                 x: 16
                 y: 2
                 sz: 40
@@ -123,7 +131,7 @@ Item {
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: S.prof(r.m.auth, parent) }
             }
             Lbl {
-                visible: r.grp && r.hov
+                visible: r.grp && r.hov && !r.m.sys
                 x: 8
                 width: r.gut - 16
                 y: 3
@@ -134,7 +142,7 @@ Item {
             }
             Row {
                 id: hd
-                visible: !r.grp
+                visible: !r.grp && !r.m.sys
                 x: r.gut
                 spacing: 8
                 height: visible ? 22 : 0
@@ -174,7 +182,7 @@ Item {
             Column {
                 id: body
                 x: r.gut
-                y: r.grp ? 0 : 22
+                y: r.grp || r.m.sys ? 0 : 22
                 width: parent.width - r.gut - 24
                 spacing: 6
 
@@ -186,15 +194,15 @@ Item {
                     selectByMouse: true
                     wrapMode: TextEdit.Wrap
                     textFormat: TextEdit.RichText
-                    color: r.m.del || r.m.sys ? Th.tx3 : Th.tx
+                    color: r.m.del ? Th.tx3 : r.m.sys ? Th.tx2 : Th.tx
                     font.strikeout: !!r.m.del
                     font.family: Th.font
                     font.pixelSize: F.onlyEmoji(r.m.body) ? Th.fs * 2.4 : Th.fs
-                    font.italic: !!r.m.sys
+                    font.italic: false
                     selectionColor: Th.ac
                     selectedTextColor: Th.acTx
                     property bool spoil: S.f("spoilers")
-                    text: F.html(S.run("render", r.m).body || "", { ac: Th.ac, cb: Th.bg4, qb: Th.tx3, mono: Th.mono, sub: Th.tx3, fs: Th.fs, names: S.names, spoil: spoil, sp: Th.bg4, big: F.onlyEmoji(r.m.body), em: 22 }) + (r.m.ed ? ' <span style="color:' + Th.tx2 + ';font-size:11px">(edited)</span>' : "")
+                    text: r.m.sys ? F.esc(r.m.body || "") + ' <span style="color:' + Th.tx3 + ';font-size:11px;font-style:normal">' + F.time(r.m.ts || 0) + '</span>' : F.html(S.run("render", r.m).body || "", { ac: Th.ac, cb: Th.bg4, qb: Th.tx3, mono: Th.mono, sub: Th.tx3, fs: Th.fs, names: S.names, spoil: spoil, sp: Th.bg4, big: F.onlyEmoji(r.m.body), em: 22 }) + (r.m.ed ? ' <span style="color:' + Th.tx2 + ';font-size:11px">(edited)</span>' : "")
                     onLinkActivated: l => {
                         if (l === "cord:spoil") { spoil = true; return }
                         if (l.startsWith("cord:chan/")) { const id = l.slice(10); const c = Object.keys(S.chans).find(k => S.raw(k) === id); if (c) { S.sel = S.chans[c].grid || "home"; S.open(c) } return }

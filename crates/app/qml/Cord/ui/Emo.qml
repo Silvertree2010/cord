@@ -6,8 +6,8 @@ import "emo.js" as E
 Popup {
     id: r
     property var cb: null
-    width: 380
-    height: 420
+    width: 420
+    height: 460
     padding: 12
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     onAboutToShow: { U.reg(r); ef.text = "" }
@@ -26,6 +26,13 @@ Popup {
         const un = E.all.filter(x => !q || x[1].indexOf(q) >= 0).map(x => ({ u: x[0] }))
         return cu.concat(un)
     }
+    property var secs: {
+        if (r.q.trim()) return [{ t: "Results", ic: "", it: r.items }]
+        const o = []
+        for (const g of S.glds) if ((g.emos || []).length) o.push({ t: g.name, ic: g.icon || "", it: g.emos.map(e => ({ c: e, g: g.rid })) })
+        o.push({ t: "Emoji", ic: "", it: E.all.map(x => ({ u: x[0] })) })
+        return o
+    }
     property var recent: S.ui.emor || []
     function pick(e, keep) {
         if (r.cb) r.cb(e)
@@ -35,7 +42,9 @@ Popup {
     function pickItem(x, keep) {
         pick(x.c ? x.c : { id: null, name: x.u, url: null, anim: false }, keep)
     }
+    property alias body: col
     Column {
+        id: col
         anchors.fill: parent
         spacing: 8
         Fld {
@@ -66,33 +75,66 @@ Popup {
                 }
             }
         }
-        GridView {
+        Row {
             width: parent.width
-            height: Math.floor((parent.height - y) / 40) * 40
-            clip: true
-            cellWidth: 40
-            cellHeight: 40
-            topMargin: 8
-            bottomMargin: 8
-            leftMargin: 0
-            model: r.items
-            ScrollBar.vertical: Scr {}
-            delegate: Rectangle {
-                width: 38
-                height: 38
-                radius: Th.rs
-                color: em.containsMouse ? Th.hov : "transparent"
-                Image { visible: !!modelData.c; anchors.centerIn: parent; width: 28; height: 28; source: modelData.c ? (modelData.c.url || "") : ""; sourceSize: Qt.size(56, 56); asynchronous: true }
-                Text { visible: !!modelData.u; anchors.centerIn: parent; text: modelData.u || ""; font.pixelSize: 24 }
-                MouseArea {
-                    id: em
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: m => r.pickItem(modelData, !!(m.modifiers & Qt.ShiftModifier))
+            height: parent.height - y
+            spacing: 6
+            ListView {
+                id: nav
+                visible: !r.q
+                width: visible ? 36 : 0
+                height: parent.height
+                clip: true
+                spacing: 4
+                model: r.secs
+                delegate: Rectangle {
+                    width: 36
+                    height: 36
+                    radius: Th.rs
+                    color: nm_.containsMouse ? Th.hov : "transparent"
+                    Av { visible: !!modelData.ic; anchors.centerIn: parent; sz: 28; src: modelData.ic; name: modelData.t; sq: true }
+                    Text { visible: !modelData.ic; anchors.centerIn: parent; text: modelData.t === "Emoji" ? "😀" : modelData.t.charAt(0); color: Th.tx; font.pixelSize: modelData.t === "Emoji" ? 20 : 14; font.family: Th.font }
+                    MouseArea { id: nm_; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: sl.positionViewAtIndex(index, ListView.Beginning) }
+                    Tip { text: modelData.t; hov: nm_.containsMouse; side: "r" }
                 }
             }
-            Lbl { visible: r.items.length === 0; anchors.centerIn: parent; text: "No matches"; color: Th.tx3 }
+            ListView {
+                id: sl
+                width: parent.width - nav.width - (nav.visible ? 6 : 0)
+                height: parent.height
+                clip: true
+                model: r.secs
+                cacheBuffer: 400
+                ScrollBar.vertical: Scr {}
+                readonly property int cols: Math.max(1, Math.floor((width - 8) / 40))
+                readonly property real cw: (width - 8) / cols
+                delegate: Column {
+                    width: sl.width
+                    Lbl { text: modelData.t; color: Th.tx3; font.pixelSize: 12; font.weight: Font.DemiBold; width: parent.width; topPadding: 6; bottomPadding: 4; elide: Text.ElideRight }
+                    Grid {
+                        columns: sl.cols
+                        Repeater {
+                            model: modelData.it
+                            delegate: Rectangle {
+                                width: sl.cw
+                                height: 40
+                                radius: Th.rs
+                                color: em.containsMouse ? Th.hov : "transparent"
+                                Image { visible: !!modelData.c; anchors.centerIn: parent; width: 28; height: 28; source: modelData.c ? (modelData.c.url || "") : ""; sourceSize: Qt.size(56, 56); asynchronous: true }
+                                Text { visible: !!modelData.u; anchors.centerIn: parent; text: modelData.u || ""; font.pixelSize: 24 }
+                                MouseArea {
+                                    id: em
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: m => r.pickItem(modelData, !!(m.modifiers & Qt.ShiftModifier))
+                                }
+                            }
+                        }
+                    }
+                }
+                Lbl { visible: r.items.length === 0; anchors.centerIn: parent; text: "No matches"; color: Th.tx3 }
+            }
         }
     }
 }

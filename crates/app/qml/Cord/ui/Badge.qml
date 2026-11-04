@@ -11,7 +11,7 @@ Item {
     readonly property string k: sv === "Mx" || sv === "mx" ? "mx" : sv === "St" || sv === "st" ? "st" : "dc"
     width: txt ? lb2.implicitWidth + 10 : sz
     height: txt ? 16 : sz
-    visible: S.ui.badges !== false
+    visible: S.ui.badges !== false && (txt || S.multi)
     Rectangle {
         visible: r.txt
         anchors.fill: parent

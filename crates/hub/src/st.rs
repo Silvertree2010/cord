@@ -62,6 +62,7 @@ pub struct Sta {
     pub chans: HashMap<Rid, Chan>,
     pub msgs: HashMap<Rid, VecDeque<Msg>>,
     pub rels: HashMap<Rid, Rel>,
+    pub folds: BTreeMap<u32, Vec<Fold>>,
     pub pres: HashMap<Rid, Pres>,
     pub unr: HashMap<Rid, Unr>,
     pub mems: HashMap<Rid, HashMap<Rid, Mem>>,
@@ -96,6 +97,7 @@ pub enum Dl {
     Vs(Vs),
     Speak { chan: String, usr: String, on: bool },
     Call(CallSt),
+    Folds(Vec<Fold>),
 }
 
 #[derive(Default, Debug)]
@@ -131,6 +133,10 @@ pub fn flake_ts(r: &str) -> i64 {
 }
 
 impl Sta {
+    pub fn all_folds(&self) -> Vec<Fold> {
+        self.folds.values().flatten().cloned().collect()
+    }
+
     pub fn msg_v(&self, m: &Msg) -> MsgV {
         let g = self.chans.get(&m.chan).and_then(|c| c.gld.clone());
         MsgV { mid: m.id.to_string(), permalink: link(&m.chan, g.as_ref(), Some(&m.id)), rev: rev_of(m), m: m.clone() }
@@ -414,6 +420,10 @@ impl Sta {
                 o.push(Dl::Unr { chan: chan.to_string(), u: Unr::default() });
             }
             Ev::Err { acc, msg } => o.push(Dl::Err { acc, msg }),
+            Ev::Folds { acc, list } => {
+                self.folds.insert(acc, list);
+                o.push(Dl::Folds(self.all_folds()));
+            }
             Ev::Vs(v) => {
                 if let Some(id) = v.usr.id.clone() {
                     if v.chan.is_some() {
@@ -654,6 +664,7 @@ mod tests {
             sys: false,
             del: false,
             hist: vec![],
+            ments: vec![],
         }
     }
 

@@ -14,6 +14,7 @@ pub fn boot(s: &Sta) -> Value {
         "unr": unr,
         "vs": s.vs.values().collect::<Vec<_>>(),
         "call": s.call,
+        "folds": s.all_folds(),
     })
 }
 
@@ -30,7 +31,7 @@ mod tests {
         s.apply(Ev::Chan(c("a", false)));
         s.chans.insert(rid("b"), c("b", true));
         let v = boot(&s);
-        for k in ["accs", "up", "glds", "chans", "rels", "pres", "unr", "vs", "call"] {
+        for k in ["accs", "up", "glds", "chans", "rels", "pres", "unr", "vs", "call", "folds"] {
             assert!(v.get(k).is_some(), "{k}");
         }
         assert_eq!(v["chans"].as_array().unwrap().len(), 1);

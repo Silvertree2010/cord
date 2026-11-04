@@ -3,6 +3,23 @@ use cord_core::*;
 use serde_json::Value;
 use std::collections::HashMap;
 
+pub fn folds(a: u32, b64: &str) -> Option<Vec<Fold>> {
+    use base64::Engine;
+    let b = base64::engine::general_purpose::STANDARD.decode(b64).ok()?;
+    let (fs, _) = crate::pb::folders(&b)?;
+    Some(
+        fs.into_iter()
+            .filter(|f| !f.glds.is_empty())
+            .map(|f| Fold {
+                id: f.id.map(|i| format!("dcf:{a}:{i}")),
+                name: f.name,
+                col: f.col.map(|c| c as u32),
+                glds: f.glds.iter().map(|g| rid(a, &g.to_string())).collect(),
+            })
+            .collect(),
+    )
+}
+
 pub fn sn(x: &str) -> u64 {
     x.parse().unwrap_or(0)
 }
@@ -170,6 +187,9 @@ fn ready(sh: &Sh, tx: &Tx, d: &Value) {
         s_.url = s(d, "resume_gateway_url").map(str::to_string);
     }
     let _ = tx.send(Ev::Ready(Acc { id: a, svc: Svc::Dc, me, demo: false }));
+    if let Some(l) = s(d, "user_settings_proto").and_then(|p| folds(a, p)) {
+        let _ = tx.send(Ev::Folds { acc: a, list: l });
+    }
     let _ = tx.send(Ev::Conn { acc: a, up: true });
     {
         let mut mu = sh.mu.lock();
@@ -429,6 +449,14 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
                 }
                 let _ = tx.send(Ev::Ack { chan: rid(a, c) });
                 let _ = tx.send(Ev::Unread { chan: rid(a, c), n: 0, ment });
+            }
+        }
+        "USER_SETTINGS_PROTO_UPDATE" => {
+            let st = &d["settings"];
+            if st["type"].as_u64() == Some(1) {
+                if let Some(l) = s(st, "proto").and_then(|p| folds(a, p)) {
+                    let _ = tx.send(Ev::Folds { acc: a, list: l });
+                }
             }
         }
         "GUILD_MEMBER_LIST_UPDATE" => {

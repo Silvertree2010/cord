@@ -58,6 +58,8 @@ pub enum Out {
     Sent { chan: String, ok: bool, err: String },
     Qr(String),
     QrUsr { name: String, id: String },
+    Cap { sk: String, rq: String },
+    Folds(Vec<cord_core::Fold>),
     Accs,
     AccGone { acc: u32 },
     Fs(String),
@@ -67,7 +69,7 @@ pub enum Out {
 
 #[cfg(test)]
 pub const TAGS: &[&str] = &[
-    "Acc", "Conn", "Gld", "GldDel", "Chan", "ChanDel", "Chans", "Msg", "MsgDel", "Msgs", "Typing", "PresBatch", "Rels", "Unr", "Mems", "Vs", "Speak", "Call", "Err", "Hist", "Sent", "Qr", "QrUsr",
+    "Acc", "Conn", "Gld", "GldDel", "Chan", "ChanDel", "Chans", "Msg", "MsgDel", "Msgs", "Typing", "PresBatch", "Rels", "Unr", "Mems", "Vs", "Speak", "Call", "Err", "Hist", "Sent", "Qr", "QrUsr", "Cap", "Folds",
     "Accs", "AccGone", "Fs", "Mpris", "Dm",
 ];
 
@@ -97,6 +99,8 @@ pub fn tag(o: &Out) -> &'static str {
         Out::Sent { .. } => "Sent",
         Out::Qr(_) => "Qr",
         Out::QrUsr { .. } => "QrUsr",
+        Out::Cap { .. } => "Cap",
+        Out::Folds(_) => "Folds",
         Out::Accs => "Accs",
         Out::AccGone { .. } => "AccGone",
         Out::Fs(_) => "Fs",
@@ -136,6 +140,7 @@ pub fn conv(d: Dl) -> Conv {
         Dl::Vs(v) => Out::Vs(v),
         Dl::Speak { chan, usr, on } => Out::Speak { chan, usr, on },
         Dl::Call(c) => Out::Call(c),
+        Dl::Folds(f) => Out::Folds(f),
     })
 }
 

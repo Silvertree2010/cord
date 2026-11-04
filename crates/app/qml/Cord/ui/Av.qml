@@ -87,12 +87,12 @@ Item {
         border.width: Math.max(2, r.sz * 0.07)
     }
     Badge {
-        visible: r.sv !== ""
+        visible: r.sv !== "" && S.multi && S.ui.badges !== false
         sv: r.sv
         anchors.left: parent.left
-        anchors.bottom: parent.bottom
+        anchors.top: parent.top
         anchors.margins: -2
         ring: r.ring
-        sz: Math.max(12, r.sz * 0.36)
+        sz: Math.max(10, r.sz * 0.32)
     }
 }

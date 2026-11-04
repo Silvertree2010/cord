@@ -60,6 +60,8 @@ pub mod q {
         #[qinvokable]
         fn qr_cancel(self: &Core);
         #[qinvokable]
+        fn qr_cap(self: &Core, t: &QString);
+        #[qinvokable]
         #[cxx_name = "secretOf"]
         fn secret_of(self: &Core, a: i32) -> QString;
         #[qinvokable]
@@ -530,6 +532,10 @@ impl q::Core {
 
     pub fn qr_cancel(&self) {
         accounts::qr_cancel();
+    }
+
+    pub fn qr_cap(&self, t: &QString) {
+        accounts::qr_cap(qs(t));
     }
 
     pub fn rm_acc(&self, id: i32) {

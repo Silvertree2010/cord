@@ -8,7 +8,7 @@ use rsa::{Oaep, RsaPrivateKey, pkcs8::EncodePublicKey};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::time::Duration;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::{Instant, interval_at};
 use tokio_tungstenite::{
     connect_async,
@@ -29,6 +29,7 @@ pub struct RaUsr {
 pub enum Ra {
     Qr(String),
     Usr(RaUsr),
+    Cap { sk: String, rq: String },
 }
 
 pub fn pay(s: &str) -> RaUsr {
@@ -42,7 +43,7 @@ pub fn proof(n: &[u8]) -> String {
     B64U.encode(Sha256::digest(n))
 }
 
-pub async fn login(tx: UnboundedSender<Ra>) -> Res<String> {
+pub async fn login(tx: UnboundedSender<Ra>, mut cap: UnboundedReceiver<String>) -> Res<String> {
     let k = tokio::task::spawn_blocking(|| RsaPrivateKey::new(&mut rand::rngs::OsRng, 2048)).await??;
     let der = k.to_public_key().to_public_key_der().map_err(|e| anyhow!("{e}"))?;
     let pk = B64.encode(der.as_bytes());
@@ -91,17 +92,31 @@ pub async fn login(tx: UnboundedSender<Ra>) -> Res<String> {
                 let _ = tx.send(Ra::Usr(pay(&String::from_utf8_lossy(&p))));
             }
             "pending_login" => {
-                let tk = v["ticket"].as_str().unwrap_or("");
+                let tk = v["ticket"].as_str().unwrap_or("").to_string();
                 let c = reqwest::Client::builder().user_agent(crate::rest::UA).build()?;
-                let r: Value = c
-                    .post(format!("{}/users/@me/remote-auth/login", crate::rest::API))
-                    .header("Origin", "https://discord.com")
-                    .json(&json!({"ticket": tk}))
-                    .send()
-                    .await?
-                    .error_for_status()?
-                    .json()
-                    .await?;
+                let mut hd: Option<(String, String, String)> = None;
+                let r: Value = loop {
+                    let mut q = c
+                        .post(format!("{}/users/@me/remote-auth/login", crate::rest::API))
+                        .header("Origin", "https://discord.com")
+                        .header("X-Super-Properties", crate::rest::sp())
+                        .header("X-Discord-Locale", "en-US")
+                        .json(&json!({"ticket": tk}));
+                    if let Some((k, rt, sid)) = hd.take() {
+                        q = q.header("X-Captcha-Key", k).header("X-Captcha-Rqtoken", rt).header("X-Captcha-Session-Id", sid);
+                    }
+                    let rs = q.send().await?;
+                    let st = rs.status();
+                    let tx_ = rs.text().await?;
+                    if st.is_success() {
+                        break serde_json::from_str(&tx_)?;
+                    }
+                    let b: Value = serde_json::from_str(&tx_).unwrap_or(Value::Null);
+                    let Some(sk) = b["captcha_sitekey"].as_str() else { bail!("remote-auth login {st}: {tx_}") };
+                    let _ = tx.send(Ra::Cap { sk: sk.into(), rq: b["captcha_rqdata"].as_str().unwrap_or("").into() });
+                    let k = tokio::time::timeout(Duration::from_secs(300), cap.recv()).await.map_err(|_| anyhow!("captcha timed out"))?.ok_or_else(|| anyhow!("captcha cancelled"))?;
+                    hd = Some((k, b["captcha_rqtoken"].as_str().unwrap_or("").into(), b["captcha_session_id"].as_str().unwrap_or("").into()));
+                };
                 let e = r["encrypted_token"].as_str().ok_or_else(|| anyhow!("no encrypted_token"))?;
                 return Ok(String::from_utf8(dec(e)?)?);
             }

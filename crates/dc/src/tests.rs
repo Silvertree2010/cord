@@ -170,3 +170,85 @@ fn inflate_limits() {
     assert!(i.push(&vec![1u8; 70 << 20]).is_err());
     assert!(i.push(&[1, 2, 3]).unwrap().is_none());
 }
+
+#[test]
+fn sys_and_mentions() {
+    let j = serde_json::json!({
+        "id":"1250000000000000000","channel_id":"20","content":"","timestamp":"2024-02-29T12:30:45+00:00","type":7,
+        "author":{"id":"200","username":"bob","global_name":"Bobby","discriminator":"0"},"member":{"nick":"Bobo"}
+    });
+    let m = map::msg(1, &j).unwrap();
+    assert!(m.sys && m.body.contains("Bobo"));
+    assert_eq!(m.auth.disp.as_deref(), Some("Bobo"));
+    let c = serde_json::json!({
+        "id":"5","channel_id":"20","content":"","timestamp":"2024-02-29T12:00:00+00:00","type":3,
+        "author":{"id":"200","username":"bob","discriminator":"0"},"call":{"ended_timestamp":"2024-02-29T12:05:30+00:00"}
+    });
+    assert_eq!(map::msg(1, &c).unwrap().body, "bob started a call that lasted 5 minutes.");
+    let n = serde_json::json!({
+        "id":"6","channel_id":"20","content":"hi <@300>","timestamp":"2024-02-29T12:00:00+00:00","type":0,
+        "author":{"id":"200","username":"bob","discriminator":"0"},
+        "mentions":[{"id":"300","username":"kai","global_name":"Kai","member":{"nick":"K"}}],
+        "embeds":[{"type":"gifv","url":"https://tenor.com/x","thumbnail":{"url":"https://t/a.png","proxy_url":"https://media.discordapp.net/a.png"},"video":{"url":"https://t/a.mp4","proxy_url":"https://media.discordapp.net/a.mp4"}}]
+    });
+    let m = map::msg(1, &n).unwrap();
+    assert_eq!(m.ments[0].disp.as_deref(), Some("K"));
+    assert_eq!(m.embs[0].kind.as_deref(), Some("gifv"));
+    assert_eq!(m.embs[0].vid.as_deref(), Some("https://media.discordapp.net/a.mp4"));
+    assert_eq!(m.body, "hi <@300>");
+}
+
+#[test]
+fn guild_folders_proto() {
+    fn var(mut v: u64, o: &mut Vec<u8>) {
+        loop {
+            let b = (v & 0x7f) as u8;
+            v >>= 7;
+            if v == 0 {
+                o.push(b);
+                break;
+            }
+            o.push(b | 0x80);
+        }
+    }
+    fn ld(f: u32, b: &[u8], o: &mut Vec<u8>) {
+        var(((f as u64) << 3) | 2, o);
+        var(b.len() as u64, o);
+        o.extend_from_slice(b);
+    }
+    let mut ids = vec![];
+    ids.extend_from_slice(&111u64.to_le_bytes());
+    ids.extend_from_slice(&222u64.to_le_bytes());
+    let mut idw = vec![];
+    var(1 << 3, &mut idw);
+    var(77, &mut idw);
+    let mut nmw = vec![];
+    ld(1, b"Fun", &mut nmw);
+    let mut colw = vec![];
+    var(1 << 3, &mut colw);
+    var(0x5865f2, &mut colw);
+    let mut f1 = vec![];
+    ld(1, &ids, &mut f1);
+    ld(2, &idw, &mut f1);
+    ld(3, &nmw, &mut f1);
+    ld(4, &colw, &mut f1);
+    let mut f2 = vec![];
+    ld(1, &333u64.to_le_bytes(), &mut f2);
+    let mut gf = vec![];
+    ld(1, &f1, &mut gf);
+    ld(1, &f2, &mut gf);
+    let mut root = vec![];
+    var(1 << 3, &mut root);
+    var(5, &mut root);
+    ld(14, &gf, &mut root);
+    use base64::Engine;
+    let b = base64::engine::general_purpose::STANDARD.encode(&root);
+    let l = crate::hd::folds(1, &b).unwrap();
+    assert_eq!(l.len(), 2);
+    assert_eq!(l[0].id.as_deref(), Some("dcf:1:77"));
+    assert_eq!(l[0].name.as_deref(), Some("Fun"));
+    assert_eq!(l[0].col, Some(0x5865f2));
+    assert_eq!(l[0].glds.iter().map(|g| g.raw.to_string()).collect::<Vec<_>>(), vec!["111", "222"]);
+    assert_eq!(l[1].id, None);
+    assert_eq!(l[1].glds[0].raw.as_ref(), "333");
+}
