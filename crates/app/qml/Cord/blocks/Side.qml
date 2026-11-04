@@ -226,8 +226,8 @@ Rectangle {
                     Lbl {
                         width: parent.width - 60
                         text: ch.name
-                        color: cur || (u && u.n) ? Th.tx : ma.containsMouse ? Th.tx2 : Th.tx3
-                        font.weight: u && u.n ? Font.DemiBold : Font.Medium
+                        color: cur ? Th.tx : ch.mute ? Th.a(Th.tx3, ma.containsMouse ? 0.8 : 0.5) : (u && u.n) ? Th.tx : ma.containsMouse ? Th.tx2 : Th.tx3
+                        font.weight: u && u.n && !ch.mute ? Font.DemiBold : Font.Medium
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }

@@ -110,6 +110,26 @@ fn ldg(sh: &Sh, tx: &Tx, g: &Value, pos: i64, my: Option<Vec<String>>) {
     crate::vc::guild_vs(sh, tx, &gid_s, g);
 }
 
+fn muted(x: &Value) -> bool {
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0);
+    x["muted"].as_bool() == Some(true) && s(&x["mute_config"], "end_time").and_then(ts).is_none_or(|e| e > now)
+}
+
+fn mutes(mu: &mut std::collections::HashSet<String>, e: &Value) {
+    if muted(e) {
+        if let Some(g) = s(e, "guild_id") {
+            mu.insert(g.to_string());
+        }
+    }
+    for o in arr(e, "channel_overrides") {
+        if muted(&o) {
+            if let Some(c) = s(&o, "channel_id") {
+                mu.insert(c.to_string());
+            }
+        }
+    }
+}
+
 fn refresh(sh: &Sh, tx: &Tx, gid: &str) {
     let uid = sh.me.lock().clone();
     let evs = sh.gs.lock().get(gid).map(|g| gs_evs(sh.a, g, &uid));
@@ -195,21 +215,8 @@ fn ready(sh: &Sh, tx: &Tx, d: &Value) {
     let _ = tx.send(Ev::Conn { acc: a, up: true });
     {
         let mut mu = sh.mu.lock();
-        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0);
-        let on = |x: &Value| x["muted"].as_bool() == Some(true) && s(&x["mute_config"], "end_time").and_then(ts).is_none_or(|e| e > now);
         for e in ents(&d["user_guild_settings"]) {
-            if on(&e) {
-                if let Some(g) = s(&e, "guild_id") {
-                    mu.insert(g.to_string());
-                }
-            }
-            for o in arr(&e, "channel_overrides") {
-                if on(&o) {
-                    if let Some(c) = s(&o, "channel_id") {
-                        mu.insert(c.to_string());
-                    }
-                }
-            }
+            mutes(&mut mu, &e);
         }
     }
     let mm = arr(d, "merged_members");
@@ -454,6 +461,28 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
                 }
                 let _ = tx.send(Ev::Ack { chan: rid(a, c) });
                 let _ = tx.send(Ev::Unread { chan: rid(a, c), n: 0, ment });
+            }
+        }
+        "USER_GUILD_SETTINGS_UPDATE" => {
+            let g = s(&d, "guild_id").map(str::to_string);
+            {
+                let ids: Vec<String> = g.as_ref().and_then(|g| sh.gs.lock().get(g).map(|x| x.chs.iter().filter_map(|c| s(c, "id").map(str::to_string)).collect())).unwrap_or_default();
+                let mut mu = sh.mu.lock();
+                if let Some(g) = &g {
+                    mu.remove(g);
+                }
+                for i in &ids {
+                    mu.remove(i);
+                }
+                for o in arr(&d, "channel_overrides") {
+                    if let Some(c) = s(&o, "channel_id") {
+                        mu.remove(c);
+                    }
+                }
+                mutes(&mut mu, &d);
+            }
+            if let Some(g) = g {
+                refresh(sh, tx, &g);
             }
         }
         "USER_SETTINGS_PROTO_UPDATE" => {

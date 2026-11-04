@@ -795,15 +795,21 @@ QtObject {
         if (d) { pick("home"); open(d.rid); return }
         c.open_dm(id)
     }
-    function gUnr(g) {
+    readonly property var gu: {
         void uver
-        let n = 0, m = 0
+        void ver
+        const o = {}
         for (const k in unr) {
             const ch = chans[k]
-            if (ch && ch.grid === g) { n += unr[k].n ? 1 : 0; m += unr[k].ment }
+            if (!ch || !ch.grid) continue
+            const x = o[ch.grid] || (o[ch.grid] = { n: 0, m: 0 })
+            x.n += unr[k].n ? 1 : 0
+            x.m += unr[k].ment
         }
-        return { n: n, m: m }
+        return o
     }
+    readonly property var gu0: ({ n: 0, m: 0 })
+    function gUnr(g) { return gu[g] || gu0 }
     function dmUnr() {
         void uver
         return dms().filter(x => unr[x.rid] && (unr[x.rid].n || unr[x.rid].ment))
