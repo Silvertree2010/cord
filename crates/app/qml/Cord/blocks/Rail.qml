@@ -118,8 +118,9 @@ Rectangle {
                 }
                 Rectangle {
                     anchors.fill: parent
-                    radius: Th.r * 1.4
-                    color: ft.open ? "transparent" : Th.a(row.fc, fm.containsMouse ? 0.5 : 0.35)
+                    radius: r.isz * 0.28
+                    color: ft.open ? "transparent" : Qt.tint(Th.bg3, Th.a(row.fc, fm.containsMouse ? 0.26 : 0.16))
+                    Behavior on color { ColorAnimation { duration: 120 } }
                 }
                 Ico { visible: ft.open; anchors.centerIn: parent; n: "folder"; sz: 24; col: row.fc }
                 Grid {
@@ -129,7 +130,7 @@ Rectangle {
                     spacing: 3
                     Repeater {
                         model: row.f ? modelData.gs.slice(0, 4) : []
-                        Av { sz: (ft.width - 15) / 2; src: modelData.icon || ""; name: modelData.name; sq: true }
+                        Av { sz: (ft.width - 14) / 2; src: modelData.icon || ""; name: modelData.name; sq: true; rad: sz * 0.3 }
                     }
                 }
                 Rectangle {
