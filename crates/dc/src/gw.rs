@@ -13,14 +13,14 @@ pub enum Fin {
     Fatal(String),
 }
 
-pub fn idn(tok: &str) -> Value {
+pub fn idn(tok: &str, pst: Value) -> Value {
     json!({
         "op": 2,
         "d": {
             "token": tok,
             "capabilities": 30717,
             "properties": rest::props(),
-            "presence": {"status": "online", "since": 0, "activities": [], "afk": false},
+            "presence": pst,
             "compress": false,
             "client_state": {
                 "guild_versions": {},
@@ -127,7 +127,7 @@ async fn sess(sh: &Sh, tx: &Tx) -> Res<Fin> {
                                 let (id, seq) = { let s = sh.ss.lock(); (s.id.clone(), s.seq) };
                                 let p = match id {
                                     Some(id) => json!({"op": 6, "d": {"token": sh.tok, "session_id": id, "seq": seq}}),
-                                    None => idn(&sh.tok),
+                                    None => idn(&sh.tok, sh.pst.lock().clone()),
                                 };
                                 wt.send(Message::Text(p.to_string().into())).await?;
                             }

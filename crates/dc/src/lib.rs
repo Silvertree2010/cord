@@ -45,6 +45,7 @@ pub struct Sh {
     pub ak: Mutex<HashMap<String, (String, u32)>>,
     pub mu: Mutex<HashSet<String>>,
     pub ml: Mutex<HashMap<String, Vec<MRow>>>,
+    pub pst: Mutex<Value>,
     pub ss: Mutex<Sess>,
     pub gt: Mutex<Option<tokio::sync::mpsc::UnboundedSender<String>>>,
     pub vo: vc::Vo,
@@ -83,6 +84,7 @@ impl Dc {
             ak: Default::default(),
             mu: Default::default(),
             ml: Default::default(),
+            pst: Mutex::new(json!({"status": "online", "since": 0, "activities": [], "afk": false})),
             ss: Default::default(),
             gt: Default::default(),
             vo: Default::default(),
@@ -323,7 +325,9 @@ impl Bk for Dc {
             St::Off => "invisible",
         };
         let acts: Vec<Value> = act.map(|a| vec![json!({"type": 4, "name": "Custom Status", "state": a})]).unwrap_or_default();
-        self.gsend(json!({"op": 3, "d": {"status": s, "since": 0, "activities": acts, "afk": false}}))
+        let p = json!({"status": s, "since": 0, "activities": acts, "afk": false});
+        *self.0.pst.lock() = p.clone();
+        self.gsend(json!({"op": 3, "d": p}))
     }
 }
 

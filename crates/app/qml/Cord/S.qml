@@ -161,6 +161,7 @@ QtObject {
         setup = !uiBad && (!u || !u.done)
         loadTheme()
         c.boot()
+        if (ui.st && ui.st !== "On") c.set_st(ui.st.toLowerCase(), "")
         bootSnap()
         secretBackend = c.secretBackend()
         scanMods()
