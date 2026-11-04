@@ -13,6 +13,7 @@ Rectangle {
     property bool loading: false
     property bool failed: false
     property string failMsg: ""
+    readonly property bool noAcc: failed && /50001|Missing Access/.test(failMsg)
     property string failKind: ""
     property int mark: 0
     property string markId: ""
@@ -225,6 +226,7 @@ Rectangle {
             if (!ok) {
                 r.failed = true
                 r.failMsg = err || "Could not load messages"
+                if (/50001|Missing Access/.test(r.failMsg) && r.ch && !r.ch.hidden) S.putChan(Object.assign({}, r.ch, { hidden: true }))
                 r.failKind = mr ? "old" : "head"
                 return
             }
@@ -260,7 +262,7 @@ Rectangle {
                 anchors.rightMargin: 8
                 spacing: 8
                 Ico {
-                    n: !r.ch ? "hash" : r.ch.k === "Dm" ? "at" : r.ch.k === "Grp" ? "users" : r.ch.k === "Voice" ? "voice" : "hash"
+                    n: !r.ch ? "hash" : r.ch.hidden ? "lock" : r.ch.k === "Dm" ? "at" : r.ch.k === "Grp" ? "users" : r.ch.k === "Voice" ? "voice" : "hash"
                     col: Th.tx3
                 }
                 Lbl {
@@ -320,10 +322,20 @@ Rectangle {
             }
             header: Item {
                 width: lv.width
-                height: r.failed ? 64 : r.more ? 60 : wl.implicitHeight + 40
+                height: r.noAcc ? 220 : r.failed ? 64 : r.more ? 60 : wl.implicitHeight + 40
                 BusyIndicator { anchors.centerIn: parent; running: r.loading; visible: r.more && !r.failed; width: 28; height: 28 }
+                Column {
+                    visible: r.noAcc
+                    anchors.centerIn: parent
+                    width: Math.min(lv.width - 64, 460)
+                    spacing: 8
+                    Ico { anchors.horizontalCenter: parent.horizontalCenter; n: "lock"; sz: 36; col: Th.tx3 }
+                    Lbl { anchors.horizontalCenter: parent.horizontalCenter; text: "#" + S.chName(r.cid) + " is hidden"; font.pixelSize: Th.fsL; font.weight: Font.Bold }
+                    Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "You do not have access to read messages in this channel."; color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone }
+                    Lbl { visible: !!(r.ch && r.ch.topic); width: parent.width; horizontalAlignment: Text.AlignHCenter; text: r.ch && r.ch.topic ? S.plain(r.ch.topic) : ""; color: Th.tx3; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone; maximumLineCount: 4 }
+                }
                 Row {
-                    visible: r.failed
+                    visible: r.failed && !r.noAcc
                     anchors.centerIn: parent
                     spacing: 12
                     Lbl { text: r.failMsg; color: Th.err; anchors.verticalCenter: parent.verticalCenter; width: Math.min(implicitWidth, lv.width - 140); elide: Text.ElideRight }
