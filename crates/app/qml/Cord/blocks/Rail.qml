@@ -70,14 +70,26 @@ Rectangle {
             }
             width: r.hz ? r.isz + 12 : lv.width
             height: r.hz ? lv.height : r.isz
-            Rectangle {
-                visible: !!row.inF || (!!row.f && !!S.foldOpen[row.f.id])
-                x: r.hz ? 0 : (parent.width - r.isz) / 2 - 4
-                y: r.hz ? (parent.height - r.isz) / 2 - 4 : -3
-                width: r.hz ? parent.width + lv.spacing : r.isz + 8
-                height: r.hz ? r.isz + 8 : parent.height + lv.spacing
-                color: Th.a(row.fc, 0.14)
-                radius: 0
+            Item {
+                id: strip
+                readonly property bool head: !!row.f && !!S.foldOpen[row.f.id]
+                readonly property bool tail: !!row.inF && !!modelData.last
+                readonly property real rr: (r.isz + 8) / 2
+                readonly property color fill: Qt.tint(Th.bg, Th.a(row.fc, 0.16))
+                visible: head || !!row.inF
+                x: r.hz ? (head ? 2 : 0) : (parent.width - r.isz) / 2 - 4
+                y: r.hz ? (parent.height - r.isz) / 2 - 4 : head ? -4 : -3
+                width: r.hz ? parent.width + (tail ? -2 : lv.spacing) + (head ? -2 : 0) : r.isz + 8
+                height: r.hz ? r.isz + 8 : parent.height + (tail ? 7 : lv.spacing) + (head ? 1 : 0)
+                Rectangle { anchors.fill: parent; radius: strip.head || strip.tail ? strip.rr : 0; color: strip.fill }
+                Rectangle {
+                    visible: strip.head || strip.tail
+                    color: strip.fill
+                    x: r.hz && strip.head ? strip.rr : 0
+                    y: !r.hz && strip.head ? strip.rr : 0
+                    width: r.hz ? parent.width - strip.rr : parent.width
+                    height: r.hz ? parent.height : parent.height - strip.rr
+                }
             }
             Ic {
                 visible: !!row.g
@@ -109,7 +121,7 @@ Rectangle {
                     radius: Th.r * 1.4
                     color: ft.open ? "transparent" : Th.a(row.fc, fm.containsMouse ? 0.5 : 0.35)
                 }
-                Ico { visible: ft.open; anchors.centerIn: parent; n: "layout"; sz: 22; col: row.fc }
+                Ico { visible: ft.open; anchors.centerIn: parent; n: "folder"; sz: 24; col: row.fc }
                 Grid {
                     visible: !ft.open
                     anchors.centerIn: parent

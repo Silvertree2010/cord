@@ -65,7 +65,7 @@ QtObject {
             for (const g of gs) used[g.rid] = true
             if (!f.id) { for (const g of gs) out.push({ g: g }); continue }
             out.push({ f: f, gs: gs })
-            if (foldOpen[f.id]) for (const g of gs) out.push({ g: g, inF: f })
+            if (foldOpen[f.id]) gs.forEach((g, i) => out.push({ g: g, inF: f, last: i === gs.length - 1 }))
         }
         for (const g of glds) if (!used[g.rid]) out.push({ g: g })
         return out
