@@ -29,6 +29,21 @@ function stamp(ms, f, now) {
     }
 }
 
+const KW = "if else elif for while loop do return break continue fn func function def let const var mut pub struct enum impl trait use mod match case switch default class interface extends implements new delete this self super import from export as in is not and or async await yield try catch except finally throw raise with type typeof static void int float double bool string char true false null nil None True False undefined package go defer select where"
+const KWS = {}
+for (const w of KW.split(" ")) KWS[w] = true
+
+function hl(c, l, o) {
+    if (!l || l === "txt" || l === "text" || l === "ansi") return c
+    const hash = /^(py|python|sh|bash|zsh|fish|rb|ruby|yaml|yml|toml|nix|conf|ini|dockerfile|r|perl|pl)$/i.test(l)
+    const kc = o.hk || "#c792ea", sc = o.hs || "#9ccc65", cc = o.hc || "#7f8794", nc = o.hn || "#f78c6c"
+    const sp = (col, t, it) => '<span style="color:' + col + (it ? ';font-style:italic' : '') + '">' + t + '</span>'
+    const re = hash
+        ? /(#[^\n]*)|(&quot;(?:[^&\n]|&(?!quot;))*?&quot;|'[^'\n]*')|\b(\d+(?:\.\d+)?)\b|\b([A-Za-z_]\w*)\b/g
+        : /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|(&quot;(?:[^&\n]|&(?!quot;))*?&quot;|'[^'\n]*'|`[^`]*`)|\b(\d+(?:\.\d+)?)\b|\b([A-Za-z_]\w*)\b/g
+    return c.replace(re, (m, cm, st, nu, w) => cm ? sp(cc, cm, true) : st ? sp(sc, st) : nu ? sp(nc, nu) : w && KWS[w] ? sp(kc, w) : m)
+}
+
 function inl(s, o) {
     const ac = o.ac || "#8fb3ff", cb = o.cb || "rgba(255,255,255,0.08)", mono = o.mono || "monospace", nm = o.names || {}
     const em = o.em || 22
@@ -60,7 +75,7 @@ function html(src, o) {
     let s = esc(src)
     const blocks = []
     s = s.replace(/```(\w*)\n?([\s\S]*?)```/g, (m, l, c) => {
-        blocks.push('<table width="100%" style="background:' + (o.cb || "rgba(255,255,255,0.08)") + '" cellpadding="8"><tr><td><pre style="font-family:\'' + (o.mono || "monospace") + '\'">' + c.replace(/\n$/, "") + '</pre></td></tr></table>')
+        blocks.push('<table width="100%" style="background:' + (o.cb || "rgba(255,255,255,0.08)") + '" cellpadding="8"><tr><td><pre style="font-family:\'' + (o.mono || "monospace") + '\'">' + hl(c.replace(/\n$/, ""), l, o) + '</pre></td></tr></table>')
         return "\u0001" + (blocks.length - 1) + "\u0001"
     })
     const ls = s.split("\n")

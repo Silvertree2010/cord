@@ -233,7 +233,7 @@ Item {
                     property bool spoil: S.f("spoilers")
                     text: {
                         if (r.m.body && r.m.body.indexOf(":R>") >= 0) void S.tick
-                        return r.m.sys ? F.esc(r.m.body || "") + ' <span style="color:' + Th.tx3 + ';font-size:11px;font-style:normal">' + F.time(r.m.ts || 0) + '</span>' : F.html(S.run("render", r.m).body || "", { ac: Th.ac, cb: Th.bg4, qb: Th.tx3, mono: Th.mono, sub: Th.tx3, fs: Th.fs, names: S.names, spoil: spoil, sp: Th.bg4, big: F.onlyEmoji(r.m.body), em: 22 }) + (r.m.ed ? ' <span style="color:' + Th.tx2 + ';font-size:11px">(edited)</span>' : "")
+                        return r.m.sys ? F.esc(r.m.body || "") + ' <span style="color:' + Th.tx3 + ';font-size:11px;font-style:normal">' + F.time(r.m.ts || 0) + '</span>' : F.html(S.run("render", r.m).body || "", { ac: Th.ac, cb: Th.bg4, qb: Th.tx3, mono: Th.mono, sub: Th.tx3, fs: Th.fs, names: S.names, spoil: spoil, sp: Th.bg4, big: F.onlyEmoji(r.m.body), em: 22, hk: Th.ac, hs: Th.ok, hc: Th.tx3, hn: Th.warn }) + (r.m.ed ? ' <span style="color:' + Th.tx2 + ';font-size:11px">(edited)</span>' : "")
                     }
                     onLinkActivated: l => {
                         if (l === "cord:spoil") { spoil = true; return }
