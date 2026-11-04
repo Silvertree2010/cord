@@ -865,6 +865,19 @@ QtObject {
         return x
     }
     function u2(x, r) { return u(x, acc(r)) }
+    property int tick: 0
+    property Timer tickT: Timer { interval: 30000; repeat: true; running: true; onTriggered: s.tick++ }
+    function plain(t) {
+        void nver
+        return (t || "").replace(/\n+/g, " ")
+            .replace(/<@!?(\d+)>/g, (m, i) => "@" + (names[i] || i))
+            .replace(/<@&(\d+)>/g, (m, i) => "@" + (names[i] || "role"))
+            .replace(/<#(\d+)>/g, (m, i) => "#" + (names[i] || i))
+            .replace(/<a?:(\w+):\d+>/g, ":$1:")
+            .replace(/<t:(-?\d+)(?::\w)?>/g, (m, x) => new Date(parseInt(x) * 1000).toLocaleDateString())
+            .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, "$1")
+            .replace(/(\*\*|__|~~|\|\||`)/g, "")
+    }
     function thumb(x, w, h, still) {
         if (!x || x.indexOf("cdn.discordapp.com/attachments/") < 0) return still ? "" : u(x)
         const q = "format=webp" + (w > 0 ? "&width=" + Math.round(w) : "") + (h > 0 ? "&height=" + Math.round(h) : "")

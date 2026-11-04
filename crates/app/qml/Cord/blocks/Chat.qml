@@ -271,7 +271,7 @@ Rectangle {
                 Rectangle { visible: !!(r.ch && r.ch.topic); width: 1; height: 20; color: Th.ln }
                 Lbl {
                     Layout.fillWidth: true
-                    text: r.ch && r.ch.topic ? r.ch.topic.replace(/\n/g, " ") : ""
+                    text: r.ch && r.ch.topic ? S.plain(r.ch.topic) : ""
                     color: Th.tx3
                     font.pixelSize: Th.fsS
                 }
