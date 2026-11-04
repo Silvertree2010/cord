@@ -86,13 +86,14 @@ Rectangle {
                 spacing: 8
                 width: parent.width - 28
                 Badge {
+                    id: hb
                     visible: S.multi
                     sv: S.svc(S.sel)
                     txt: true
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Lbl {
-                    width: Math.min(implicitWidth, parent.width - 30 - (S.multi ? 64 : 0) - (U.demo ? 60 : 0))
+                    width: Math.min(implicitWidth, parent.width - 24 - (hb.visible ? hb.width + 8 : 0))
                     text: r.g ? r.g.name : ""
                     font.weight: Font.DemiBold
                     font.pixelSize: Th.fs + 1
@@ -101,7 +102,7 @@ Rectangle {
                 Ico { n: "chev"; sz: 14; col: Th.tx3; anchors.verticalCenter: parent.verticalCenter }
             }
             Rectangle {
-                visible: U.demo
+                visible: false
                 anchors.right: parent.right
                 anchors.rightMargin: 14
                 anchors.verticalCenter: parent.verticalCenter
