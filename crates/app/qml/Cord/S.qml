@@ -865,6 +865,11 @@ QtObject {
         return x
     }
     function u2(x, r) { return u(x, acc(r)) }
+    function thumb(x, w, h, still) {
+        if (!x || x.indexOf("cdn.discordapp.com/attachments/") < 0) return still ? "" : u(x)
+        const q = "format=webp" + (w > 0 ? "&width=" + Math.round(w) : "") + (h > 0 ? "&height=" + Math.round(h) : "")
+        return x.replace("cdn.discordapp.com", "media.discordapp.net") + (x.indexOf("?") >= 0 ? "&" : "?") + q
+    }
     function frame(k) { void fver; return "image://cordv/" + k + "?" + (frameSeq[k] !== undefined ? frameSeq[k] : c.frameSeq(k)) }
     property Timer medT: Timer {
         interval: 2000

@@ -315,7 +315,7 @@ Item {
             property bool sp: /^SPOILER_/.test(a.name || "") && !S.f("spoilers")
             width: a.w ? a.w * k : 320
             height: a.h ? a.h * k : 200
-            source: S.u(a.url)
+            source: /\.gif($|\?)/i.test(a.url) || (a.mime || "") === "image/gif" ? S.u(a.url) : S.thumb(a.url, width * 2, height * 2, false)
             fillMode: Image.PreserveAspectFit
             asynchronous: true
             sourceSize: Qt.size(width * 2, height * 2)
@@ -337,12 +337,31 @@ Item {
     }
     Component {
         id: vidA
-        Rectangle {
-            width: 360
-            height: 56
-            radius: Th.rs
-            color: Th.bg3
+        Item {
+            id: va
+            readonly property string st: S.thumb(a.url, 0, 0, true)
+            property real k: a.w && a.h ? Math.min(1, 420 / a.w, 320 / a.h) : 1
+            width: st ? (a.w ? a.w * k : 400) : 360
+            height: st ? (a.h ? a.h * k : 225) : 56
+            Rectangle { anchors.fill: parent; radius: Th.rs; color: Th.bg3 }
+            Image {
+                visible: !!va.st
+                anchors.fill: parent
+                source: va.st ? va.st + "&width=" + Math.round(va.width * 2) + "&height=" + Math.round(va.height * 2) : ""
+                fillMode: Image.PreserveAspectFit
+                asynchronous: true
+            }
+            Rectangle {
+                visible: !!va.st
+                anchors.centerIn: parent
+                width: 52
+                height: 52
+                radius: 26
+                color: Th.a("#000000", 0.6)
+                Ico { anchors.centerIn: parent; n: "play"; sz: 24; col: "#ffffff" }
+            }
             Row {
+                visible: !va.st
                 anchors.verticalCenter: parent.verticalCenter
                 x: 12
                 spacing: 10
