@@ -5,28 +5,28 @@ QtObject {
     id: t
     property string name: "Graphite"
     property bool dark: true
-    property color bg: "#0b0c0e"
-    property color bg2: "#131518"
-    property color bg3: "#262a30"
-    property color bg4: "#30343b"
-    readonly property color bgc: dark ? Qt.lighter(bg2, 1.55) : Qt.lighter(bg2, 1.05)
-    property color hov: "#0dffffff"
-    property color sel: "#17ffffff"
-    property color ln: "#24272c"
-    property color tx: "#e7e9ec"
-    property color tx2: "#a3a8b0"
-    property color tx3: "#8a909a"
-    property color ac: "#8fb3ff"
-    property color acTx: "#0f1012"
-    property color ok: "#4fbf7f"
-    property color warn: "#a99bff"
-    property color err: "#e5605a"
-    property color ment: "#268fb3ff"
+    property color bg: "#0d0e10"
+    property color bg2: "#121316"
+    property color bgc: "#17181b"
+    property color bg3: "#1e1f23"
+    property color bg4: "#27292e"
+    property color hov: "#0affffff"
+    property color sel: "#12ffffff"
+    property color ln: "#202125"
+    property color tx: "#ededf0"
+    property color tx2: "#a3a4ab"
+    property color tx3: "#70727b"
+    property color ac: "#8b9dff"
+    property color acTx: "#0d0e10"
+    property color ok: "#3fb984"
+    property color warn: "#9d8cff"
+    property color err: "#ef5350"
+    property color ment: "#1f8b9dff"
     property color dc: "#5865f2"
     property color mx: "#2fa585"
     property color st: "#c0689f"
-    property real r: 10
-    property real rs: 6
+    property real r: 12
+    property real rs: 8
     property string font: "Inter"
     property string mono: "JetBrains Mono"
     readonly property string mod: Qt.platform.os === "osx" ? "⌘" : "Ctrl+"
@@ -78,7 +78,7 @@ QtObject {
         const h = v => "#" + v
         apply({
             name: "Caelestia", dark: j.mode !== "light",
-            bg: h(c.surfaceContainerLowest || c.background), bg2: h(c.surface), bg3: h(c.surfaceContainer), bg4: h(c.surfaceContainerHighest),
+            bg: h(c.surfaceContainerLowest || c.background), bg2: h(c.surfaceContainerLow || c.surface), bgc: h(c.surface), bg3: h(c.surfaceContainer), bg4: h(c.surfaceContainerHighest),
             ln: h(c.outlineVariant), tx: h(c.onSurface), tx2: h(c.onSurfaceVariant), tx3: h(c.outline),
             ac: h(c.primary), acTx: h(c.onPrimary), err: h(c.error), ment: a(h(c.primary), 0.15)
         })

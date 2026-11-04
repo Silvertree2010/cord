@@ -6,10 +6,10 @@ Rectangle {
     id: r
     property var o: ({})
     property bool hz: !!o.horiz
-    implicitWidth: hz ? 300 : 72
+    implicitWidth: hz ? 300 : 68
     implicitHeight: hz ? 56 : 300
-    color: Th.bg
-    readonly property real isz: Math.min(48, (hz ? height : width) - 22)
+    color: Th.bg2
+    readonly property real isz: Math.min(42, (hz ? height : width) - 24)
     readonly property real fz: r.hz ? r.isz + 24 : r.isz + 20
 
     ListView {
@@ -19,7 +19,7 @@ Rectangle {
         anchors.right: r.hz ? gear.left : parent.right
         anchors.bottom: r.hz ? parent.bottom : gear.top
         orientation: r.hz ? ListView.Horizontal : ListView.Vertical
-        spacing: 6
+        spacing: 8
         clip: true
         header: Item {
             width: r.hz ? hc.implicitWidth + 12 : lv.width
@@ -134,10 +134,11 @@ Rectangle {
                 }
                 Rectangle {
                     visible: !r.hz && !ft.open && !!row.f && modelData.gs.some(g => g.rid === S.sel)
-                    width: 3
-                    height: r.isz
-                    color: Th.ac
-                    x: -((r.width - r.isz) / 2)
+                    width: 4
+                    height: r.isz * 0.6
+                    radius: 2
+                    color: Th.tx
+                    x: -((r.width - r.isz) / 2) - 2
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Rectangle {
@@ -256,8 +257,7 @@ Rectangle {
         property int dotN: 0
         property int ment: 0
         property bool cur: S.sel === gid
-        property real rad: cur || ma.containsMouse ? r.isz * 0.3 : r.isz / 2
-        Behavior on rad { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+        readonly property real rad: r.isz * 0.28
         signal pick
         width: r.isz
         height: r.isz
@@ -269,10 +269,11 @@ Rectangle {
         onPick: S.pick(gid)
         Rectangle {
             visible: !r.hz && ic.cur
-            width: 3
-            height: r.isz
-            color: Th.ac
-            x: -((r.width - r.isz) / 2)
+            width: 4
+            height: r.isz * 0.6
+            radius: 2
+            color: Th.tx
+            x: -((r.width - r.isz) / 2) - 2
             anchors.verticalCenter: parent.verticalCenter
         }
         Rectangle {
@@ -286,7 +287,7 @@ Rectangle {
         Rectangle {
             anchors.fill: parent
             radius: ic.rad
-            color: ic.cur || ma.containsMouse ? (ic.ico !== "" ? Th.ac : Th.bg4) : Th.bg3
+            color: ic.cur ? Th.bg4 : ma.containsMouse ? Qt.lighter(Th.bg3, 1.15) : Th.bg3
             Behavior on color { ColorAnimation { duration: 120 } }
             visible: ic.ico !== "" || ic.img === ""
             Ico {
@@ -294,7 +295,7 @@ Rectangle {
                 anchors.centerIn: parent
                 n: ic.ico || "home"
                 sz: 22
-                col: ic.cur || ma.containsMouse ? Th.acTx : Th.tx
+                col: ic.cur ? Th.ac : ma.containsMouse ? Th.tx : Th.tx2
             }
             Lbl {
                 visible: ic.ico === ""
@@ -358,10 +359,11 @@ Rectangle {
         Rectangle {
             visible: !r.hz && ic.dotN > 0 && !ic.cur
             width: 4
-            height: ma.containsMouse ? 20 : 8
+            height: ma.containsMouse ? 16 : 8
             radius: 2
-            color: Th.tx
-            x: -((r.width - r.isz) / 2)
+            color: Th.tx2
+            x: -((r.width - r.isz) / 2) - 2
+            Behavior on height { NumberAnimation { duration: 120 } }
             anchors.verticalCenter: parent.verticalCenter
         }
         Rectangle {

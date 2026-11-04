@@ -14,8 +14,8 @@ Rectangle {
     property bool enter: true
     property color tc: pri ? Th.acTx : dng ? "#fff" : gh ? (ma.containsMouse ? Th.err : Th.tx2) : Th.tx
     signal clicked
-    implicitWidth: row.implicitWidth + 24
-    implicitHeight: 34 * Th.dens
+    implicitWidth: row.implicitWidth + 28
+    implicitHeight: 36 * Th.dens
     radius: Th.rs
     opacity: on ? 1 : 0.45
     activeFocusOnTab: on
@@ -24,8 +24,9 @@ Rectangle {
     Keys.onReturnPressed: e => { if (on && enter) r.clicked(); else e.accepted = false }
     Keys.onEnterPressed: e => { if (on && enter) r.clicked(); else e.accepted = false }
     Keys.onSpacePressed: if (on) r.clicked()
-    color: pri ? (ma.containsMouse ? Qt.lighter(Th.ac, 1.08) : Th.ac) : dng ? (ma.containsMouse ? Qt.lighter(Th.err, 1.1) : Th.err) : flat || out || gh ? (ma.containsMouse ? Th.hov : "transparent") : (ma.containsMouse ? Qt.lighter(Th.bg4, 1.15) : Th.bg4)
-    border.color: pri || dng || flat || gh ? "transparent" : Th.ln
+    color: pri ? (ma.pressed ? Qt.darker(Th.ac, 1.08) : ma.containsMouse ? Qt.lighter(Th.ac, 1.06) : Th.ac) : dng ? (ma.containsMouse ? Qt.lighter(Th.err, 1.08) : Th.err) : flat || gh ? (ma.containsMouse ? Th.hov : "transparent") : out ? (ma.containsMouse ? Th.hov : "transparent") : (ma.containsMouse ? Th.bg4 : Th.bg3)
+    Behavior on color { ColorAnimation { duration: 120 } }
+    border.color: out ? Th.ln : "transparent"
     border.width: 1
     Row {
         id: row

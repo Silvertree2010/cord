@@ -240,7 +240,7 @@ Rectangle {
             }
             Row {
                 id: pl
-                visible: S.f("platform") && !!rw.p
+                visible: S.f("platform") && !!rw.p && ma.containsMouse
                 anchors.right: parent.right
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter

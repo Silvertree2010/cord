@@ -53,10 +53,10 @@ Item {
                     onVisibleChanged: Qt.callLater(rl.recalc)
                     Layout.fillHeight: true
                     Layout.fillWidth: !!modelData.grow || index === rl.lastV
-                    Layout.preferredWidth: rail ? 72 : modelData.grow ? 200 : (modelData.w || (item ? item.implicitWidth : 0))
+                    Layout.preferredWidth: rail ? 68 : modelData.grow ? 200 : (modelData.w || (item ? item.implicitWidth : 0))
                     Layout.minimumWidth: modelData.grow ? 240 : 0
                     Rectangle {
-                        visible: index > 0 && parent.visible && parent.width > 0
+                        visible: S.edit && index > 0 && parent.visible && parent.width > 0
                         width: 1
                         height: parent.height
                         color: Th.ln

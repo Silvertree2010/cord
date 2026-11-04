@@ -6,8 +6,8 @@ Item {
     property bool on: false
     property string label: ""
     signal toggled(bool v)
-    implicitWidth: 32
-    implicitHeight: 18
+    implicitWidth: 36
+    implicitHeight: 20
     activeFocusOnTab: true
     Accessible.role: Accessible.CheckBox
     Accessible.name: label
@@ -18,14 +18,16 @@ Item {
         anchors.fill: parent
         radius: height / 2
         color: r.on ? Th.ac : Th.bg4
+        border.color: r.on ? "transparent" : Th.ln
+        border.width: 1
         Behavior on color { ColorAnimation { duration: S.f("anim") ? 120 : 0 } }
         Rectangle {
-            width: 12
-            height: 12
-            radius: 6
+            width: 14
+            height: 14
+            radius: 7
             y: 3
             x: r.on ? parent.width - width - 3 : 3
-            color: r.on ? Th.acTx : Th.tx2
+            color: r.on ? "#ffffff" : Th.tx2
             Behavior on x { NumberAnimation { duration: S.f("anim") ? 120 : 0; easing.type: Easing.OutCubic } }
         }
     }

@@ -12,7 +12,7 @@ ApplicationWindow {
     minimumHeight: 480
     visible: true
     title: S.selC ? S.chName(S.selC) + " - cord" : "cord"
-    color: Th.bg
+    color: Th.bg2
     font.family: Th.font
     font.pixelSize: Th.fs
 

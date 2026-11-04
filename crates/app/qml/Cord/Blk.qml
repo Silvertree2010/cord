@@ -14,13 +14,33 @@ Item {
     property bool canRm: !(r.n.b === "chat" && U.cnt("chat") <= 1)
     visible: shown
     clip: !S.edit
+    readonly property bool card: !S.edit && ["chat", "mems", "inbox", "stage"].indexOf(r.n.b) >= 0
+    readonly property real gap: card ? 8 : 0
+    Rectangle {
+        visible: r.card
+        anchors.fill: parent
+        color: Th.bg2
+    }
+    Rectangle {
+        visible: r.card
+        anchors.fill: ld
+        radius: Th.r
+        color: Th.bgc
+        border.color: Th.ln
+        border.width: 1
+    }
 
     Loader {
         id: ld
         anchors.fill: parent
-        anchors.topMargin: S.edit ? r.strip : 0
+        anchors.topMargin: S.edit ? r.strip : r.gap
+        anchors.bottomMargin: r.gap
+        anchors.rightMargin: r.gap
         source: S.blkUrl(r.n.b)
-        onLoaded: { if (item && "o" in item) item.o = r.n.o || {} }
+        onLoaded: {
+            if (item && "o" in item) item.o = r.n.o || {}
+            if (item && r.card && "color" in item) item.color = "transparent"
+        }
         onStatusChanged: if (status === Loader.Error) console.warn("block failed:", r.n.b)
     }
 
