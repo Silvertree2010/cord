@@ -11,7 +11,7 @@ pub fn esc(s: &str) -> String {
 
 pub fn copy(t: String) {
     std::thread::spawn(move || {
-        let tools: [(&str, &[&str]); 3] = [("wl-copy", &[]), ("xclip", &["-selection", "clipboard"]), ("xsel", &["--clipboard", "--input"])];
+        let tools: [(&str, &[&str]); 4] = [("pbcopy", &[]), ("wl-copy", &[]), ("xclip", &["-selection", "clipboard"]), ("xsel", &["--clipboard", "--input"])];
         for (c, a) in tools {
             let Ok(mut ch) = Command::new(c).args(a).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).spawn() else { continue };
             if let Some(mut i) = ch.stdin.take() {
@@ -45,11 +45,34 @@ pub fn media_cmd(cmd: &str) {
         _ => "play-pause",
     };
     std::thread::spawn(move || {
-        if let Ok(mut ch) = Command::new("playerctl").arg(c).stdout(Stdio::null()).stderr(Stdio::null()).spawn() {
+        let r = if cfg!(target_os = "macos") {
+            let a = match c {
+                "previous" => "previous track",
+                "next" => "next track",
+                _ => "playpause",
+            };
+            Command::new("osascript").args(["-e", &format!("if application \"Spotify\" is running then tell application \"Spotify\" to {a}")]).stdout(Stdio::null()).stderr(Stdio::null()).spawn()
+        } else {
+            Command::new("playerctl").arg(c).stdout(Stdio::null()).stderr(Stdio::null()).spawn()
+        };
+        if let Ok(mut ch) = r {
             let _ = ch.wait();
         }
     });
 }
+
+const SPOT: &str = r#"if application "Spotify" is running then
+tell application "Spotify"
+if player state is stopped then return ""
+set t to current track
+set s to "Paused"
+if player state is playing then set s to "Playing"
+set d to ASCII character 31
+return s & d & (name of t) & d & (artist of t) & d & (artwork url of t) & d & (spotify url of t) & d & ((round (player position * 1000000)) as integer) & d & ((duration of t) * 1000)
+end tell
+end if
+return ""
+"#;
 
 static BUSY: AtomicBool = AtomicBool::new(false);
 
@@ -67,10 +90,14 @@ pub fn mpris(done: impl FnOnce(Option<Mp>) + Send + 'static) {
         return;
     }
     std::thread::spawn(move || {
-        let o = Command::new("playerctl")
-            .args(["metadata", "--format", "{{status}}\u{1f}{{title}}\u{1f}{{artist}}\u{1f}{{mpris:artUrl}}\u{1f}{{xesam:url}}\u{1f}{{position}}\u{1f}{{mpris:length}}"])
-            .stderr(Stdio::null())
-            .output();
+        let o = if cfg!(target_os = "macos") {
+            Command::new("osascript").args(["-e", SPOT]).stderr(Stdio::null()).output()
+        } else {
+            Command::new("playerctl")
+                .args(["metadata", "--format", "{{status}}\u{1f}{{title}}\u{1f}{{artist}}\u{1f}{{mpris:artUrl}}\u{1f}{{xesam:url}}\u{1f}{{position}}\u{1f}{{mpris:length}}"])
+                .stderr(Stdio::null())
+                .output()
+        };
         BUSY.store(false, Ordering::SeqCst);
         let r = o.ok().and_then(|o| parse_mpris(&String::from_utf8_lossy(&o.stdout)));
         done(r);

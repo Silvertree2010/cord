@@ -700,6 +700,9 @@ mod tests {
             hist: vec![],
             ments: vec![],
             aroles: vec![],
+            fwd: false,
+            rq: None,
+            rqb: String::new(),
         }
     }
 

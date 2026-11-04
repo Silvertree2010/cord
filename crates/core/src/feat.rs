@@ -23,7 +23,7 @@ pub const FEATS: &[Feat] = &[
     Feat { k: "spoilers", on: false, n: "Reveal spoilers", d: "Show spoiler text without clicking" },
     Feat { k: "notrack", on: true, n: "Block tracking", d: "Refuse to send any Discord /science or /track analytics request" },
     Feat { k: "translate", on: true, n: "Translate", d: "Translate messages from the context menu" },
-    Feat { k: "spotify", on: true, n: "Media controls", d: "Player bar for Spotify and other MPRIS players" },
+    Feat { k: "spotify", on: true, n: "Media controls", d: "Player bar for Spotify (MPRIS players on Linux)" },
     Feat { k: "relnotif", on: true, n: "Relationship notifier", d: "Tell you when someone removes you as a friend or a server removes you" },
     Feat { k: "typingtweaks", on: true, n: "Typing indicators everywhere", d: "Show who types in the channel list and server bar" },
     Feat { k: "callTimer", on: true, n: "Call timer", d: "Show how long you are in a call" },

@@ -288,7 +288,7 @@ ApplicationWindow {
 
     Item {
         focus: true
-        Keys.onPressed: e => { if (e.key === Qt.Key_QuoteLeft && (e.modifiers & Qt.ControlModifier) && !e.isAutoRepeat) S.c.ptt(true) }
+        Keys.onPressed: e => { if (e.key === Qt.Key_QuoteLeft && (e.modifiers & (Qt.platform.os === "osx" ? Qt.MetaModifier : Qt.ControlModifier)) && !e.isAutoRepeat) S.c.ptt(true) }
         Keys.onReleased: e => { if (e.key === Qt.Key_QuoteLeft && !e.isAutoRepeat) S.c.ptt(false) }
     }
     Shortcut { sequence: "Ctrl+K"; context: Qt.ApplicationShortcut; onActivated: { if (!S.setup) S.qk = !S.qk } }

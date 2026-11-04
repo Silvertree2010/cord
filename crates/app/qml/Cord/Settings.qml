@@ -393,7 +393,7 @@ Rectangle {
         Column {
             spacing: 8
             Opt { t: "Noise suppression"; d: "Filter background noise from your microphone"; on: S.ui.ns !== false; onTog: v => { S.setUi("ns", v); S.c.cset("voice.json", JSON.stringify({ ns: v, vad: S.ui.vad || -50, ptt: !!S.ui.ptt })) } }
-            Opt { t: "Push to talk"; d: "Only send audio while the key is held (Ctrl+`)"; on: !!S.ui.ptt; onTog: v => { S.setUi("ptt", v); S.c.cset("voice.json", JSON.stringify({ ns: S.ui.ns !== false, vad: S.ui.vad || -50, ptt: v })) } }
+            Opt { t: "Push to talk"; d: "Only send audio while the key is held (" + (Qt.platform.os === "osx" ? "⌃`" : "Ctrl+`") + ", while cord is focused)"; on: !!S.ui.ptt; onTog: v => { S.setUi("ptt", v); S.c.cset("voice.json", JSON.stringify({ ns: S.ui.ns !== false, vad: S.ui.vad || -50, ptt: v })) } }
             Sub { text: "Input sensitivity" }
             Sld {
                 width: parent.width
@@ -418,7 +418,7 @@ Rectangle {
                     Seg { opts: [["30", "30"], ["60", "60"], ["120", "120"], ["144", "144"]]; cur: String(S.ui.sfps || 60); onPick: v => S.setUi("sfps", parseInt(v)) }
                 }
             }
-            Opt { t: "Share audio"; d: "Send application and system audio with your stream"; on: S.ui.ssnd !== false; onTog: v => S.setUi("ssnd", v) }
+            Opt { t: "Share audio"; d: Qt.platform.os === "osx" ? "System audio capture is not available on macOS yet" : "Send application and system audio with your stream"; enabled: Qt.platform.os !== "osx"; opacity: enabled ? 1 : 0.5; on: Qt.platform.os !== "osx" && S.ui.ssnd !== false; onTog: v => S.setUi("ssnd", v) }
             Lbl { visible: !S.f("streamq"); text: "Turn on Stream quality unlock in Features to go above 720p30."; color: Th.tx2; font.pixelSize: Th.fsS }
         }
     }

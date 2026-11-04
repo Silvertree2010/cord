@@ -261,3 +261,33 @@ fn activity_text() {
     assert_eq!(p(serde_json::json!([{"type":2,"name":"Spotify"}])), Some("Listening to Spotify".into()));
     assert_eq!(p(serde_json::json!([{"type":4,"name":"Custom Status","state":"hi","emoji":{"id":"5","name":"pog"}}])), Some("hi".into()));
 }
+
+#[test]
+fn forward_poll_reply() {
+    let f = serde_json::json!({
+        "id":"7","channel_id":"20","content":"","timestamp":"2024-02-29T12:00:00+00:00","type":0,
+        "author":{"id":"200","username":"bob","discriminator":"0"},
+        "message_reference":{"type":1,"message_id":"3","channel_id":"9"},
+        "message_snapshots":[{"message":{"content":"look","attachments":[{"url":"http://a/x.png","filename":"x.png","size":1}],"embeds":[]}}]
+    });
+    let m = map::msg(1, &f).unwrap();
+    assert!(m.fwd && m.reply.is_none());
+    assert_eq!(m.body, "look");
+    assert_eq!(m.atts.len(), 1);
+    let p = serde_json::json!({
+        "id":"8","channel_id":"20","content":"","timestamp":"2024-02-29T12:00:00+00:00","type":0,
+        "author":{"id":"200","username":"bob","discriminator":"0"},
+        "poll":{"question":{"text":"Pizza?"},"answers":[{"poll_media":{"text":"yes"}},{"poll_media":{"text":"no","emoji":{"name":"🍕"}}}]}
+    });
+    assert_eq!(map::msg(1, &p).unwrap().body, "**Pizza?**\n- yes\n- 🍕 no");
+    let r = serde_json::json!({
+        "id":"9","channel_id":"20","content":"ok","timestamp":"2024-02-29T12:00:00+00:00","type":19,
+        "author":{"id":"200","username":"bob","discriminator":"0"},
+        "message_reference":{"message_id":"4"},
+        "referenced_message":{"id":"4","content":"orig","author":{"id":"300","username":"kai","discriminator":"0"}}
+    });
+    let m = map::msg(1, &r).unwrap();
+    assert_eq!(m.reply.unwrap().raw.as_ref(), "4");
+    assert_eq!(m.rqb, "orig");
+    assert_eq!(m.rq.unwrap().name, "kai");
+}

@@ -111,6 +111,17 @@ fn shown(v: &Value) -> String {
         .to_string()
 }
 
+pub fn poll_txt(v: &Value) -> Option<String> {
+    let p = v.get("poll")?;
+    let q = s(&p["question"], "text").unwrap_or("Poll");
+    let mut o = format!("**{q}**");
+    for x in p.get("answers").and_then(|a| a.as_array()).into_iter().flatten() {
+        let e = s(&x["poll_media"]["emoji"], "name").map(|e| format!("{e} ")).unwrap_or_default();
+        o.push_str(&format!("\n- {e}{}", s(&x["poll_media"], "text").unwrap_or("")));
+    }
+    Some(o)
+}
+
 pub fn sys_txt(t: u64, v: &Value) -> Option<String> {
     let a = v.get("member").and_then(|m| s(m, "nick")).filter(|n| !n.is_empty()).map(str::to_string).unwrap_or_else(|| v.get("author").map(shown).unwrap_or_else(|| "Someone".into()));
     let c = s(v, "content").unwrap_or("");
@@ -317,6 +328,9 @@ pub fn msg_p(a: u32, v: &Value, need: bool) -> Option<Msg> {
     let au = &au;
     let arr = |k: &str| v.get(k).and_then(|x| x.as_array()).cloned().unwrap_or_default();
     let t = v["type"].as_u64().unwrap_or(0);
+    let fwd = v["message_reference"]["type"].as_u64() == Some(1);
+    let snap = v.get("message_snapshots").and_then(|x| x.as_array()).and_then(|x| x.first()).and_then(|x| x.get("message")).filter(|_| fwd).unwrap_or(v);
+    let sarr = |k: &str| snap.get(k).and_then(|x| x.as_array()).cloned().unwrap_or_default();
     Some(Msg {
         id: rid(a, s(v, "id")?),
         chan: rid(a, s(v, "channel_id")?),
@@ -329,22 +343,28 @@ pub fn msg_p(a: u32, v: &Value, need: bool) -> Option<Msg> {
             }
             u
         },
-        body: sys_txt(t, v).unwrap_or_else(|| s(v, "content").unwrap_or("").to_string()),
+        body: sys_txt(t, v).unwrap_or_else(|| {
+            let b = s(snap, "content").unwrap_or("");
+            if b.is_empty() { poll_txt(v).unwrap_or_default() } else { b.to_string() }
+        }),
         ts: s(v, "timestamp").and_then(ts).unwrap_or(0),
         ed: s(v, "edited_timestamp").and_then(ts),
-        atts: arr("attachments").iter().map(att).collect(),
-        embs: arr("embeds").iter().map(emb).collect(),
+        atts: sarr("attachments").iter().map(att).collect(),
+        embs: sarr("embeds").iter().map(emb).collect(),
         reacts: arr("reactions")
             .iter()
             .map(|r| React { emo: emo(a, &r["emoji"]), n: r["count"].as_u64().unwrap_or(0) as u32, me: r["me"].as_bool().unwrap_or(false) })
             .collect(),
-        reply: v.get("message_reference").and_then(|r| s(r, "message_id")).map(|m| rid(a, m)),
+        reply: if fwd { None } else { v.get("message_reference").and_then(|r| s(r, "message_id")).map(|m| rid(a, m)) },
         stks: arr("sticker_items").iter().map(stk).collect(),
         pin: v["pinned"].as_bool().unwrap_or(false),
         sys: !matches!(t, 0 | 19 | 20 | 21 | 23),
         del: false,
         hist: vec![],
         ments: arr("mentions").iter().map(|x| mem_usr(a, x)).collect(),
+        fwd,
+        rq: v.get("referenced_message").and_then(|r| r.get("author")).filter(|_| !fwd).map(|u| usr(a, u)),
+        rqb: v.get("referenced_message").and_then(|r| s(r, "content")).filter(|_| !fwd).unwrap_or("").to_string(),
         aroles: v.get("member").and_then(|m| m.get("roles")).and_then(|r| r.as_array()).map(|r| r.iter().filter_map(|x| x.as_str()).map(|x| rid(a, x)).collect()).unwrap_or_default(),
     })
 }

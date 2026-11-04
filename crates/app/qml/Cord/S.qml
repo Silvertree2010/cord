@@ -129,6 +129,7 @@ QtObject {
     }
 
     function pj(txt, d) {
+        if (txt === undefined || txt === null || txt === "") return d
         try {
             const v = JSON.parse(txt)
             return v === null || v === undefined ? d : v
@@ -208,7 +209,7 @@ QtObject {
     function themes() {
         const b = pj(c.ls("themes", "json"), [])
         const q = c.qml() + "/Cord/themes/"
-        return ["graphite", "paper", "mono", "caelestia"].map(n => ({ id: n, path: n === "caelestia" ? "" : q + n + ".json", user: false }))
+        return ["graphite", "paper", "mono"].concat(c.scheme() ? ["caelestia"] : []).map(n => ({ id: n, path: n === "caelestia" ? "" : q + n + ".json", user: false }))
             .concat(b.map(p => ({ id: p.split("/").pop().replace(".json", ""), path: p, user: true })))
     }
     function loadTheme() {
@@ -849,7 +850,7 @@ QtObject {
     property var media: null
     function goLive() {
         const h = ui.sh || 1080
-        const q = f("streamq") ? { w: Math.round(h * 16 / 9), h: h, fps: ui.sfps || 60, kbps: h >= 1440 ? 16000 : 8000, snd: ui.ssnd !== false } : { w: 1280, h: 720, fps: 30, kbps: 4000, snd: ui.ssnd !== false }
+        const q = f("streamq") ? { w: Math.round(h * 16 / 9), h: h, fps: ui.sfps || 60, kbps: h >= 1440 ? 16000 : 8000, snd: ui.ssnd !== false && Qt.platform.os !== "osx" } : { w: 1280, h: 720, fps: 30, kbps: 4000, snd: ui.ssnd !== false && Qt.platform.os !== "osx" }
         c.golive(true, JSON.stringify(q))
     }
     function u(x, a) {

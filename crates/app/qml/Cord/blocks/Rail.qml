@@ -146,8 +146,8 @@ Rectangle {
                     border.color: Th.bg
                     border.width: 2
                     anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.margins: -4
+                    anchors.top: parent.top
+                    anchors.margins: -5
                     Lbl { id: fmt; anchors.centerIn: parent; text: ft.un.m > 99 ? "99+" : ft.un.m; color: "#fff"; font.pixelSize: 10; font.weight: Font.Bold }
                 }
                 MouseArea { id: fm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.toggleFold(row.f.id) }

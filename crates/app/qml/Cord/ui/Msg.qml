@@ -197,6 +197,18 @@ Item {
                 width: parent.width - r.gut - 24
                 spacing: 6
 
+                Row {
+                    visible: !!r.m.fwd
+                    spacing: 6
+                    Ico {
+                        n: "reply"
+                        sz: 13
+                        col: Th.tx3
+                        anchors.verticalCenter: parent.verticalCenter
+                        transform: Scale { xScale: -1; origin.x: 6.5 }
+                    }
+                    Lbl { text: "Forwarded"; color: Th.tx3; font.pixelSize: Th.fsS; font.italic: true; anchors.verticalCenter: parent.verticalCenter }
+                }
                 TextEdit {
                     id: tx
                     width: parent.width

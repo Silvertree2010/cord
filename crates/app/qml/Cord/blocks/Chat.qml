@@ -349,7 +349,7 @@ Rectangle {
                 day: x_ ? x_.d : false
                 nw: !!x_ && x_.d && x_.mid === r.markId
                 cid: r.cid
-                rep: m.reply ? r.find(S.ridOf(m.reply)) : null
+                rep: m.reply ? (r.find(S.ridOf(m.reply)) || (m.rq ? { auth: m.rq, body: m.rqb || "" } : null)) : null
                 onJump: id => { const i = r.idx(id); if (i >= 0) lv.positionViewAtIndex(i, ListView.Center) }
             }
             onContentYChanged: {

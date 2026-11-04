@@ -160,6 +160,12 @@ pub struct Msg {
     pub ments: Vec<Usr>,
     #[serde(default)]
     pub aroles: Vec<Rid>,
+    #[serde(default)]
+    pub fwd: bool,
+    #[serde(default)]
+    pub rq: Option<Usr>,
+    #[serde(default)]
+    pub rqb: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

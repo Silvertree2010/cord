@@ -66,6 +66,8 @@ impl Bk for Stub {
     }
 }
 
+static FL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 fn rid(r: &str) -> Rid {
     Rid::new(Svc::Dc, 1, r)
 }
@@ -89,6 +91,9 @@ fn msg(id: &str, ts: i64, body: &str) -> Msg {
         hist: vec![],
         ments: vec![],
         aroles: vec![],
+        fwd: false,
+        rq: None,
+        rqb: String::new(),
     }
 }
 
@@ -108,6 +113,7 @@ fn tmp(n: &str) -> std::path::PathBuf {
 
 #[tokio::test]
 async fn noread_and_silenttyping_skip_backend() {
+    let _g = FL.lock().await;
     let h = Hub::new(Arc::new(|_| {}), None);
     let b = Stub::new();
     h.bks.write().await.insert(1, b.clone());
@@ -135,6 +141,7 @@ async fn noread_and_silenttyping_skip_backend() {
 
 #[tokio::test]
 async fn ack_without_unread_is_noop() {
+    let _g = FL.lock().await;
     let h = Hub::new(Arc::new(|_| {}), None);
     let b = Stub::new();
     h.bks.write().await.insert(1, b.clone());
@@ -145,6 +152,7 @@ async fn ack_without_unread_is_noop() {
 
 #[tokio::test]
 async fn remove_drops_queued_and_late_events() {
+    let _g = FL.lock().await;
     let seen = Arc::new(Mutex::new(0usize));
     let s2 = seen.clone();
     let h = Hub::new(Arc::new(move |_| *s2.lock().unwrap() += 1), None);
@@ -174,6 +182,7 @@ async fn remove_drops_queued_and_late_events() {
 
 #[tokio::test]
 async fn start_failure_unregisters_backend() {
+    let _g = FL.lock().await;
     let h = Hub::new(Arc::new(|_| {}), None);
     let b = Arc::new(Stub { acks: AtomicU32::new(0), typs: AtomicU32::new(0), hists: AtomicU32::new(0), fail: true, tx: Mutex::new(None), ret: Mutex::new(vec![]) });
     assert!(h.add(b.clone()).await.is_err());
@@ -187,6 +196,7 @@ async fn start_failure_unregisters_backend() {
 
 #[tokio::test]
 async fn hist_is_coalesced_and_synced() {
+    let _g = FL.lock().await;
     let h = Hub::new(Arc::new(|_| {}), None);
     let b = Stub::new();
     *b.ret.lock().unwrap() = vec![msg("1", 1, "a"), msg("2", 2, "b")];
@@ -210,6 +220,7 @@ async fn hist_is_coalesced_and_synced() {
 
 #[tokio::test]
 async fn cache_edit_while_offline_server_wins() {
+    let _g = FL.lock().await;
     let p = tmp("edit");
     let store = Arc::new(Store::open(&p).unwrap());
     {
@@ -243,6 +254,7 @@ async fn cache_edit_while_offline_server_wins() {
 
 #[tokio::test]
 async fn cache_gap_replaces_window_and_offline_delete_drops() {
+    let _g = FL.lock().await;
     let p = tmp("gap");
     let store = Arc::new(Store::open(&p).unwrap());
     {
@@ -291,6 +303,7 @@ async fn cache_gap_replaces_window_and_offline_delete_drops() {
 
 #[tokio::test]
 async fn deletes_write_through_without_memory_and_chandel_purges() {
+    let _g = FL.lock().await;
     let p = tmp("del");
     let store = Arc::new(Store::open(&p).unwrap());
     {
@@ -319,6 +332,7 @@ async fn deletes_write_through_without_memory_and_chandel_purges() {
 
 #[tokio::test]
 async fn encrypted_rooms_are_not_cached() {
+    let _g = FL.lock().await;
     let p = tmp("enc");
     let store = Arc::new(Store::open(&p).unwrap());
     let h = Hub::new(Arc::new(|_| {}), Some(store.clone()));
@@ -334,6 +348,7 @@ async fn encrypted_rooms_are_not_cached() {
 
 #[tokio::test]
 async fn message_logger_restores_after_restart() {
+    let _g = FL.lock().await;
     let p = tmp("logs");
     let store = Arc::new(Store::open(&p).unwrap());
     {
@@ -400,6 +415,7 @@ impl Bk for DemoStub {
 
 #[tokio::test]
 async fn demo_accounts_are_never_cached() {
+    let _g = FL.lock().await;
     let p = tmp("demo");
     let store = Arc::new(Store::open(&p).unwrap());
     let h = Hub::new(Arc::new(|_| {}), Some(store.clone()));
@@ -414,6 +430,7 @@ async fn demo_accounts_are_never_cached() {
 
 #[tokio::test]
 async fn live_msg_clears_del_and_empty_head_fetch_is_authoritative() {
+    let _g = FL.lock().await;
     let h = Hub::new(Arc::new(|_| {}), None);
     let b = Stub::new();
     h.add(b.clone()).await.unwrap();
@@ -438,6 +455,7 @@ async fn live_msg_clears_del_and_empty_head_fetch_is_authoritative() {
 
 #[tokio::test]
 async fn ack_sends_local_only_after_server_ack() {
+    let _g = FL.lock().await;
     feat::set("noread", false);
     let h = Hub::new(Arc::new(|_| {}), None);
     let b = Stub::new();
@@ -463,6 +481,7 @@ async fn ack_sends_local_only_after_server_ack() {
 
 #[tokio::test]
 async fn deltas_carry_monotonic_seq() {
+    let _g = FL.lock().await;
     let seen = Arc::new(Mutex::new(vec![]));
     let s2 = seen.clone();
     let h = Hub::new(Arc::new(move |d: Sd| s2.lock().unwrap().push(d.seq)), None);

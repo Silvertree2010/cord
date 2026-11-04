@@ -318,6 +318,9 @@ pub fn msg(cx: &Cx, lk: &Lk, m: &w::Message, u: &w::User) -> Msg {
         hist: vec![],
         ments: vec![],
         aroles: vec![],
+        fwd: false,
+        rq: None,
+        rqb: String::new(),
     }
 }
 

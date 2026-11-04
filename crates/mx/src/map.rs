@@ -193,6 +193,9 @@ fn base(cx: &Cx, room: &str, id: &str, ts: i64, auth: Usr) -> Msg {
         hist: vec![],
         ments: vec![],
         aroles: vec![],
+        fwd: false,
+        rq: None,
+        rqb: String::new(),
     }
 }
 
