@@ -48,16 +48,23 @@ Rectangle {
             clip: true
             model: r.items
             ScrollBar.vertical: Scr {}
-            delegate: Rectangle {
+            delegate: Item {
                 width: lv.width
                 height: 56
+                Rectangle {
+                width: Math.min(lv.width - 24, 760)
+                x: (lv.width - width) / 2
+                height: 56
+                radius: Th.rs
                 color: ma.containsMouse ? Th.hov : "transparent"
+                Behavior on color { ColorAnimation { duration: 90 } }
                 Av {
                     id: av
                     x: 12
                     anchors.verticalCenter: parent.verticalCenter
                     sz: 32
                     sq: !!modelData.c.grid
+                    rad: modelData.c.grid ? sz * 0.28 : -1
                     src: modelData.c.grid && S.gmap[modelData.c.grid] ? (S.gmap[modelData.c.grid].icon || "") : modelData.c.rcp && modelData.c.rcp[0] ? (modelData.c.rcp[0].av || "") : ""
                     name: modelData.c.grid && S.gmap[modelData.c.grid] ? S.gmap[modelData.c.grid].name : S.chName(modelData.c.rid)
                     sv: S.svc(modelData.c.rid)
@@ -69,17 +76,28 @@ Rectangle {
                     anchors.rightMargin: 40
                     anchors.verticalCenter: parent.verticalCenter
                     Lbl { width: parent.width; text: (modelData.c.grid ? "#" : "@") + S.chName(modelData.c.rid); font.weight: Font.DemiBold }
-                    Lbl { width: parent.width; text: modelData.c.grid && S.gmap[modelData.c.grid] ? S.gmap[modelData.c.grid].name : "Direct message"; color: Th.tx3; font.pixelSize: 11 }
+                    Lbl { width: parent.width; text: modelData.c.grid && S.gmap[modelData.c.grid] ? S.gmap[modelData.c.grid].name : "Direct message"; color: Th.tx3; font.pixelSize: Th.fsS - 1 }
                 }
-                Lbl {
+                Rectangle {
                     visible: modelData.u.ment > 0
                     anchors.right: parent.right
                     anchors.rightMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
-                    text: modelData.u.ment
-                    color: Th.tx3
-                    font.pixelSize: Th.fsS
-                    font.weight: Font.DemiBold
+                    height: 18
+                    width: Math.max(18, ibn.implicitWidth + 10)
+                    radius: 9
+                    color: Th.mr
+                    Lbl { id: ibn; anchors.centerIn: parent; text: modelData.u.ment > 99 ? "99+" : modelData.u.ment; color: "#fff"; font.pixelSize: 11; font.weight: Font.Bold }
+                }
+                Rectangle {
+                    visible: modelData.u.ment === 0 && modelData.u.n > 0
+                    anchors.right: parent.right
+                    anchors.rightMargin: 18
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 8
+                    height: 8
+                    radius: 4
+                    color: Th.tx2
                 }
                 MouseArea {
                     id: ma
@@ -88,6 +106,7 @@ Rectangle {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: { S.sel = modelData.c.grid || "home"; S.open(modelData.c.rid, S.hasBlk("inbox") && S.lay && JSON.stringify(S.lay).indexOf('"slot":1') >= 0 ? 1 : 0) }
                 }
+            }
             }
             Column {
                 anchors.centerIn: parent
