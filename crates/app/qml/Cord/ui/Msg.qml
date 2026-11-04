@@ -265,7 +265,28 @@ Item {
                 }
                 Repeater {
                     model: r.m.stks || []
-                    Image { source: modelData.url; width: 160; height: 160; fillMode: Image.PreserveAspectFit; asynchronous: true }
+                    Item {
+                        width: 160
+                        height: 160
+                        readonly property bool lot: (modelData.mime || "") === "application/json"
+                        readonly property bool gif: (modelData.mime || "") === "image/gif"
+                        AnimatedImage { visible: parent.gif; anchors.fill: parent; source: parent.gif ? modelData.url : ""; fillMode: Image.PreserveAspectFit; asynchronous: true }
+                        Image { id: sti; visible: !parent.lot && !parent.gif; anchors.fill: parent; source: !parent.lot && !parent.gif ? modelData.url : ""; fillMode: Image.PreserveAspectFit; asynchronous: true }
+                        Rectangle {
+                            visible: parent.lot || sti.status === Image.Error
+                            anchors.fill: parent
+                            radius: Th.r
+                            color: Th.bg3
+                            border.color: Th.ln
+                            Column {
+                                anchors.centerIn: parent
+                                width: parent.width - 20
+                                spacing: 6
+                                Ico { anchors.horizontalCenter: parent.horizontalCenter; n: "smile"; sz: 28; col: Th.tx3 }
+                                Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: modelData.name || "Sticker"; color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone; maximumLineCount: 2 }
+                            }
+                        }
+                    }
                 }
                 Repeater {
                     model: r.m.embs || []

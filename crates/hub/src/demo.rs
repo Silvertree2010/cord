@@ -75,7 +75,7 @@ impl Demo {
                 vec![]
             },
             reply: None,
-            stks: vec![],
+            stks: if i % 8 == 4 { vec![Att { url: "https://media.discordapp.net/stickers/1.json".into(), name: "Wave".into(), mime: Some("application/json".into()), size: 0, w: Some(160), h: Some(160) }] } else { vec![] },
             pin: false,
             sys: false,
             del: false,
