@@ -260,7 +260,7 @@ Item {
                     model: r.m.atts || []
                     Loader {
                         property var a: modelData
-                        sourceComponent: (a.mime || "").startsWith("image/") || /\.(png|jpe?g|gif|webp)$/i.test(a.name) ? imgA : (a.mime || "").startsWith("video/") || /\.(mp4|webm|mov)$/i.test(a.name) ? vidA : fileA
+                        sourceComponent: (a.mime || "").startsWith("image/") || /\.(png|jpe?g|gif|webp)$/i.test(a.name) ? imgA : (a.mime || "").startsWith("video/") || /\.(mp4|webm|mov)$/i.test(a.name) ? vidA : (a.mime || "").startsWith("audio/") || /\.(ogg|mp3|m4a|wav|opus|flac)$/i.test(a.name) ? audA : fileA
                     }
                 }
                 Repeater {
@@ -369,6 +369,13 @@ Item {
                 Lbl { text: a.name; width: 280; anchors.verticalCenter: parent.verticalCenter }
             }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: S.view(a.url, true) }
+        }
+    }
+    Component {
+        id: audA
+        Loader {
+            source: "Aud.qml"
+            onLoaded: { item.src = S.u(a.url); item.name = a.name }
         }
     }
     Component {

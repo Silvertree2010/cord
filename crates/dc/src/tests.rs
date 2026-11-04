@@ -33,7 +33,7 @@ fn ready() {
     while let Ok(e) = rx.try_recv() {
         v.push(e);
     }
-    assert!(matches!(&v[0], Ev::Ready(a) if a.me.name == "me" && a.me.av.as_ref().unwrap().ends_with(".gif?size=128")));
+    assert!(matches!(&v[0], Ev::Ready(a) if a.me.name == "me" && a.me.av.as_ref().unwrap().ends_with(".png?size=128")));
     let ch: Vec<&Chan> = v.iter().filter_map(|e| if let Ev::Chan(c) = e { Some(c) } else { None }).collect();
     assert_eq!(ch.len(), 4);
     assert!(!ch.iter().find(|c| &*c.id.raw == "20").unwrap().hidden);

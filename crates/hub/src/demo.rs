@@ -51,7 +51,7 @@ impl Demo {
             body: bs[i as usize % bs.len()].into(),
             ts,
             ed: None,
-            atts: vec![],
+            atts: if i % 8 == 2 { vec![Att { url: "file:///dev/null".into(), name: "voice-message.ogg".into(), mime: Some("audio/ogg".into()), size: 18000, w: None, h: None }] } else { vec![] },
             embs: if i % 8 == 6 {
                 vec![Emb {
                     title: Some("[shell] Branch `fix/x` was force-pushed to `2f1d668`".into()),

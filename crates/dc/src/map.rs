@@ -56,8 +56,7 @@ pub fn ts(t: &str) -> Option<i64> {
 pub fn av(id: &str, h: Option<&str>, disc: Option<&str>) -> String {
     match h {
         Some(h) if !h.is_empty() => {
-            let e = if h.starts_with("a_") { "gif" } else { "png" };
-            format!("{CDN}/avatars/{id}/{h}.{e}?size=128")
+            format!("{CDN}/avatars/{id}/{h}.png?size=128")
         }
         _ => {
             let d: u64 = disc.and_then(|x| x.parse().ok()).unwrap_or(0);
@@ -69,8 +68,7 @@ pub fn av(id: &str, h: Option<&str>, disc: Option<&str>) -> String {
 
 pub fn ic(k: &str, id: &str, h: Option<&str>) -> Option<String> {
     let h = h.filter(|h| !h.is_empty())?;
-    let e = if h.starts_with("a_") { "gif" } else { "png" };
-    Some(format!("{CDN}/{k}/{id}/{h}.{e}?size=256"))
+    Some(format!("{CDN}/{k}/{id}/{h}.png?size=128"))
 }
 
 pub fn usr(a: u32, v: &Value) -> Usr {
@@ -204,7 +202,7 @@ pub fn gld(a: u32, g: &Value, pos: i64) -> Gld {
         name: s(p, "name").unwrap_or("").to_string(),
         icon: ic("icons", id, s(p, "icon")),
         ban: s(p, "banner").filter(|x| !x.is_empty()).map(|h| {
-            format!("{CDN}/banners/{id}/{h}.{}?size=512", if h.starts_with("a_") { "gif" } else { "png" })
+            format!("{CDN}/banners/{id}/{h}.png?size=512")
         }),
         owner: s(p, "owner_id").map(|o| rid(a, o)),
         pos,
