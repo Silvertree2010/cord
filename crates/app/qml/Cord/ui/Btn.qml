@@ -12,7 +12,7 @@ Rectangle {
     property bool gh: false
     property bool on: true
     property bool enter: true
-    property color tc: pri ? Th.acTx : dng ? "#fff" : gh ? (ma.containsMouse ? Th.err : Th.tx2) : Th.tx
+    property color tc: pri ? Th.acTx : dng ? Th.wh : gh ? (ma.containsMouse ? Th.err : Th.tx2) : Th.tx
     signal clicked
     implicitWidth: row.implicitWidth + 28
     implicitHeight: 36 * Th.dens

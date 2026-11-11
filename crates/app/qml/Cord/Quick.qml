@@ -96,7 +96,7 @@ Rectangle {
         NumberAnimation on scale { from: 0.95; to: 1; duration: Th.mM; easing.type: Easing.OutCubic }
         width: Math.min(parent.width - 48, 560)
         height: col.implicitHeight + 24
-        radius: 6
+        radius: Th.r
         color: Th.bg2
         border.color: Th.ln
         MouseArea { anchors.fill: parent }

@@ -367,6 +367,6 @@ Item {
         property string t
         width: body.width
         spacing: 6
-        Lbl { text: parent.t; font.pixelSize: Th.fsS; font.weight: Font.Bold }
+        Lbl { text: parent.t.toUpperCase(); color: Th.tx2; font.pixelSize: Th.fsS - 1; font.weight: Font.Bold; font.letterSpacing: 0.6 }
     }
 }

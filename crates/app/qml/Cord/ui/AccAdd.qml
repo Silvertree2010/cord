@@ -158,6 +158,7 @@ ColumnLayout {
     Btn {
         visible: r.sv === "dc" && !r.tos
         text: "Continue"
+        pri: true
         height: 36
         onClicked: r.tos = true
     }

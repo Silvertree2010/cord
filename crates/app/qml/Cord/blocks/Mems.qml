@@ -196,7 +196,7 @@ Rectangle {
         Item {
             width: lv.width
             height: 32
-            Lbl { x: 16; y: 14; text: it.h.toUpperCase(); color: Th.tx3; font.pixelSize: Th.fsS - 1; font.weight: Font.Bold; font.letterSpacing: 0.4 }
+            Lbl { x: 16; y: 14; text: it.h.toUpperCase(); color: Th.tx2; font.pixelSize: Th.fsS - 1; font.weight: Font.Bold; font.letterSpacing: 0.6 }
         }
     }
     Component {

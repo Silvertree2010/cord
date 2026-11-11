@@ -256,7 +256,7 @@ Rectangle {
         }
     }
 
-    component Sub: Lbl { font.pixelSize: Th.fsS - 1; font.weight: Font.Bold; font.letterSpacing: 0.7; font.capitalization: Font.AllUppercase; color: Th.tx2; topPadding: 24; bottomPadding: 6 }
+    component Sub: Lbl { font.pixelSize: Th.fsS - 1; font.weight: Font.Bold; font.letterSpacing: 0.6; font.capitalization: Font.AllUppercase; color: Th.tx2; topPadding: 24; bottomPadding: 6 }
     component Row_: Item {
         id: rw
         property string t
@@ -401,7 +401,6 @@ Rectangle {
             Btn {
                 visible: S.cfgAccs.some(a => a.base === "demo")
                 text: "Exit demo"
-                out: true
                 onClicked: U.exitDemo()
             }
             Sub { text: "Status" }
@@ -429,7 +428,7 @@ Rectangle {
         Column {
             spacing: 8
             Lbl { text: "Pick a preset, flip blocks left or right, or drag them around in edit mode."; color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone; width: parent.width }
-            Sub { text: "Presets" }
+            Sub { text: "Presets"; topPadding: 4 }
             Grid {
                 id: pgr
                 width: parent.width
@@ -462,7 +461,7 @@ Rectangle {
                 Rectangle {
                     id: br_
                     width: parent.width
-                    height: 54
+                    height: 60
                     color: "transparent"
                     Rectangle { visible: br_.y > 0; anchors.top: parent.top; x: 16; width: parent.width - 32; height: 1; color: Th.ln }
                     Lbl { x: 16; anchors.verticalCenter: parent.verticalCenter; text: modelData.name; font.weight: Font.Medium }
@@ -512,7 +511,7 @@ Rectangle {
         id: lookP
         Column {
             spacing: 8
-            Sub { text: "Theme" }
+            Sub { text: "Theme"; topPadding: 4 }
             Flow {
                 width: parent.width
                 spacing: 10
@@ -632,7 +631,7 @@ Rectangle {
         Column {
             spacing: 0
             Lbl { width: parent.width; text: "Client mods on Discord can get an account banned, see the Ban risk tags."; color: Th.tx2; font.pixelSize: Th.fsS; bottomPadding: 4 }
-            Sub { text: "Chat" }
+            Sub { text: "Chat"; topPadding: 4 }
             Group { Repeater { model: r.fcat.chat; FOpt { k: modelData } } }
             Sub { text: "Media" }
             Group { Repeater { model: r.fcat.media; FOpt { k: modelData } } }
@@ -766,7 +765,7 @@ Rectangle {
                 Rectangle {
                     id: kr_
                     width: parent.width
-                    height: 50
+                    height: 60
                     color: "transparent"
                     Rectangle { visible: kr_.y > 0; anchors.top: parent.top; x: 16; width: parent.width - 32; height: 1; color: Th.ln }
                     Lbl { x: 16; anchors.verticalCenter: parent.verticalCenter; text: modelData[1] }

@@ -44,7 +44,7 @@ Rectangle {
                 Lbl { width: parent.width - (U.demo && r.width >= 300 ? 46 : 0); text: r.a ? (r.a.me.disp || r.a.me.name) : "No account"; font.weight: Font.DemiBold; font.pixelSize: Th.fs + 1; anchors.verticalCenter: parent.verticalCenter }
                 Rectangle {
                     visible: U.demo && r.width >= 300
-                    width: dc.implicitWidth + 10
+                    width: dc.implicitWidth + 12
                     height: 16
                     radius: Th.rc
                     color: Th.bg4

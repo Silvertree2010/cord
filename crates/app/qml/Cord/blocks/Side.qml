@@ -114,10 +114,10 @@ Rectangle {
                 anchors.rightMargin: 14
                 anchors.verticalCenter: parent.verticalCenter
                 width: dc.implicitWidth + 12
-                height: 18
+                height: 16
                 radius: Th.rc
                 color: Th.bg4
-                Lbl { id: dc; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: Th.fsT; font.weight: Font.DemiBold }
+                Lbl { id: dc; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }
             }
             MouseArea {
                 anchors.fill: parent
@@ -149,9 +149,11 @@ Rectangle {
                 Lbl {
                     x: 16
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "Direct Messages"
+                    text: "DIRECT MESSAGES"
                     color: dh.hovered ? Th.tx : Th.tx2
-                    font.pixelSize: Th.fsS + 1
+                    font.pixelSize: Th.fsS - 1
+                    font.weight: Font.Bold
+                    font.letterSpacing: 0.6
                 }
                 Ico {
                     anchors.right: parent.right
@@ -204,10 +206,10 @@ Rectangle {
                 }
                 Lbl {
                     text: ch.name.toUpperCase()
-                    color: cm.containsMouse ? Th.tx2 : Th.tx3
+                    color: cm.containsMouse ? Th.tx : Th.tx2
                     font.pixelSize: Th.fsS - 1
                     font.weight: Font.Bold
-                    font.letterSpacing: 0.4
+                    font.letterSpacing: 0.6
                     Behavior on color { ColorAnimation { duration: Th.mF } }
                     anchors.verticalCenter: parent.verticalCenter
                 }
