@@ -104,6 +104,9 @@ pub fn backend() -> &'static str {
 }
 
 fn ent(id: u32) -> keyring::Result<keyring::Entry> {
+    if cfg!(target_os = "macos") {
+        return Err(keyring::Error::NoEntry);
+    }
     keyring::Entry::new("cord", &format!("acc{id}"))
 }
 
@@ -167,7 +170,7 @@ fn get_file(id: u32) -> Result<String, SecErr> {
 
 pub fn get(id: u32, be: Option<&str>) -> Result<String, SecErr> {
     match be {
-        Some("keyring") => {
+        Some("keyring") if !cfg!(target_os = "macos") => {
             let r = get_keyring(id)?;
             note(Be::Keyring);
             Ok(r)

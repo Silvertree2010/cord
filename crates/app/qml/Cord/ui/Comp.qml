@@ -306,6 +306,7 @@ Item {
                 ScrollView {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    ScrollBar.vertical: Scr {}
                     TextArea {
                         id: ta
                         wrapMode: TextEdit.Wrap
@@ -373,11 +374,11 @@ Item {
                     Layout.topMargin: 11
                     width: 32
                     height: 22
-                    radius: 5
+                    radius: 6
                     color: gbm.containsMouse ? Th.hov : "transparent"
-                    border.color: gbm.containsMouse ? Th.tx : Th.tx2
-                    border.width: 1.5
-                    Lbl { anchors.centerIn: parent; text: "GIF"; font.pixelSize: Th.fsP; font.weight: Font.Bold; color: gbm.containsMouse ? Th.tx : Th.tx2 }
+                    border.color: gbm.containsMouse ? Th.tx2 : Th.tx3
+                    border.width: 1
+                    Lbl { anchors.centerIn: parent; text: "GIF"; font.pixelSize: Th.fsP; font.weight: Font.DemiBold; color: gbm.containsMouse ? Th.tx : Th.tx2 }
                     MouseArea {
                         id: gbm
                         anchors.fill: parent
