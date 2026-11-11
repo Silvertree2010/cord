@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQuick
+import QtMultimedia
 import cord.core
 import "Lay.js" as L
 
@@ -264,6 +265,36 @@ QtObject {
         ui = u
         writeUi(u)
     }
+    readonly property var keyDefs: [
+        { id: "quick", t: "Quick switcher", d: "Ctrl+K" },
+        { id: "settings", t: "Settings", d: "Ctrl+," },
+        { id: "edit", t: "Edit layout", d: "Ctrl+E" },
+        { id: "next", t: "Next channel", d: "Alt+Down" },
+        { id: "prev", t: "Previous channel", d: "Alt+Up" },
+        { id: "read", t: "Mark channel as read", d: "Shift+Escape" }
+    ]
+    function key(id) {
+        const k = (ui.keys || {})[id]
+        if (k) return k
+        const d = keyDefs.find(x => x.id === id)
+        return d ? d.d : ""
+    }
+    function setKey(id, seq) {
+        const m = Object.assign({}, ui.keys || {})
+        const d = keyDefs.find(x => x.id === id)
+        if (!seq || (d && d.d === seq)) delete m[id]; else m[id] = seq
+        setUi("keys", m)
+    }
+    function notify(t, b) { if (!ui.streamer) c.notify(t, b) }
+    property MediaPlayer ping: MediaPlayer {
+        source: Qt.resolvedUrl("sounds/message.mp3")
+        audioOutput: AudioOutput { volume: 0.6 }
+    }
+    function playPing() {
+        if (ui.streamer || ui.nsnd === false) return
+        ping.stop()
+        ping.play()
+    }
     function setUi(k, v) {
         const u = Object.assign({}, ui)
         u[k] = v
@@ -478,14 +509,17 @@ QtObject {
             const me_ = me(acc(ck))
             const men = me_ && me_.id && (m.body || "").indexOf(me_.id.raw) >= 0
             const focused = Qt.application.state === Qt.ApplicationActive && (selC === ck || selC2 === ck)
-            if ((dm || men) && !focused) c.notify((m.auth.disp || m.auth.name) + (ch && ch.grid && gmap[ch.grid] ? " (#" + ch.name + ", " + gmap[ch.grid].name + ")" : ""), (m.body || (m.atts && m.atts.length ? "Sent an attachment" : "")).slice(0, 200))
+            const nm = ui.nmode || "both"
+            const hit = nm === "dm" ? dm : nm === "men" ? men : (dm || men)
+            if (hit && !focused) playPing()
+            if (hit && !focused) notify((m.auth.disp || m.auth.name) + (ch && ch.grid && gmap[ch.grid] ? " (#" + ch.name + ", " + gmap[ch.grid].name + ")" : ""), ui.npv === false ? "New message" : (m.body || (m.atts && m.atts.length ? "Sent an attachment" : "")).slice(0, 200))
         }
     }
 
     function relDiff(nr) {
         if (!f("relnotif") || !rels.length) return
         const ids = new Set(nr.filter(x => x.k === "Friend" && x.usr.id).map(x => ridOf(x.usr.id)))
-        for (const o of rels) if (o.k === "Friend" && o.usr.id && !ids.has(ridOf(o.usr.id)) && accs[o.usr.id.acc]) c.notify("Friend removed", (o.usr.disp || o.usr.name) + " is no longer on your friends list")
+        for (const o of rels) if (o.k === "Friend" && o.usr.id && !ids.has(ridOf(o.usr.id)) && accs[o.usr.id.acc]) notify("Friend removed", (o.usr.disp || o.usr.name) + " is no longer on your friends list")
     }
 
     function purgeAcc(a) {
@@ -609,7 +643,7 @@ QtObject {
         case "Gld": putGld(p); break
         case "GldDel": {
             const g = gmap[p]
-            if (g && f("relnotif") && accs[acc(p)]) c.notify("Server removed", "You are no longer in " + g.name)
+            if (g && f("relnotif") && accs[acc(p)]) notify("Server removed", "You are no longer in " + g.name)
             delete gmap[p]
             for (const k in chans) if (chans[k].grid === p) { dropChanState(k); delete chans[k] }
             mark(true, true, false)

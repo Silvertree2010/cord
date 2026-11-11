@@ -122,7 +122,7 @@ Column {
                     width: parent.width
                     height: 56
                     Rectangle { anchors.top: parent.top; x: 16; width: parent.width - 32; height: 1; color: Th.ln }
-                    Column { x: 16; anchors.verticalCenter: parent.verticalCenter; spacing: 2; Lbl { text: "Email"; font.weight: Font.Medium } Lbl { text: r.info ? r.info.email : ""; color: Th.tx2; font.pixelSize: Th.fsS } }
+                    Column { x: 16; anchors.verticalCenter: parent.verticalCenter; spacing: 2; Lbl { text: "Email"; font.weight: Font.Medium } Lbl { text: r.info ? (S.ui.streamer ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022@\u2022\u2022\u2022\u2022" : r.info.email) : ""; color: Th.tx2; font.pixelSize: Th.fsS } }
                 }
                 Item {
                     visible: r.caps.includes("bio")

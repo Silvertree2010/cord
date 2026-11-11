@@ -617,7 +617,9 @@ Rectangle {
         id: privP
         Column {
             spacing: 0
-            Sub { text: "Activity"; topPadding: 4 }
+            Sub { text: "Streaming"; topPadding: 4 }
+            Group { Opt { t: "Streamer mode"; d: "Hide emails and silence desktop notifications while you stream or share your screen"; on: !!S.ui.streamer; onTog: v => S.setUi("streamer", v) } }
+            Sub { text: "Activity" }
             Group { Repeater { model: r.fcat.privacy; FOpt { k: modelData } } }
             Sub { text: "Account storage" }
             Group {
@@ -645,7 +647,14 @@ Rectangle {
             spacing: 0
             Sub { text: "Desktop"; topPadding: 4 }
             Group {
-                Opt { t: "Desktop notifications"; d: "Direct messages and mentions while the window is not focused"; on: S.ui.notif !== false; onTog: v => S.setUi("notif", v) }
+                Opt { t: "Desktop notifications"; d: "Alerts while the window is not focused"; on: S.ui.notif !== false; onTog: v => S.setUi("notif", v) }
+                Row_ { t: "Notify me for"; d: "Which messages raise an alert"; Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["both", "DMs and mentions"], ["dm", "DMs only"], ["men", "Mentions only"]]; cur: S.ui.nmode || "both"; onPick: v => S.setUi("nmode", v) } }
+                Opt { t: "Message preview"; d: "Show the message text in the alert, otherwise only the sender"; on: S.ui.npv !== false; onTog: v => S.setUi("npv", v) }
+            }
+            Sub { text: "Sounds" }
+            Group {
+                Opt { t: "Message sound"; d: "Play a short chime for new alerts"; on: S.ui.nsnd !== false; onTog: v => S.setUi("nsnd", v) }
+                Row_ { t: "Try it"; d: "Plays the message sound once"; Btn { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: "Play"; height: 30; onClicked: { S.ping.stop(); S.ping.play() } } }
             }
             Sub { text: "Relationships" }
             Group { Repeater { model: r.fcat.notif; FOpt { k: modelData } } }
@@ -734,31 +743,96 @@ Rectangle {
         }
     }
 
+    function seqOf(e) {
+        const k = e.key
+        if ([Qt.Key_Shift, Qt.Key_Control, Qt.Key_Alt, Qt.Key_Meta, Qt.Key_AltGr].includes(k)) return ""
+        let n = ""
+        if (k >= Qt.Key_A && k <= Qt.Key_Z) n = String.fromCharCode(k)
+        else if (k >= Qt.Key_0 && k <= Qt.Key_9) n = String.fromCharCode(k)
+        else if (k >= Qt.Key_F1 && k <= Qt.Key_F12) n = "F" + (k - Qt.Key_F1 + 1)
+        else n = ({ [Qt.Key_Comma]: ",", [Qt.Key_Period]: ".", [Qt.Key_Slash]: "/", [Qt.Key_Semicolon]: ";", [Qt.Key_Minus]: "-", [Qt.Key_Equal]: "=", [Qt.Key_Up]: "Up", [Qt.Key_Down]: "Down", [Qt.Key_Left]: "Left", [Qt.Key_Right]: "Right", [Qt.Key_Space]: "Space", [Qt.Key_Return]: "Return", [Qt.Key_Tab]: "Tab", [Qt.Key_PageUp]: "PgUp", [Qt.Key_PageDown]: "PgDown", [Qt.Key_Home]: "Home", [Qt.Key_End]: "End" })[k] || ""
+        if (!n) return ""
+        const m = e.modifiers
+        const meta = Qt.platform.os === "osx" ? Qt.MetaModifier : Qt.ControlModifier
+        return (m & Qt.ControlModifier ? "Ctrl+" : "") + (m & Qt.AltModifier ? "Alt+" : "") + (m & Qt.ShiftModifier ? "Shift+" : "") + (Qt.platform.os === "osx" && (m & Qt.MetaModifier) ? "Meta+" : "") + n
+    }
+    function prettyKey(q) {
+        const mac = Qt.platform.os === "osx"
+        return q.replace("Ctrl+", mac ? "\u2318" : "Ctrl+").replace("Alt+", mac ? "\u2325" : "Alt+").replace("Shift+", mac ? "\u21e7" : "Shift+").replace("Meta+", mac ? "\u2303" : "Meta+").replace("Escape", "Esc")
+    }
+
     Component {
         id: keyP
-        Group {
-            Repeater {
-                model: [[Th.mod + "K", "Quick switcher"], [Th.mod + ",", "Settings"], [Th.mod + "E", "Edit layout"], ["Alt+Up / Alt+Down", "Previous or next channel"], ["Shift+Esc", "Mark channel as read"], ["Up", "Edit your last message"], ["Esc", "Close popup, cancel reply, edit or layout editing"], ["Shift+click Delete", "Delete a message without confirmation"], ["Middle click", "Open a channel in the second chat block"]]
-                Rectangle {
-                    id: kr_
-                    width: parent.width
-                    height: 60
-                    color: "transparent"
-                    Rectangle { visible: kr_.y > 0; anchors.top: parent.top; x: 16; width: parent.width - 32; height: 1; color: Th.ln }
-                    Lbl { x: 16; anchors.verticalCenter: parent.verticalCenter; text: modelData[1] }
-                    Rectangle {
-                        anchors.right: parent.right
-                        anchors.rightMargin: 16
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: kl.implicitWidth + 16
-                        height: 26
-                        radius: Th.rc
-                        color: Th.bg4
-                        border.color: Th.a(Th.tx, 0.08)
-                        Lbl { id: kl; anchors.centerIn: parent; text: modelData[0]; font.family: Th.mono; font.pixelSize: Th.fsS }
+        Column {
+            spacing: 8
+            Lbl { width: parent.width; text: "Click a shortcut, then press the new keys. Esc cancels, Backspace resets."; color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone }
+            Grp {
+                Repeater {
+                    model: S.keyDefs
+                    Item {
+                        id: kr_
+                        property bool listen: false
+                        property string clash: ""
+                        width: parent.width
+                        height: 60
+                        Rectangle { visible: index > 0; anchors.top: parent.top; x: 16; width: parent.width - 32; height: 1; color: Th.ln }
+                        Lbl { x: 16; anchors.verticalCenter: parent.verticalCenter; text: modelData.t; font.weight: Font.Medium }
+                        Lbl { visible: kr_.clash !== ""; anchors.right: kb.left; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: kr_.clash; color: Th.err; font.pixelSize: Th.fsS }
+                        Rectangle {
+                            id: kb
+                            anchors.right: parent.right
+                            anchors.rightMargin: 16
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.max(72, kl.implicitWidth + 24)
+                            height: 30
+                            radius: Th.rc + 2
+                            color: kr_.listen ? Th.a(Th.ac, 0.16) : km.containsMouse ? Th.hov : Th.bg4
+                            border.color: kr_.listen ? Th.ac : Th.a(Th.tx, 0.08)
+                            Behavior on color { ColorAnimation { duration: Th.mF } }
+                            Lbl { id: kl; anchors.centerIn: parent; text: kr_.listen ? "Press keys" : r.prettyKey(S.key(modelData.id)); color: kr_.listen ? Th.ac : Th.tx; font.family: Th.mono; font.pixelSize: Th.fsS }
+                            MouseArea { id: km; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { kr_.clash = ""; kr_.listen = true; kb.forceActiveFocus() } }
+                            activeFocusOnTab: true
+                            onActiveFocusChanged: if (!activeFocus) kr_.listen = false
+                            Keys.onPressed: e => {
+                                if (!kr_.listen) return
+                                e.accepted = true
+                                if (e.key === Qt.Key_Escape) { kr_.listen = false; return }
+                                if (e.key === Qt.Key_Backspace || e.key === Qt.Key_Delete) { S.setKey(modelData.id, ""); kr_.listen = false; return }
+                                const q = r.seqOf(e)
+                                if (!q) return
+                                const o = S.keyDefs.find(x => x.id !== modelData.id && S.key(x.id) === q)
+                                if (o) { kr_.clash = "Used by " + o.t; kr_.listen = false; return }
+                                S.setKey(modelData.id, q)
+                                kr_.listen = false
+                            }
+                        }
                     }
                 }
             }
+            Sub { text: "Fixed" }
+            Grp {
+                Repeater {
+                    model: [["Up", "Edit your last message"], ["Esc", "Close popups and go back"], [(Qt.platform.os === "osx" ? "\u2303`" : "Ctrl+`"), "Push to talk"]]
+                    Item {
+                        width: parent.width
+                        height: 60
+                        Rectangle { visible: index > 0; anchors.top: parent.top; x: 16; width: parent.width - 32; height: 1; color: Th.ln }
+                        Lbl { x: 16; anchors.verticalCenter: parent.verticalCenter; text: modelData[1] }
+                        Rectangle {
+                            anchors.right: parent.right
+                            anchors.rightMargin: 16
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: fk.implicitWidth + 16
+                            height: 26
+                            radius: Th.rc
+                            color: Th.bg4
+                            border.color: Th.a(Th.tx, 0.08)
+                            Lbl { id: fk; anchors.centerIn: parent; text: modelData[0]; font.family: Th.mono; font.pixelSize: Th.fsS }
+                        }
+                    }
+                }
+            }
+            Btn { visible: !!S.ui.keys && Object.keys(S.ui.keys).length > 0; text: "Reset all shortcuts"; out: true; onClicked: S.setUi("keys", {}) }
         }
     }
 

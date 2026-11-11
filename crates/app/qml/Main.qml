@@ -364,13 +364,13 @@ ApplicationWindow {
         Keys.onPressed: e => { if (e.key === Qt.Key_QuoteLeft && (e.modifiers & (Qt.platform.os === "osx" ? Qt.MetaModifier : Qt.ControlModifier)) && !e.isAutoRepeat) S.c.ptt(true) }
         Keys.onReleased: e => { if (e.key === Qt.Key_QuoteLeft && !e.isAutoRepeat) S.c.ptt(false) }
     }
-    Shortcut { sequence: "Ctrl+K"; context: Qt.ApplicationShortcut; onActivated: { if (!S.setup) S.qk = !S.qk } }
-    Shortcut { sequence: "Ctrl+,"; context: Qt.ApplicationShortcut; onActivated: { if (!S.setup) { if (S.edit) U.cancelEdit(() => { S.showSet = true }); else S.showSet = !S.showSet } } }
-    Shortcut { sequence: "Ctrl+E"; context: Qt.ApplicationShortcut; onActivated: { if (S.setup) return; if (S.edit) S.edit = false; else { S.showSet = false; S.edit = true } } }
+    Shortcut { sequence: S.key("quick"); context: Qt.ApplicationShortcut; onActivated: { if (!S.setup) S.qk = !S.qk } }
+    Shortcut { sequence: S.key("settings"); context: Qt.ApplicationShortcut; onActivated: { if (!S.setup) { if (S.edit) U.cancelEdit(() => { S.showSet = true }); else S.showSet = !S.showSet } } }
+    Shortcut { sequence: S.key("edit"); context: Qt.ApplicationShortcut; onActivated: { if (S.setup) return; if (S.edit) S.edit = false; else { S.showSet = false; S.edit = true } } }
     Shortcut { sequence: "Escape"; context: Qt.ApplicationShortcut; onActivated: win.esc() }
-    Shortcut { sequence: "Shift+Escape"; context: Qt.ApplicationShortcut; onActivated: S.c.ack(S.selC) }
-    Shortcut { sequence: "Alt+Down"; context: Qt.ApplicationShortcut; onActivated: win.step(1) }
-    Shortcut { sequence: "Alt+Up"; context: Qt.ApplicationShortcut; onActivated: win.step(-1) }
+    Shortcut { sequence: S.key("read"); context: Qt.ApplicationShortcut; onActivated: S.c.ack(S.selC) }
+    Shortcut { sequence: S.key("next"); context: Qt.ApplicationShortcut; onActivated: win.step(1) }
+    Shortcut { sequence: S.key("prev"); context: Qt.ApplicationShortcut; onActivated: win.step(-1) }
     function step(d) {
         const l = (S.sel === "home" ? S.dms() : S.chList(S.sel)).filter(c => c.k !== "Cat" && c.k !== "Voice" && c.k !== "Stage")
         const i = l.findIndex(c => c.rid === S.selC)
