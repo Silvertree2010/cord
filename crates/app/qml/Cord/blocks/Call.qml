@@ -37,7 +37,7 @@ Rectangle {
                 font.weight: Font.DemiBold
                 font.pixelSize: Th.fsS
             }
-            Ico { visible: !!r.cs.e2ee; n: "lock"; sz: 13; col: Th.ok }
+            Ico { visible: !!r.cs.e2ee; n: "lock"; sz: 14; col: Th.ok }
         }
         Lbl {
             width: parent.width

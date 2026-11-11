@@ -4,7 +4,7 @@ import Cord
 
 Rectangle {
     id: r
-    color: "#80000000"
+    color: Th.scrim
     NumberAnimation on opacity { from: 0; to: 1; duration: Th.mF + 20; easing.type: Easing.OutCubic }
     MouseArea { anchors.fill: parent; onClicked: S.qk = false }
     readonly property var secs: ({ r: "Recent and unread", c: "Channels", d: "Direct messages", g: "Servers" })

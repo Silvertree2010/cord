@@ -85,7 +85,7 @@ Rectangle {
                                 visible: modelData.base === "demo"
                                 width: dl.implicitWidth + 12
                                 height: 16
-                                radius: 4
+                                radius: Th.rc
                                 color: Th.bg4
                                 anchors.verticalCenter: parent.verticalCenter
                                 Lbl { id: dl; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }

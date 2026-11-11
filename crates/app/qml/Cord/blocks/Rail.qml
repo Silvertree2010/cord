@@ -180,7 +180,7 @@ Rectangle {
                     anchors.right: parent.right
                     anchors.top: parent.top
                     anchors.margins: -5
-                    Lbl { id: fmt; anchors.centerIn: parent; text: ft.un.m > 99 ? "99+" : ft.un.m; color: "#fff"; font.pixelSize: Th.fsP; font.weight: Font.Bold }
+                    Lbl { id: fmt; anchors.centerIn: parent; text: ft.un.m > 99 ? "99+" : ft.un.m; color: Th.wh; font.pixelSize: Th.fsP; font.weight: Font.Bold }
                 }
                 MouseArea { id: fm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.toggleFold(row.f.id) }
                 Tip { text: row.f ? (row.f.name || modelData.gs.map(g => g.name).slice(0, 3).join(", ")) : ""; hov: fm.containsMouse; side: r.hz ? "b" : "r" }
@@ -249,7 +249,7 @@ Rectangle {
         onAboutToShow: U.reg(joinP)
         onOpened: jf.forceActiveFocus()
         onClosed: U.unreg(joinP)
-        Overlay.modal: Rectangle { color: "#80000000" }
+        Overlay.modal: Rectangle { color: Th.scrim }
         function show() { jf.text = ""; open() }
         function go() {
             if (!jf.text.trim()) return
@@ -378,7 +378,7 @@ Rectangle {
                 id: mt
                 anchors.centerIn: parent
                 text: ic.ment > 99 ? "99+" : ic.ment
-                color: "#fff"
+                color: Th.wh
                 font.pixelSize: Th.fsP
                 font.weight: Font.Bold
             }

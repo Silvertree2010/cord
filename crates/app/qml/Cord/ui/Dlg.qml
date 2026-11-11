@@ -20,7 +20,7 @@ Popup {
     onAboutToShow: U.reg(r)
     onOpened: (r.danger ? cb : okb).forceActiveFocus()
     onClosed: U.unreg(r)
-    Overlay.modal: Rectangle { color: "#99000000" }
+    Overlay.modal: Rectangle { color: Th.scrim }
     function show(o) {
         title = o.title || ""
         body = o.body || ""

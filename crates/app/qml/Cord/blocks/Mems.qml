@@ -150,7 +150,7 @@ Rectangle {
             radius: 16
             color: Th.a("#000000", dm2.containsMouse ? 0.55 : 0.4)
             z: 60
-            Ico { anchors.centerIn: parent; n: "dots"; sz: 18; col: "#ffffff" }
+            Ico { anchors.centerIn: parent; n: "dots"; sz: 18; col: Th.wh }
             MouseArea { id: dm2; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: pm2.show(parent, 0, parent.height + 4) }
             Ctx {
                 id: pm2
@@ -235,7 +235,7 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 Row {
                     width: parent.width
-                    spacing: 5
+                    spacing: 4
                     Name {
                         width: Math.min(implicitWidth, parent.width - (mtp.visible ? mtp.width + 5 : 0))
                         usr: it.m.usr
@@ -257,9 +257,9 @@ Rectangle {
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 3
-                Ico { visible: !!(rw.p && rw.p.desk); n: "screen"; sz: 13; col: Th.tx3 }
-                Ico { visible: !!(rw.p && rw.p.mob); n: "phone"; sz: 13; col: Th.tx3 }
-                Ico { visible: !!(rw.p && rw.p.web); n: "globe"; sz: 13; col: Th.tx3 }
+                Ico { visible: !!(rw.p && rw.p.desk); n: "screen"; sz: 14; col: Th.tx3 }
+                Ico { visible: !!(rw.p && rw.p.mob); n: "phone"; sz: 14; col: Th.tx3 }
+                Ico { visible: !!(rw.p && rw.p.web); n: "globe"; sz: 14; col: Th.tx3 }
             }
             MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.prof(it.m.usr, av) }
         }

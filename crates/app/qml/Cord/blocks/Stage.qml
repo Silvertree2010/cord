@@ -87,8 +87,8 @@ Rectangle {
                             id: nl
                             anchors.centerIn: parent
                             spacing: 4
-                            Lbl { text: modelData.usr.disp || modelData.usr.name; color: "#fff"; font.pixelSize: Th.fsS }
-                            Ico { visible: modelData.mute || modelData.smute; n: "micoff"; sz: 13; col: "#fff" }
+                            Lbl { text: modelData.usr.disp || modelData.usr.name; color: Th.wh; font.pixelSize: Th.fsS }
+                            Ico { visible: modelData.mute || modelData.smute; n: "micoff"; sz: 14; col: Th.wh }
                         }
                     }
                     Btn {

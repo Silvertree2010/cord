@@ -67,7 +67,7 @@ Rectangle {
         Item {
             Rectangle {
                 anchors.fill: parent
-                anchors.margins: 9
+                anchors.margins: 8
                 anchors.leftMargin: 10
                 anchors.rightMargin: 10
                 radius: 6
@@ -115,7 +115,7 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 width: dc.implicitWidth + 12
                 height: 18
-                radius: 4
+                radius: Th.rc
                 color: Th.bg4
                 Lbl { id: dc; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: Th.fsT; font.weight: Font.DemiBold }
             }
@@ -314,7 +314,7 @@ Rectangle {
                         radius: 8
                         color: Th.mr
                         anchors.verticalCenter: parent.verticalCenter
-                        Lbl { id: mn; anchors.centerIn: parent; text: u ? u.ment : ""; color: "#fff"; font.pixelSize: Th.fsT; font.weight: Font.Bold }
+                        Lbl { id: mn; anchors.centerIn: parent; text: u ? u.ment : ""; color: Th.wh; font.pixelSize: Th.fsT; font.weight: Font.Bold }
                     }
 
                 }
@@ -369,10 +369,10 @@ Rectangle {
                         visible: modelData.stream
                         width: lt.implicitWidth + 8
                         height: 16
-                        radius: 4
+                        radius: Th.rc
                         color: Th.err
                         anchors.verticalCenter: parent.verticalCenter
-                        Lbl { id: lt; anchors.centerIn: parent; text: "LIVE"; color: "#fff"; font.pixelSize: Th.fsP; font.weight: Font.Bold }
+                        Lbl { id: lt; anchors.centerIn: parent; text: "LIVE"; color: Th.wh; font.pixelSize: Th.fsP; font.weight: Font.Bold }
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { S.c.watch(parent.parent.uid, true); S.open(ch.rid) } }
                     }
                 }
@@ -406,7 +406,7 @@ Rectangle {
                 src: parent.usr ? (parent.usr.av || "") : (ch.icon || "")
                 name: S.chName(ch.rid)
                 st: ch.k === "Dm" ? (parent.p ? parent.p.st : "Off") : ""
-                ring: parent.cur ? "#2c2d34" : Th.bg2
+                ring: parent.cur ? Th.bg4 : Th.bg2
                 sv: S.svc(ch.rid)
                 deco: parent.usr && parent.usr.deco ? parent.usr.deco : ""
                 anim: ma.containsMouse
@@ -459,7 +459,7 @@ Rectangle {
                 anchors.right: parent.right
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
-                Lbl { id: mn2; anchors.centerIn: parent; text: u ? u.ment : ""; color: "#fff"; font.pixelSize: Th.fsT; font.weight: Font.Bold }
+                Lbl { id: mn2; anchors.centerIn: parent; text: u ? u.ment : ""; color: Th.wh; font.pixelSize: Th.fsT; font.weight: Font.Bold }
             }
             Ico {
                 id: xb

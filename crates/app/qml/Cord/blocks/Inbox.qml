@@ -88,7 +88,7 @@ Rectangle {
                     width: Math.max(18, ibn.implicitWidth + 10)
                     radius: 9
                     color: Th.mr
-                    Lbl { id: ibn; anchors.centerIn: parent; text: modelData.u.ment > 99 ? "99+" : modelData.u.ment; color: "#fff"; font.pixelSize: Th.fsT; font.weight: Font.Bold }
+                    Lbl { id: ibn; anchors.centerIn: parent; text: modelData.u.ment > 99 ? "99+" : modelData.u.ment; color: Th.wh; font.pixelSize: Th.fsT; font.weight: Font.Bold }
                 }
                 Rectangle {
                     visible: modelData.u.ment === 0 && modelData.u.n > 0

@@ -46,7 +46,7 @@ Rectangle {
                     visible: U.demo && r.width >= 300
                     width: dc.implicitWidth + 10
                     height: 16
-                    radius: 4
+                    radius: Th.rc
                     color: Th.bg4
                     anchors.verticalCenter: parent.verticalCenter
                     Lbl { id: dc; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }
@@ -100,7 +100,7 @@ Rectangle {
         enter: PopIn {}
         exit: PopOut {}
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        Overlay.modal: Rectangle { color: "#99000000" }
+        Overlay.modal: Rectangle { color: Th.scrim }
         property string emo: ""
         function show() { emo = S.ui.cst ? (S.ui.cst.emoji || "") : ""; cf.text = S.ui.cst ? (S.ui.cst.text || "") : ""; open(); cf.forceActiveFocus() }
         function save() { r.setCst(cf.text.trim(), emo); close() }

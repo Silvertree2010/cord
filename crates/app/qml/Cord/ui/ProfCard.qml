@@ -42,7 +42,7 @@ Item {
         radius: Th.r
         visible: !!r.th
         gradient: Gradient {
-            GradientStop { position: 0; color: r.th ? Qt.tint(r.hex(r.th[0]), Th.a("#000000", 0.55)) : "transparent" }
+            GradientStop { position: 0; color: r.th ? Qt.tint(r.hex(r.th[0]), Th.shade) : "transparent" }
             GradientStop { position: 1; color: r.th ? Qt.tint(r.hex(r.th[1]), Th.a("#000000", 0.62)) : "transparent" }
         }
     }
@@ -264,7 +264,7 @@ Item {
                         }
                         Lbl { text: modelData.t.charAt(0).toUpperCase() + modelData.t.slice(1); color: Th.tx2; font.pixelSize: Th.fsT }
                     }
-                    Ico { visible: !!modelData.url; anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; n: "link"; sz: 15; col: Th.tx2 }
+                    Ico { visible: !!modelData.url; anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; n: "link"; sz: 16; col: Th.tx2 }
                     MouseArea {
                         id: cm
                         anchors.fill: parent
@@ -341,8 +341,8 @@ Item {
             width: 32
             height: 32
             radius: 16
-            color: Th.a("#000000", pdm.containsMouse ? 0.6 : 0.45)
-            Ico { anchors.centerIn: parent; n: "dots"; sz: 18; col: "#ffffff" }
+            color: Th.a("#000000", pdm.containsMouse ? 0.55 : 0.4)
+            Ico { anchors.centerIn: parent; n: "dots"; sz: 18; col: Th.wh }
             MouseArea { id: pdm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: pmenu.show(parent, 0, parent.height + 4) }
             Ctx {
                 id: pmenu

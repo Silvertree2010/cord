@@ -137,8 +137,8 @@ Rectangle {
                 width: 52
                 height: 52
                 radius: 26
-                color: Th.a("#000000", 0.6)
-                Ico { anchors.centerIn: parent; n: "play"; sz: 24; col: "#ffffff" }
+                color: Th.shade
+                Ico { anchors.centerIn: parent; n: "play"; sz: 24; col: Th.wh }
             }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: r.vidCard ? (r.e.vid && !/youtube|twitch|vimeo|spotify/.test(r.e.vid) ? S.view(r.e.vid, true) : r.open(r.e.url)) : S.view(bi.source) }
         }
@@ -187,8 +187,8 @@ Rectangle {
             width: 52
             height: 52
             radius: 26
-            color: Th.a("#000000", 0.6)
-            Ico { anchors.centerIn: parent; n: "play"; sz: 24; col: "#ffffff" }
+            color: Th.shade
+            Ico { anchors.centerIn: parent; n: "play"; sz: 24; col: Th.wh }
         }
         Rectangle {
             visible: r.gifv || /\.gif(\?|$)/i.test(r.mediaSrc)
@@ -197,9 +197,9 @@ Rectangle {
             z: 3
             width: gl.implicitWidth + 10
             height: 20
-            radius: 5
-            color: Th.a("#000000", 0.65)
-            Lbl { id: gl; anchors.centerIn: parent; text: "GIF"; color: "#ffffff"; font.pixelSize: Th.fsT; font.weight: Font.Bold }
+            radius: Th.rc
+            color: Th.shade
+            Lbl { id: gl; anchors.centerIn: parent; text: "GIF"; color: Th.wh; font.pixelSize: Th.fsT; font.weight: Font.Bold }
         }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: r.gifv ? S.view(r.e.vid, true) : r.e.vid ? S.view(r.e.vid, true) : S.view(im.source) }
     }

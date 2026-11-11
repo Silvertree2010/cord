@@ -129,7 +129,7 @@ Item {
                 radius: 8
                 color: Th.err
                 anchors.verticalCenter: parent.verticalCenter
-                Lbl { id: nwl; anchors.centerIn: parent; text: "NEW"; color: "white"; font.pixelSize: Th.fsP; font.weight: Font.Bold }
+                Lbl { id: nwl; anchors.centerIn: parent; text: "NEW"; color: Th.wh; font.pixelSize: Th.fsP; font.weight: Font.Bold }
             }
         }
 
@@ -215,7 +215,7 @@ Item {
                     visible: r.m.auth && r.m.auth.bot
                     width: bt.implicitWidth + 8
                     height: 15
-                    radius: 3
+                    radius: Th.rc
                     color: Th.ac
                     anchors.verticalCenter: parent.verticalCenter
                     Lbl { id: bt; anchors.centerIn: parent; text: "BOT"; color: Th.acTx; font.pixelSize: Th.fsP - 1; font.weight: Font.Bold }
@@ -231,7 +231,7 @@ Item {
                     visible: !!r.m.del
                     width: dt.implicitWidth + 10
                     height: 15
-                    radius: 3
+                    radius: Th.rc
                     color: Th.bg4
                     anchors.verticalCenter: parent.verticalCenter
                     Lbl { id: dt; anchors.centerIn: parent; text: "deleted"; color: Th.tx2; font.pixelSize: Th.fsP }
@@ -249,7 +249,7 @@ Item {
                     spacing: 6
                     Ico {
                         n: "reply"
-                        sz: 13
+                        sz: 14
                         col: Th.tx3
                         anchors.verticalCenter: parent.verticalCenter
                         transform: Scale { xScale: -1; origin.x: 6.5 }
@@ -398,9 +398,9 @@ Item {
                 width: spl.implicitWidth + 20
                 height: 26
                 radius: 13
-                color: Th.a("#000000", 0.7)
+                color: Th.shade
                 z: 2
-                Lbl { id: spl; anchors.centerIn: parent; text: "SPOILER"; color: "#fff"; font.pixelSize: Th.fsXS; font.weight: Font.Bold }
+                Lbl { id: spl; anchors.centerIn: parent; text: "SPOILER"; color: Th.wh; font.pixelSize: Th.fsXS; font.weight: Font.Bold }
             }
             MouseArea { anchors.fill: parent; z: 3; cursorShape: Qt.PointingHandCursor; onClicked: ia.sp ? ia.sp = false : S.view(a.url) }
         }
@@ -427,8 +427,8 @@ Item {
                 width: 52
                 height: 52
                 radius: 26
-                color: Th.a("#000000", 0.6)
-                Ico { anchors.centerIn: parent; n: "play"; sz: 24; col: "#ffffff" }
+                color: Th.shade
+                Ico { anchors.centerIn: parent; n: "play"; sz: 24; col: Th.wh }
             }
             Row {
                 visible: !va.st

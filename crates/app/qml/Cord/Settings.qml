@@ -107,7 +107,7 @@ Rectangle {
                     height: 34
                     radius: 6
                     color: Th.bg
-                    Ico { id: si; x: 10; anchors.verticalCenter: parent.verticalCenter; n: "search"; sz: 15; col: Th.tx2 }
+                    Ico { id: si; x: 10; anchors.verticalCenter: parent.verticalCenter; n: "search"; sz: 16; col: Th.tx2 }
                     TextInput {
                         id: sq
                         anchors.left: si.right
@@ -320,7 +320,7 @@ Rectangle {
                     visible: op.tag !== ""
                     width: tgl.implicitWidth + 10
                     height: 16
-                    radius: 3
+                    radius: Th.rc
                     color: Th.a(Th.err, 0.16)
                     anchors.verticalCenter: parent.verticalCenter
                     Lbl { id: tgl; anchors.centerIn: parent; text: op.tag; color: Th.err; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }
@@ -368,7 +368,7 @@ Rectangle {
                                 visible: modelData.base === "demo"
                                 width: dl.implicitWidth + 12
                                 height: 16
-                                radius: 4
+                                radius: Th.rc
                                 color: Th.bg4
                                 anchors.verticalCenter: parent.verticalCenter
                                 Lbl { id: dl; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }
@@ -776,7 +776,7 @@ Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         width: kl.implicitWidth + 16
                         height: 26
-                        radius: 5
+                        radius: Th.rc
                         color: Th.bg4
                         border.color: Th.a(Th.tx, 0.08)
                         Lbl { id: kl; anchors.centerIn: parent; text: modelData[0]; font.family: Th.mono; font.pixelSize: Th.fsS }

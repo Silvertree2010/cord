@@ -31,7 +31,7 @@ Item {
         Text {
             anchors.centerIn: parent
             text: (r.name || "?").replace(/[^\p{L}\p{N}]/gu, "").slice(0, r.sq ? 2 : 1).toUpperCase() || "?"
-            color: "#fff"
+            color: Th.wh
             font.pixelSize: r.sz * 0.4
             font.family: Th.font
             font.weight: Font.DemiBold

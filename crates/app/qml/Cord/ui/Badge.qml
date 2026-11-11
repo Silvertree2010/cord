@@ -15,13 +15,13 @@ Item {
     Rectangle {
         visible: r.txt
         anchors.fill: parent
-        radius: 4
+        radius: Th.rc
         color: Th.svcCol(r.sv)
         Text {
             id: lb2
             anchors.centerIn: parent
             text: Th.svcName(r.sv)
-            color: "#fff"
+            color: Th.wh
             font.pixelSize: Th.fsP
             font.family: Th.font
             font.weight: Font.Bold
@@ -42,7 +42,7 @@ Item {
         visible: !r.txt
         anchors.centerIn: parent
         text: r.k === "mx" ? "M" : r.k === "st" ? "S" : "D"
-        color: "#fff"
+        color: Th.wh
         font.pixelSize: r.sz * (r.k === "st" ? 0.46 : 0.56)
         font.family: Th.font
         font.weight: Font.Bold

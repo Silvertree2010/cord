@@ -358,7 +358,7 @@ Rectangle {
                     height: 18
                     radius: 9
                     color: Th.err
-                    Lbl { id: nl; anchors.centerIn: parent; text: "New messages"; color: "white"; font.pixelSize: Th.fsS; font.weight: Font.DemiBold }
+                    Lbl { id: nl; anchors.centerIn: parent; text: "New messages"; color: Th.wh; font.pixelSize: Th.fsS; font.weight: Font.DemiBold }
                 }
             }
             header: Item {

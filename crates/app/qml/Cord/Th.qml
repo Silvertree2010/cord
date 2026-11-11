@@ -33,6 +33,10 @@ QtObject {
     readonly property int mS: motion ? 260 : 0
     property color lnk: "#b3bde4"
     property real rs: 8
+    property real rc: 4
+    readonly property color wh: "#ffffff"
+    readonly property color scrim: "#99000000"
+    readonly property color shade: "#99000000"
     property string font: "Figtree"
     property string mono: "JetBrains Mono"
     readonly property string mod: Qt.platform.os === "osx" ? "⌘" : "Ctrl+"
