@@ -366,5 +366,11 @@
  "Incoming request": "Eingehende Anfrage",
  "Outgoing request": "Ausgehende Anfrage",
  "Voice": "Voice",
- "Search in": "Suchen in"
+ "Search in": "Suchen in",
+ "Noise suppression quality": "Qualität der Rauschunterdrückung",
+ "Enhanced removes more noise and background voices and uses a little more CPU": "Verbessert entfernt mehr Rauschen und Hintergrundstimmen und braucht etwas mehr CPU",
+ "Standard": "Standard",
+ "Enhanced": "Verbessert",
+ "Echo cancellation": "Echo-Unterdrückung",
+ "Removes the sound of your speakers from your microphone, useful when you do not wear headphones": "Entfernt den Ton deiner Lautsprecher aus dem Mikrofon, nützlich ohne Kopfhörer"
 }

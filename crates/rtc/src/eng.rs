@@ -4,13 +4,17 @@ use cpal::{
     FromSample, SizedSample, StreamConfig,
     traits::{DeviceTrait, HostTrait, StreamTrait},
 };
+use deep_filter_rt::tract::DfTract;
+use ndarray::Array2;
 use nnnoiseless::DenoiseState;
+use sonora::{AudioProcessing, Config as ApmCfg, StreamConfig as ApmSc};
+use sonora::config::EchoCanceller;
 use opus::{Application, Bitrate, Channels, Encoder};
 use std::{
     collections::VecDeque,
     sync::{
         Arc, Mutex,
-        atomic::{AtomicBool, AtomicU32, Ordering::Relaxed},
+        atomic::{AtomicBool, AtomicU8, AtomicU32, Ordering::Relaxed},
         mpsc,
     },
     thread::JoinHandle,
@@ -38,6 +42,9 @@ struct Sh {
     ptt_down: AtomicBool,
     ns: AtomicBool,
     agc: AtomicBool,
+    nsm: AtomicU8,
+    aec: AtomicBool,
+    refq: Mutex<VecDeque<f32>>,
     thr: AtomicU32,
     lvl: AtomicU32,
     cb: Mutex<Option<Cb>>,
@@ -67,6 +74,9 @@ impl Eng {
             ptt_down: AtomicBool::new(false),
             ns: AtomicBool::new(true),
             agc: AtomicBool::new(false),
+            nsm: AtomicU8::new(0),
+            aec: AtomicBool::new(false),
+            refq: Mutex::new(VecDeque::new()),
             thr: AtomicU32::new((-45.0f32).to_bits()),
             lvl: AtomicU32::new((-120.0f32).to_bits()),
             cb: Mutex::new(None),
@@ -123,6 +133,17 @@ impl Eng {
 
     pub fn ns(&self, on: bool) {
         self.0.ns.store(on, Relaxed);
+    }
+
+    pub fn ns_mode(&self, deep: bool) {
+        self.0.nsm.store(deep as u8, Relaxed);
+    }
+
+    pub fn aec(&self, on: bool) {
+        self.0.aec.store(on, Relaxed);
+        if !on {
+            self.0.refq.lock().unwrap().clear();
+        }
     }
 
     pub fn agc(&self, on: bool) {
@@ -291,6 +312,14 @@ fn omk(sh: Arc<Sh>, ch: usize) -> impl FnMut(&mut [f32]) + Send + 'static {
         let n = o.len();
         while q.len() < n {
             sh.mix.lock().unwrap().pull(&mut fr);
+            if sh.aec.load(Relaxed) {
+                let mut g = sh.refq.lock().unwrap();
+                g.extend(fr.chunks(2).map(|p| (p[0] + p[1]) * 0.5));
+                let l = g.len();
+                if l > 48000 {
+                    g.drain(..l - 24000);
+                }
+            }
             if ch == 2 {
                 q.extend(fr.iter());
             } else {
@@ -368,6 +397,8 @@ pub struct Cap {
     skip: u32,
     sil: u32,
     ag: f32,
+    df: Option<Box<DfTract>>,
+    apm: Option<Box<AudioProcessing>>,
 }
 
 impl Cap {
@@ -376,7 +407,7 @@ impl Cap {
         let _ = enc.set_bitrate(Bitrate::Bits(64000));
         let _ = enc.set_inband_fec(true);
         let _ = enc.set_packet_loss_perc(5);
-        Cap { sh, enc, ns: DenoiseState::new(), acc: Vec::new(), hang: 0, on: false, skip: 0, sil: 0, ag: 1.0 }
+        Cap { sh, enc, ns: DenoiseState::new(), acc: Vec::new(), hang: 0, on: false, skip: 0, sil: 0, ag: 1.0, df: None, apm: None }
     }
 
     pub fn push(&mut self, pcm: &[f32], ch: usize) {
@@ -394,7 +425,42 @@ impl Cap {
     fn frame(&mut self, f: &[f32]) {
         let sh = self.sh.clone();
         let mut m: Vec<f32> = f.to_vec();
-        if sh.ns.load(Relaxed) {
+        if sh.aec.load(Relaxed) {
+            let apm = self.apm.get_or_insert_with(|| {
+                let cfg = ApmCfg { echo_canceller: Some(EchoCanceller::default()), ..Default::default() };
+                Box::new(AudioProcessing::builder().config(cfg).capture_config(ApmSc::new(48000, 1)).render_config(ApmSc::new(48000, 1)).build())
+            });
+            for c in m.chunks_mut(480) {
+                let mut r = [0.0f32; 480];
+                {
+                    let mut g = sh.refq.lock().unwrap();
+                    for x in r.iter_mut() {
+                        *x = g.pop_front().unwrap_or(0.0);
+                    }
+                }
+                let mut sink = [0.0f32; 480];
+                let _ = apm.process_render_f32(&[&r], &mut [&mut sink]);
+                let src: Vec<f32> = c.to_vec();
+                let mut out = [0.0f32; 480];
+                if apm.process_capture_f32(&[&src], &mut [&mut out]).is_ok() {
+                    c.copy_from_slice(&out);
+                }
+            }
+        } else {
+            self.apm = None;
+        }
+        if sh.ns.load(Relaxed) && sh.nsm.load(Relaxed) == 1 {
+            let df = self.df.get_or_insert_with(|| Box::new(DfTract::default()));
+            for c in m.chunks_mut(480) {
+                let i = Array2::from_shape_vec((1, 480), c.to_vec()).unwrap();
+                let mut o = Array2::<f32>::zeros((1, 480));
+                if df.process(i.view(), o.view_mut()).is_ok() {
+                    for (d, s) in c.iter_mut().zip(o.iter()) {
+                        *d = *s;
+                    }
+                }
+            }
+        } else if sh.ns.load(Relaxed) {
             let mut o = [0.0f32; DenoiseState::FRAME_SIZE];
             for c in m.chunks_mut(DenoiseState::FRAME_SIZE) {
                 let i: Vec<f32> = c.iter().map(|x| x * 32768.0).collect();

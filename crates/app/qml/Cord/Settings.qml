@@ -257,7 +257,7 @@ Rectangle {
     }
 
     function vsave() {
-        S.c.cset("voice.json", JSON.stringify({ ns: S.ui.ns !== false, vad: S.ui.vad || -50, ptt: !!S.ui.ptt, "in": S.ui.vin || "", out: S.ui.vout || "", agc: !!S.ui.agc }))
+        S.c.cset("voice.json", JSON.stringify({ ns: S.ui.ns !== false, vad: S.ui.vad || -50, ptt: !!S.ui.ptt, "in": S.ui.vin || "", out: S.ui.vout || "", agc: !!S.ui.agc, nsm: S.ui.nsm || "df", aec: !!S.ui.aec }))
     }
     property var adev: ({ "in": [], out: [] })
     function adevs() {
@@ -676,6 +676,8 @@ Rectangle {
             Sub { text: S.t("Input") }
             Group {
             Opt { t: S.t("Noise suppression"); d: S.t("Filter background noise from your microphone"); on: S.ui.ns !== false; onTog: v => { S.setUi("ns", v); r.vsave() } }
+            Row_ { t: S.t("Noise suppression quality"); d: S.t("Enhanced removes more noise and background voices and uses a little more CPU"); Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["rn", "Standard"], ["df", "Enhanced"]]; cur: S.ui.nsm || "df"; onPick: v => { S.setUi("nsm", v); r.vsave() } } }
+            Opt { t: S.t("Echo cancellation"); d: S.t("Removes the sound of your speakers from your microphone, useful when you do not wear headphones"); on: !!S.ui.aec; onTog: v => { S.setUi("aec", v); r.vsave() } }
             Opt { t: S.t("Automatic gain control"); d: S.t("Keep your voice at an even level"); on: !!S.ui.agc; onTog: v => { S.setUi("agc", v); r.vsave() } }
             Opt { t: S.t("Push to talk"); d: S.t("Only send audio while the key is held (") + (Qt.platform.os === "osx" ? "⌃`" : "Ctrl+`") + ", while cord is focused)"; on: !!S.ui.ptt; onTog: v => { S.setUi("ptt", v); r.vsave() } }
             }
