@@ -4,6 +4,7 @@ import QtMultimedia
 Item {
     id: g
     property string src: ""
+    property int fill: VideoOutput.PreserveAspectFit
     property real vw: vo.sourceRect.width
     property real vh: vo.sourceRect.height
     MediaPlayer {
@@ -12,7 +13,8 @@ Item {
         loops: MediaPlayer.Infinite
         videoOutput: vo
         audioOutput: null
-        Component.onCompleted: play()
+        onSourceChanged: if (source.toString() !== "") play()
+        Component.onCompleted: if (source.toString() !== "") play()
     }
-    VideoOutput { id: vo; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectFit }
+    VideoOutput { id: vo; anchors.fill: parent; fillMode: g.fill }
 }

@@ -4,6 +4,9 @@ import Cord
 
 Popup {
     id: r
+    enter: PopIn {}
+    exit: PopOut {}
+    transformOrigin: Popup.TopLeft
     property var model: []
     property var view: null
     property real w: 196

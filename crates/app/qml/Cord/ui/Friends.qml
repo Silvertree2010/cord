@@ -40,6 +40,20 @@ Rectangle {
         return S.dms().find(c => c.k === "Dm" && c.rcp && c.rcp[0] && c.rcp[0].id && S.ridOf(c.rcp[0].id) === uid)
     }
     function msg(uid) { S.openDm(uid) }
+    readonly property int dcAcc: { const a = Object.values(S.accs).find(x => x.svc === "dc" || x.svc === "Dc"); return a ? a.id : 0 }
+    property string addSt: ""
+    property string addMsg: ""
+    function addFriend() {
+        const n = af.text.trim()
+        if (!n || !r.dcAcc) return
+        addSt = "busy"
+        addMsg = ""
+        S.api(r.dcAcc, "add_friend", { name: n }, (ok, v, err) => {
+            if (ok) af.text = ""
+            r.addSt = ok ? "ok" : "err"
+            r.addMsg = ok ? "Success! Your friend request to " + n + " was sent." : "Hm, didn't work. " + (/80004|Unknown User|No users/.test(err) ? "Double check that the username is correct." : err)
+        })
+    }
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -72,9 +86,54 @@ Rectangle {
                         MouseArea { id: tm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: r.tab = modelData[0] }
                     }
                 }
+                Rectangle {
+                    visible: r.dcAcc > 0
+                    width: afl.implicitWidth + 20
+                    height: 28
+                    radius: Th.rs
+                    color: r.tab === "add" ? "transparent" : afm.containsMouse ? Qt.lighter(Th.ac, 1.08) : Th.ac
+                    anchors.verticalCenter: parent.verticalCenter
+                    Lbl { id: afl; anchors.centerIn: parent; text: "Add Friend"; color: r.tab === "add" ? Th.ac : Th.acTx; font.weight: Font.DemiBold }
+                    MouseArea { id: afm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: r.tab = "add" }
+                }
             }
         }
+        Column {
+            visible: r.tab === "add"
+            Layout.fillWidth: true
+            Layout.maximumWidth: 720 - 32
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 20
+            spacing: 8
+            Lbl { text: "Add Friend"; font.pixelSize: Th.fsL; font.weight: Font.Bold }
+            Lbl { width: parent.width; text: "You can add friends with their Discord username."; color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone }
+            Item { width: 1; height: 4 }
+            Rectangle {
+                width: parent.width
+                height: 52
+                radius: Th.r
+                color: Th.bg
+                border.color: r.addSt === "err" ? Th.err : r.addSt === "ok" ? Th.ok : af.activeFocus ? Th.a(Th.ac, 0.7) : Th.ln
+                TextInput {
+                    id: af
+                    x: 14
+                    width: parent.width - sb.width - 36
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: Th.tx
+                    font.family: Th.font
+                    font.pixelSize: Th.fs
+                    clip: true
+                    selectByMouse: true
+                    onTextChanged: r.addSt = ""
+                    onAccepted: r.addFriend()
+                    Lbl { visible: !af.text; text: "You can add friends with their Discord username."; color: Th.tx2; anchors.verticalCenter: parent.verticalCenter }
+                }
+                Btn { id: sb; anchors.right: parent.right; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter; height: 32; text: "Send Friend Request"; pri: true; on: af.text.trim() !== "" && r.addSt !== "busy"; onClicked: r.addFriend() }
+            }
+            Lbl { visible: r.addMsg !== ""; width: parent.width; text: r.addMsg; color: r.addSt === "ok" ? Th.ok : Th.err; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone }
+        }
         Fld {
+            visible: r.tab !== "add"
             Layout.fillWidth: true
             Layout.maximumWidth: 720 - 32
             Layout.alignment: Qt.AlignHCenter
@@ -84,6 +143,7 @@ Rectangle {
             onTextChanged: r.q = text
         }
         Lbl {
+            visible: r.tab !== "add"
             Layout.fillWidth: true
             Layout.maximumWidth: 720 - 32
             Layout.alignment: Qt.AlignHCenter
@@ -95,8 +155,11 @@ Rectangle {
             font.letterSpacing: 0.4
             bottomPadding: 4
         }
+        Item { visible: r.tab === "add"; Layout.fillHeight: true }
         ListView {
+            Smooth {}
             id: lv
+            visible: r.tab !== "add"
             Layout.fillWidth: true
             Layout.maximumWidth: 720
             Layout.alignment: Qt.AlignHCenter

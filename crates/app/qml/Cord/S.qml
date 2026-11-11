@@ -33,6 +33,71 @@ QtObject {
     readonly property bool multi: new Set(Object.values(accs).map(a => a.svc)).size > 1
     property var services: []
     property string secretBackend: ""
+    property int pinReq: 0
+    property string insReq: ""
+    property var profs: ({})
+    property var profT: ({})
+    property var sheets: ({})
+    property var apiCb: ({})
+    property int apiN: 0
+    function api(acc, op, args, cb) {
+        const t = "a" + (++apiN)
+        if (cb) apiCb[t] = cb
+        c.api(acc, op, JSON.stringify(args || {}), t)
+    }
+    property var sheetQ: ({})
+    function reqProf(uid, gld) {
+        if (!uid || svc(uid) !== "dc") return
+        const k = uid + "|" + (gld || "")
+        const now = Date.now()
+        if (profT[k] && now - profT[k] < 300000) return
+        profT[k] = now
+        c.profile(uid, gld || "")
+    }
+    function profOf(uid, gld) {
+        const p = profs[uid + "|" + (gld || "")] || profs[uid + "|"]
+        return p || null
+    }
+    function roleIcon(gld, uid, roles) {
+        if (!gld) return null
+        const g = gmap[gld]
+        if (!g || !g.roles) return null
+        let rs = roles
+        if (!rs) { const m = (U.memC[gld] || {})[uid]; rs = m ? m.roles : null }
+        if (!rs || !rs.length) return null
+        const ids = rs.map(x => typeof x === "string" ? x : ridOf(x))
+        let best = null
+        for (const ro of g.roles) if (ro.icon && ids.indexOf(ridOf(ro.id)) >= 0 && (!best || ro.pos > best.pos)) best = ro
+        return best
+    }
+    function decId(s) {
+        const a = String(s).split("")
+        let i = a.length - 1
+        while (i >= 0) {
+            if (a[i] !== "0") { a[i] = String(Number(a[i]) - 1); break }
+            a[i] = "9"
+            i--
+        }
+        return a.join("").replace(/^0+(?=\d)/, "")
+    }
+    function unproxy(u) {
+        const m = /^https:\/\/(?:images-ext-\d+|media)\.discordapp\.net\/external\/[^/]+\/(https?)\/(.+)$/.exec(u || "")
+        return m ? m[1] + "://" + m[2] : u
+    }
+    function pow2(n) { let p = 16; while (p < n && p < 512) p *= 2; return p }
+    function decoUrl(a, sz, anim) {
+        return a ? "https://cdn.discordapp.com/avatar-decoration-presets/" + a + ".png?size=" + pow2(sz || 96) + "&passthrough=" + (anim ? "true" : "false") : ""
+    }
+    function sheetOf(url, max) {
+        if (!url) return null
+        const k = url + "|" + (max || 0)
+        if (sheets[k]) return sheets[k]
+        if (!sheetQ[k]) {
+            sheetQ[k] = true
+            Qt.callLater(() => c.sheet(url, max || 0))
+        }
+        return null
+    }
     property int ver: 0
     property int uver: 0
     property int dver: 0
@@ -70,7 +135,11 @@ QtObject {
         for (const g of glds) if (!used[g.rid]) out.push({ g: g })
         return out
     }
+    property string lastFold: ""
+    property real foldT: 0
     function toggleFold(id) {
+        lastFold = id
+        foldT = Date.now()
         const o = Object.assign({}, foldOpen)
         o[id] = !o[id]
         foldOpen = o
@@ -112,6 +181,7 @@ QtObject {
         const o = Object.assign({}, feats)
         o[k] = on
         feats = o
+        if (k === "anim") Th.motion = on
         c.feat(k, on)
     }
 
@@ -155,6 +225,7 @@ QtObject {
         uiBad = c.bad("ui.json")
         ui = u && typeof u === "object" ? u : {}
         if (ui.lay) lay = L.norm(L.safe(L.cp(ui.lay), blkIds()))
+        if (ui.lay && ui.lay.name === "Classic" && !L.has(lay, "bar")) { lay = L.cp(L.presets.classic); saveUi() }
         const cf = pj(c.cget("cfg.json"), {})
         feats = cf.feat || {}
         cfgAccs = pj(c.accs(), [])
@@ -210,13 +281,13 @@ QtObject {
     function themes() {
         const b = pj(c.ls("themes", "json"), [])
         const q = c.qml() + "/Cord/themes/"
-        return ["graphite", "paper", "mono"].concat(c.scheme() ? ["caelestia"] : []).map(n => ({ id: n, path: n === "caelestia" ? "" : q + n + ".json", user: false }))
+        return ["midnight", "graphite", "paper", "mono"].concat(c.scheme() ? ["caelestia"] : []).map(n => ({ id: n, path: n === "caelestia" ? "" : q + n + ".json", user: false }))
             .concat(b.map(p => ({ id: p.split("/").pop().replace(".json", ""), path: p, user: true })))
     }
     function loadTheme() {
         const T = Th
         try {
-            const n = ui.theme || "graphite"
+            const n = ui.theme || "midnight"
             const t = themes().find(x => x.id === n) || themes()[0]
             T.apply(pj(c.rdf(c.qml() + "/Cord/themes/graphite.json"), {}))
             if (t.id === "caelestia") {
@@ -229,6 +300,7 @@ QtObject {
             if (ui.fs) T.fs = ui.fs
             if (ui.dens) T.dens = ui.dens
             if (ui.ac) T.ac = ui.ac
+            T.motion = f("anim")
         } catch (e) {
             console.warn("cord: theme failed", e)
         }
@@ -335,7 +407,7 @@ QtObject {
     property var rcache: ({})
     property int rcount: 0
     function rsig(m) {
-        if (m.rev !== undefined) return "r" + m.rev
+        if (m.rev !== undefined) return "r" + m.rev + "|" + rsig0(m, 0) + "|" + (m.auth && m.auth.deco ? m.auth.deco : "")
         let n = 0
         const a = m.auth || {}
         const ea = JSON.stringify(m.embs || []).length + ":" + JSON.stringify(m.atts || []).length
@@ -511,6 +583,7 @@ QtObject {
         case "Dm": {
             dmOpened(p.usr, p.chan, p.ok, p.err)
             if (p.ok) { pick("home"); open(p.chan) }
+            if (p.ok && dmPend[p.usr]) { const t = dmPend[p.usr]; delete dmPend[p.usr]; Qt.callLater(() => send(p.chan, t, [], 0)) }
             else pushErr("dm", p.err, acc(p.usr))
             break
         }
@@ -586,6 +659,25 @@ QtObject {
         case "QrUsr": qrUsr = p.name; break
         case "Cap": cap = p; break
         case "Folds": folds = p; break
+        case "Prof": {
+            if (!p.ok) break
+            const o = Object.assign({}, profs)
+            o[p.usr + "|" + (p.gld || "")] = p.p
+            profs = o
+            break
+        }
+        case "Api": {
+            const cb = apiCb[p.tag]
+            delete apiCb[p.tag]
+            if (cb) cb(p.ok, p.v, p.err)
+            break
+        }
+        case "Sheet": {
+            const o = Object.assign({}, sheets)
+            o[p.url + "|" + p.max] = p.ok ? p.s : { err: p.err }
+            sheets = o
+            break
+        }
         case "MemList": memList(p.gld, p.rows); break
         case "Accs": cfgAccs = pj(c.accs(), []); secretBackend = c.secretBackend(); qr = ""; qrUsr = ""; cap = null; break
         case "AccGone": purgeAcc(p.acc); cfgAccs = pj(c.accs(), []); break
@@ -698,7 +790,7 @@ QtObject {
     readonly property var coreBlks: [
         { id: "rail", name: "Server bar" }, { id: "side", name: "Channels and DMs" }, { id: "chat", name: "Chat" },
         { id: "mems", name: "Member list" }, { id: "me", name: "Account panel" }, { id: "call", name: "Call panel" },
-        { id: "stage", name: "Call stage" }, { id: "inbox", name: "Inbox" }, { id: "player", name: "Media player" }
+        { id: "stage", name: "Call stage" }, { id: "inbox", name: "Inbox" }, { id: "player", name: "Media player" }, { id: "bar", name: "Title bar" }
     ]
     function allBlks() {
         return coreBlks.concat(Object.keys(blks).map(k => ({ id: k, name: blks[k].name })))
@@ -769,11 +861,21 @@ QtObject {
         const all = Object.values(chans).filter(x => x.grid === g)
         const pos = x => x.pos * 10 + (x.k === "Voice" || x.k === "Stage" ? 5 : 0)
         const cats = all.filter(x => x.k === "Cat").sort((a, b) => a.pos - b.pos)
+        const thr = {}
+        for (const t of all) if (t.k === "Thread" && t.prid) (thr[t.prid] = thr[t.prid] || []).push(t)
+        const withT = l => {
+            const o = []
+            for (const c of l) {
+                o.push(c)
+                for (const t of (thr[c.rid] || []).sort((a, b) => lastTs(b) - lastTs(a)).slice(0, 8)) o.push(Object.assign({}, t, { sub: true }))
+            }
+            return o
+        }
         const top = all.filter(x => x.k !== "Cat" && !x.prid && x.k !== "Thread").sort((a, b) => pos(a) - pos(b))
-        const out = top.slice()
+        const out = withT(top)
         for (const ct of cats) {
             out.push(ct)
-            out.push(...all.filter(x => x.prid === ct.rid && x.k !== "Thread").sort((a, b) => pos(a) - pos(b)))
+            out.push(...withT(all.filter(x => x.prid === ct.rid && x.k !== "Thread").sort((a, b) => pos(a) - pos(b))))
         }
         return out
     }
@@ -781,14 +883,31 @@ QtObject {
         void ver
         void dver
         const pinned = ui.pins || []
-        return Object.values(chans).filter(x => x.k === "Dm" || (x.k === "Grp" && !x.grid))
+        const hid = ui.hidDm || {}
+        return Object.values(chans).filter(x => (x.k === "Dm" || (x.k === "Grp" && !x.grid)) && !(x.rid in hid && hid[x.rid] >= lastTs(x) && x.rid !== selC))
             .sort((a, b) => {
                 const pa = pinned.indexOf(a.rid) >= 0, pb = pinned.indexOf(b.rid) >= 0
                 if (pa !== pb) return pa ? -1 : 1
                 return lastTs(b) - lastTs(a)
             })
     }
+    function hideDm(rid) {
+        const h = Object.assign({}, ui.hidDm || {})
+        h[rid] = lastTs(chans[rid])
+        setUi("hidDm", h)
+        if (selC === rid) open("")
+        ver++
+    }
     function lastTs(ch) { return ch && ch.lastTs ? ch.lastTs : 0 }
+    property var dmPend: ({})
+    function dmSend(u, text) {
+        const id = typeof u === "string" ? u : ridOf(u && u.id ? u.id : u)
+        if (!id || !text.trim()) return
+        const d = dms().find(x => x.k === "Dm" && x.rcp && x.rcp[0] && x.rcp[0].id && ridOf(x.rcp[0].id) === id)
+        if (d) { pick("home"); open(d.rid); send(d.rid, text, [], 0); return }
+        dmPend[id] = text
+        c.open_dm(id)
+    }
     function openDm(u) {
         const id = typeof u === "string" ? u : ridOf(u && u.id ? u.id : u)
         if (!id) return

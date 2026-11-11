@@ -42,6 +42,7 @@ Rectangle {
             }
         }
         ListView {
+            Smooth {}
             id: lv
             Layout.fillWidth: true
             Layout.fillHeight: true

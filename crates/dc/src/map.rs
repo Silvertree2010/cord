@@ -80,7 +80,36 @@ pub fn usr(a: u32, v: &Value) -> Usr {
         av: Some(av(id, s(v, "avatar"), s(v, "discriminator"))),
         bot: v["bot"].as_bool().unwrap_or(false),
         col: None,
+        deco: deco(v),
+        tag: tag(v),
+        plate: plate(v),
+        ncol: v["display_name_styles"]["colors"].as_array().map(|a| a.iter().filter_map(|c| c.as_u64().map(|x| x as u32)).collect()).unwrap_or_default(),
+        nfx: v["display_name_styles"]["effect_id"].as_u64().unwrap_or(0) as u32,
     }
+}
+
+pub fn plate(v: &Value) -> Option<String> {
+    let a = s(&v["collectibles"]["nameplate"], "asset").filter(|x| !x.is_empty())?;
+    let a = if a.ends_with('/') { a.to_string() } else { format!("{a}/") };
+    Some(format!("{CDN}/assets/collectibles/{a}"))
+}
+
+pub fn deco(v: &Value) -> Option<String> {
+    v.get("avatar_decoration_data").and_then(|d| s(d, "asset")).filter(|x| !x.is_empty()).map(str::to_string)
+}
+
+pub fn tag(v: &Value) -> Option<Tag> {
+    let p = v.get("primary_guild").filter(|p| !p.is_null()).or_else(|| v.get("clan").filter(|p| !p.is_null()))?;
+    if p["identity_enabled"].as_bool() == Some(false) {
+        return None;
+    }
+    let t = s(p, "tag").filter(|x| !x.is_empty())?;
+    let g = s(p, "identity_guild_id");
+    let badge = match (g, s(p, "badge")) {
+        (Some(g), Some(b)) if !b.is_empty() => Some(format!("{CDN}/clan-badges/{g}/{b}.png?size=32")),
+        _ => None,
+    };
+    Some(Tag { t: t.to_string(), badge })
 }
 
 const JOIN: &[&str] = &[
@@ -191,6 +220,11 @@ pub fn role(a: u32, r: &Value) -> Role {
         pos: r["position"].as_i64().unwrap_or(0),
         perm: pu(&r["permissions"]),
         hoist: r["hoist"].as_bool().unwrap_or(false),
+        icon: match (s(r, "icon").filter(|x| !x.is_empty()), s(r, "unicode_emoji").filter(|x| !x.is_empty())) {
+            (Some(h), _) => Some(format!("{CDN}/role-icons/{}/{h}.png?size=32", s(r, "id").unwrap_or(""))),
+            (None, Some(e)) => Some(format!("emoji:{e}")),
+            _ => None,
+        },
     }
 }
 

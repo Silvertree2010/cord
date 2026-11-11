@@ -50,7 +50,8 @@ Rectangle {
         regroup.restart()
     }
     onGChanged: reset()
-    onDmChanged: if (!g) reset()
+    readonly property string rk: !g && ch ? ch.rid + ":" + (ch.rcp || []).map(u => key(u)).join(",") : ""
+    onRkChanged: if (!g) reset()
     Component.onCompleted: reset()
 
     Connections {
@@ -99,8 +100,13 @@ Rectangle {
             on.sort(cmp)
             off.sort(cmp)
             const out = []
-            if (on.length) { out.push({ h: "Online — " + on.length }); out.push(...on) }
-            if (off.length) { out.push({ h: "Offline — " + off.length }); out.push(...off) }
+            if (r.ch && r.ch.k === "Grp") {
+                out.push({ h: "Members — " + (on.length + off.length) })
+                out.push(...on, ...off)
+            } else {
+                if (on.length) { out.push({ h: "Online — " + on.length }); out.push(...on) }
+                if (off.length) { out.push({ h: "Offline — " + off.length }); out.push(...off) }
+            }
             r.total = on.length + off.length
             r.grp = out
         }
@@ -112,60 +118,47 @@ Rectangle {
         visible: !!r.dmU
         anchors.fill: parent
         readonly property string uid: r.dmU ? r.key(r.dmU) : ""
-        readonly property var p: S.presOf(uid)
-        readonly property string since: {
-            if (!r.dmU || !r.dmU.id || S.svc(uid) !== "dc") return ""
-            const ms = Math.floor(Number(r.dmU.id.raw) / 4194304) + 1420070400000
-            return new Date(ms).toLocaleDateString(Qt.locale(), "d MMM yyyy")
+        onUidChanged: if (uid) dmA.restart()
+        transform: Translate { id: dmT }
+        ParallelAnimation {
+            id: dmA
+            NumberAnimation { target: dmP; property: "opacity"; from: 0; to: 1; duration: Th.mM; easing.type: Easing.OutCubic }
+            NumberAnimation { target: dmT; property: "x"; from: 14; to: 0; duration: Th.mS; easing.type: Easing.OutCubic }
         }
-        Rectangle { width: parent.width; height: 96; color: r.dmU && r.dmU.col ? "#" + ("000000" + r.dmU.col.toString(16)).slice(-6) : Th.bg4 }
-        Av {
-            id: dav
-            x: 16
-            y: 52
-            sz: 80
-            src: r.dmU ? (r.dmU.av || "") : ""
-            name: r.dmU ? r.dmU.name : ""
-            st: dmP.p ? dmP.p.st : "Off"
-            ring: Th.bg2
-        }
-        Column {
-            x: 16
-            y: dav.y + dav.sz + 12
-            width: parent.width - 32
-            spacing: 4
-            Lbl { width: parent.width; text: r.dmU ? (r.dmU.disp || r.dmU.name) : ""; font.pixelSize: Th.fsL; font.weight: Font.Bold }
-            Lbl { width: parent.width; text: r.dmU ? r.dmU.name : ""; color: Th.tx2 }
-            Item { width: 1; height: 8 }
-            Rectangle {
-                width: parent.width
-                height: ic.implicitHeight + 24
-                radius: Th.rs
-                color: Th.bg3
-                Column {
-                    id: ic
-                    x: 12
-                    y: 12
-                    width: parent.width - 24
-                    spacing: 10
-                    Column {
-                        visible: !!(dmP.p && dmP.p.act)
-                        width: parent.width
-                        spacing: 2
-                        Lbl { text: "Activity"; color: Th.tx3; font.pixelSize: 11; font.weight: Font.DemiBold }
-                        Lbl { width: parent.width; text: dmP.p && dmP.p.act ? dmP.p.act : ""; color: Th.tx; wrapMode: Text.Wrap; elide: Text.ElideNone }
-                    }
-                    Column {
-                        visible: dmP.since !== ""
-                        width: parent.width
-                        spacing: 2
-                        Lbl { text: "Member since"; color: Th.tx3; font.pixelSize: 11; font.weight: Font.DemiBold }
-                        Lbl { text: dmP.since; color: Th.tx }
-                    }
-                }
+        Flickable {
+            id: dmF
+            anchors.fill: parent
+            contentHeight: pcard.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: Scr {}
+            Smooth {}
+            ProfCard {
+                id: pcard
+                width: dmF.width
+                height: Math.max(implicitHeight, dmF.height)
+                u: r.dmU
+                playing: dmP.visible
             }
-            Item { width: 1; height: 4 }
-            Btn { width: parent.width; height: 34; text: "Copy user ID"; onClicked: S.copy(r.dmU && r.dmU.id ? r.dmU.id.raw : "") }
+        }
+        Rectangle {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 10
+            width: 32
+            height: 32
+            radius: 16
+            color: Th.a("#000000", dm2.containsMouse ? 0.55 : 0.4)
+            z: 60
+            Ico { anchors.centerIn: parent; n: "dots"; sz: 18; col: "#ffffff" }
+            MouseArea { id: dm2; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: pm2.show(parent, 0, parent.height + 4) }
+            Ctx {
+                id: pm2
+                model: [
+                    { text: "Copy user ID", run: () => S.copy(r.dmU && r.dmU.id ? r.dmU.id.raw : "") },
+                    { text: "Copy username", run: () => S.copy(r.dmU ? r.dmU.name : "") }
+                ]
+            }
         }
     }
 
@@ -173,6 +166,7 @@ Rectangle {
         id: lv
         visible: !r.dmU
         anchors.fill: parent
+        Smooth {}
         onContentYChanged: {
             if (!r.rows || !r.g || r.rows.length < 100) return
             if (contentY + height < contentHeight - 600) return
@@ -215,6 +209,11 @@ Rectangle {
             width: lv.width - 20
             radius: Th.rs
             color: ma.containsMouse ? Th.hov : "transparent"
+            Loader {
+                anchors.fill: parent
+                active: !!it.m.usr.plate && S.ui.plates !== false
+                sourceComponent: Plate { src: it.m.usr.plate; radius: rw.radius; anim: ma.containsMouse; opacity: rw.onl ? 1 : 0.5 }
+            }
             Av {
                 id: av
                 x: 8
@@ -224,17 +223,29 @@ Rectangle {
                 name: it.m.usr.name
                 st: rw.p ? rw.p.st : "Off"
                 gray: !rw.onl
+                ring: ma.containsMouse ? Qt.tint(Th.bg, Th.hov) : Th.bg
+                deco: it.m.usr.deco || ""
+                anim: ma.containsMouse
             }
             Column {
                 anchors.left: av.right
                 anchors.leftMargin: 10
                 anchors.right: pl.left
                 anchors.verticalCenter: parent.verticalCenter
-                Lbl {
+                Row {
                     width: parent.width
-                    text: it.m.nick || it.m.usr.disp || it.m.usr.name
-                    color: !rw.onl ? Th.tx3 : it.m.usr.col ? Th.lift("#" + ("000000" + it.m.usr.col.toString(16)).slice(-6), Th.bg2, 4.5) : Th.tx
-                    font.weight: Font.Medium
+                    spacing: 5
+                    Name {
+                        width: Math.min(implicitWidth, parent.width - (mtp.visible ? mtp.width + 5 : 0))
+                        usr: it.m.usr
+                        text: it.m.nick || it.m.usr.disp || it.m.usr.name
+                        col: !rw.onl ? Th.tx3 : it.m.usr.col ? Th.lift("#" + ("000000" + it.m.usr.col.toString(16)).slice(-6), Th.bg2, 4.5) : Th.tx
+                        opacity: rw.onl ? 1 : 0.6
+                        weight: Font.Medium
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    RoleIco { role: r.g ? S.roleIcon(r.g, it.uid, it.m.roles) : null; sz: 16; anchors.verticalCenter: parent.verticalCenter }
+                    TagPill { id: mtp; tag: it.m.usr.tag || null; fs: 10; opacity: rw.onl ? 1 : 0.6; anchors.verticalCenter: parent.verticalCenter }
                 }
                 Lbl { visible: !!(rw.p && rw.p.act); width: parent.width; text: rw.p && rw.p.act ? rw.p.act : ""; color: Th.tx3; font.pixelSize: 11 }
             }

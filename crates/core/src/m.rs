@@ -9,6 +9,26 @@ pub struct Usr {
     pub av: Option<String>,
     pub bot: bool,
     pub col: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deco: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<Tag>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plate: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ncol: Vec<u32>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub nfx: u32,
+}
+
+fn is_zero(v: &u32) -> bool {
+    *v == 0
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+pub struct Tag {
+    pub t: String,
+    pub badge: Option<String>,
 }
 
 impl Usr {
@@ -46,6 +66,8 @@ pub struct Role {
     pub pos: i64,
     pub perm: u64,
     pub hoist: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

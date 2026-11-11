@@ -13,7 +13,7 @@ Item {
     property var rep: null
     property string cid: ""
     property bool mine: S.isMe(m.auth, S.acc(cid))
-    property bool hov: ma.containsMouse || bar.hov || activeFocus
+    property bool hov: hh.hovered || ma.containsMouse || bar.hov || activeFocus
     activeFocusOnTab: true
     Accessible.role: Accessible.ListItem
     Accessible.name: (r.m.auth ? (r.m.auth.disp || r.m.auth.name) : "") + ": " + (r.m.body || "")
@@ -28,13 +28,50 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        anchors.leftMargin: 8
-        anchors.rightMargin: 8
-        radius: Th.rs
-        color: r.ment ? Th.ment : r.hov ? Th.a("#000000", Th.dark ? 0.18 : 0.04) : "transparent"
-        Behavior on color { ColorAnimation { duration: 70 } }
+        anchors.leftMargin: 6
+        anchors.rightMargin: 6
+        anchors.topMargin: r.day ? 28 + 6 : 0
+        radius: 6
+        color: r.ment ? Th.ment : r.hov ? Th.a(Th.ac, 0.10) : "transparent"
+        Behavior on color { ColorAnimation { duration: Th.mF } }
+        Rectangle {
+            opacity: r.hov && !r.ment && !r.m.del ? 1 : 0
+            visible: opacity > 0.01
+            width: 4
+            height: (parent.height - 8) * (0.4 + 0.6 * opacity)
+            anchors.verticalCenter: parent.verticalCenter
+            x: 2
+            radius: 2
+            color: Th.ac
+            Behavior on opacity { NumberAnimation { duration: Th.mF; easing.type: Easing.OutCubic } }
+        }
         Rectangle { visible: r.ment && !r.m.del; width: 2; height: parent.height - 8; y: 4; x: 0; radius: 1; color: Th.ac }
         Rectangle { visible: !!r.m.del; width: 2; height: parent.height - 8; y: 4; x: 0; radius: 1; color: Th.a(Th.err, 0.6) }
+    }
+    readonly property var mu: {
+        if (r.grp || !r.m.auth || !r.m.auth.id) return null
+        const c = S.chans[r.cid]
+        if (!c || !c.grid) return null
+        void U.memC
+        const m = (U.memC[c.grid] || {})[S.ridOf(r.m.auth.id)]
+        return m ? m.usr : null
+    }
+    function nmap() {
+        const b = r.m.body || ""
+        if (b.indexOf("<@") < 0) return S.names
+        const c = S.chans[r.cid]
+        if (!c || !c.grid) return S.names
+        void U.memC
+        const mc = U.memC[c.grid] || {}
+        const pre = S.svc(r.cid) + ":" + S.acc(r.cid) + ":"
+        let o = null
+        b.replace(/<@!?(\d+)>/g, (x, i) => {
+            const m = mc[pre + i]
+            const n = m ? (m.nick || m.usr.disp || m.usr.name) : ""
+            if (n && n !== S.names[i]) { if (!o) o = Object.assign({}, S.names); o[i] = n }
+            return x
+        })
+        return o || S.names
     }
     function usrOf(id) {
         const c = S.chans[r.cid]
@@ -59,6 +96,7 @@ Item {
         return !!(me && me.id && (m.body || "").indexOf(me.id.raw) >= 0 && !mine)
     }
 
+    HoverHandler { id: hh }
     MouseArea {
         id: ma
         anchors.fill: parent
@@ -76,12 +114,13 @@ Item {
 
         Row {
             visible: r.day
-            width: parent.width
+            x: 16
+            width: parent.width - 32
             height: 28
-            spacing: 8
-            Rectangle { width: (parent.width - dl.implicitWidth - 16 - (r.nw ? nwp.width + 8 : 0)) / 2; height: 1; color: r.nw ? Th.err : Th.ln; anchors.verticalCenter: parent.verticalCenter }
-            Lbl { id: dl; text: F.day(r.m.ts || 0); color: r.nw ? Th.err : Th.tx3; font.pixelSize: 11; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
-            Rectangle { width: (parent.width - dl.implicitWidth - 16 - (r.nw ? nwp.width + 8 : 0)) / 2; height: 1; color: r.nw ? Th.err : Th.ln; anchors.verticalCenter: parent.verticalCenter }
+            spacing: 4
+            Rectangle { width: (parent.width - dl.implicitWidth - 16 - (r.nw ? nwp.width + 8 : 0)) / 2; height: 2; radius: 1; color: r.nw ? Th.err : Th.ln; anchors.verticalCenter: parent.verticalCenter }
+            Lbl { id: dl; text: F.day(r.m.ts || 0); color: r.nw ? Th.err : Th.tx2; font.pixelSize: 12; font.weight: Font.Medium; anchors.verticalCenter: parent.verticalCenter }
+            Rectangle { width: (parent.width - dl.implicitWidth - 16 - (r.nw ? nwp.width + 8 : 0)) / 2; height: 2; radius: 1; color: r.nw ? Th.err : Th.ln; anchors.verticalCenter: parent.verticalCenter }
             Rectangle {
                 id: nwp
                 visible: r.nw
@@ -141,6 +180,8 @@ Item {
                 sz: 40
                 src: r.m.auth ? (r.m.auth.av || "") : ""
                 name: r.m.auth ? r.m.auth.name : ""
+                deco: r.m.auth && r.m.auth.deco ? r.m.auth.deco : r.mu && r.mu.deco ? r.mu.deco : ""
+                anim: r.hov
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: S.prof(r.m.auth, parent) }
             }
             Lbl {
@@ -159,13 +200,17 @@ Item {
                 x: r.gut
                 spacing: 8
                 height: visible ? 22 : 0
-                Lbl {
+                Name {
+                    usr: r.m.auth && r.m.auth.ncol && r.m.auth.ncol.length ? r.m.auth : (r.mu || r.m.auth || null)
                     text: r.m.auth ? (r.m.auth.disp || r.m.auth.name) : ""
-                    color: r.m.auth && r.m.auth.col ? Th.lift("#" + ("000000" + r.m.auth.col.toString(16)).slice(-6), Th.bg2, 4.5) : Th.tx
-                    font.weight: Font.DemiBold
+                    col: r.m.auth && r.m.auth.col ? Th.lift("#" + ("000000" + r.m.auth.col.toString(16)).slice(-6), Th.bg2, 4.5) : Th.tx
+                    weight: Font.DemiBold
                     anchors.baseline: tm.baseline
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: S.prof(r.m.auth, parent) }
                 }
+                RoleIco { role: { void U.memC; const c = S.chans[r.cid]; return c && c.grid && r.m.auth && r.m.auth.id ? S.roleIcon(c.grid, S.ridOf(r.m.auth.id), r.m.aroles && r.m.aroles.length ? r.m.aroles : null) : null }
+                    sz: 18; anchors.verticalCenter: parent.verticalCenter }
+                TagPill { tag: r.m.auth && r.m.auth.tag ? r.m.auth.tag : r.mu && r.mu.tag ? r.mu.tag : null; fs: 10; anchors.verticalCenter: parent.verticalCenter }
                 Rectangle {
                     visible: r.m.auth && r.m.auth.bot
                     width: bt.implicitWidth + 8
@@ -234,7 +279,7 @@ Item {
                     property bool spoil: S.f("spoilers")
                     text: {
                         if (r.m.body && r.m.body.indexOf(":R>") >= 0) void S.tick
-                        return r.m.sys ? F.esc(r.m.body || "") + ' <span style="color:' + Th.tx3 + ';font-size:11px;font-style:normal">' + F.time(r.m.ts || 0) + '</span>' : F.html(S.run("render", r.m).body || "", { ac: Th.ac, cb: Th.bg4, qb: Th.tx3, mono: Th.mono, sub: Th.tx3, fs: Th.fs, names: S.names, spoil: spoil, sp: Th.bg4, big: F.onlyEmoji(r.m.body), em: 22, hk: Th.ac, hs: Th.ok, hc: Th.tx3, hn: Th.warn }) + (r.m.ed ? ' <span style="color:' + Th.tx2 + ';font-size:11px">(edited)</span>' : "")
+                        return r.m.sys ? F.esc(r.m.body || "") + ' <span style="color:' + Th.tx3 + ';font-size:11px;font-style:normal">' + F.time(r.m.ts || 0) + '</span>' : F.html(S.run("render", r.m).body || "", { ac: Th.ac, mt: Qt.lighter(Th.ac, 1.12).toString(), mb: Qt.tint(Th.bgc, Th.a(Th.ac, 0.24)).toString(), cb: Th.bg4, qb: Th.tx3, mono: Th.mono, sub: Th.tx3, fs: Th.fs, names: r.nmap(), spoil: spoil, sp: Th.bg4, big: F.onlyEmoji(r.m.body), em: 22, hk: Th.ac, hs: Th.ok, hc: Th.tx3, hn: Th.warn }) + (r.m.ed ? ' <span style="color:' + Th.tx2 + ';font-size:11px">(edited)</span>' : "")
                     }
                     onLinkActivated: l => {
                         if (l === "cord:spoil") { spoil = true; return }
@@ -443,6 +488,20 @@ Item {
         Row {
             id: br
             anchors.centerIn: parent
+            Repeater {
+                model: (S.ui.emor || []).slice(0, 3)
+                Rectangle {
+                    width: 28
+                    height: 28
+                    radius: Th.rs
+                    color: qm.containsMouse ? Th.hov : "transparent"
+                    scale: qm.pressed ? 0.88 : 1
+                    Behavior on scale { NumberAnimation { duration: Th.mF } }
+                    Image { visible: !!modelData.url; anchors.centerIn: parent; width: 18; height: 18; source: modelData.url || ""; sourceSize: Qt.size(36, 36); asynchronous: true }
+                    Text { visible: !modelData.url; anchors.centerIn: parent; text: modelData.url ? "" : modelData.name; font.pixelSize: 16 }
+                    MouseArea { id: qm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.c.react(r.cid, S.ridOf(r.m.id), JSON.stringify(modelData), true) }
+                }
+            }
             IBtn { n: "smile"; sz: 28; isz: 16; tip: "Add reaction"; onClicked: S.emoji(bar, e => S.c.react(r.cid, S.ridOf(r.m.id), JSON.stringify(e), true)) }
             IBtn { n: "reply"; sz: 28; isz: 16; tip: "Reply"; onClicked: S.reply = S.ridOf(r.m.id) }
             IBtn { visible: r.mine; n: "edit"; sz: 28; isz: 16; tip: "Edit"; onClicked: S.editing = S.ridOf(r.m.id) }
@@ -465,7 +524,10 @@ Item {
     Ctx {
         id: menu
         model: [
+            { text: "Add Reaction", when: !r.m.del, run: () => S.emoji(r, e => S.c.react(r.cid, S.ridOf(r.m.id), JSON.stringify(e), true)) },
             { text: "Reply", when: !r.m.del, run: () => S.reply = S.ridOf(r.m.id) },
+            { text: "Mention", when: !!(r.m.auth && r.m.auth.id) && !r.mine, run: () => S.insReq = "<@" + r.m.auth.id.raw + "> " },
+            { text: "Copy Text", when: (r.m.body || "") !== "", run: () => S.copy(tx.getText(0, tx.length)) },
             { text: "Edit", when: r.mine && !r.m.del, run: () => S.editing = S.ridOf(r.m.id) },
             { text: "Copy", items: [
                 { text: "Text", run: () => S.copy(tx.getText(0, tx.length)) },
@@ -474,6 +536,9 @@ Item {
                 { text: "Link", when: !!r.m.permalink, run: () => S.copy(r.m.permalink) }
             ] },
             { text: "Translate", when: S.f("translate"), run: () => Qt.openUrlExternally("https://translate.google.com/?sl=auto&tl=" + Qt.locale().name.split("_")[0] + "&text=" + encodeURIComponent(r.m.body)) },
+            { text: r.m.pin ? "Unpin Message" : "Pin Message", when: S.svc(r.cid) === "dc" && !r.m.del, run: () => S.api(S.acc(r.cid), r.m.pin ? "unpin" : "pin", { chan: S.raw(r.cid), msg: r.m.id.raw }, (ok, v, e) => { if (!ok) S.pushErr("pin", e, S.acc(r.cid)) }) },
+            { text: "Mark Unread", when: S.svc(r.cid) === "dc", run: () => S.api(S.acc(r.cid), "unread", { chan: S.raw(r.cid), msg: S.decId(r.m.id.raw) }) },
+            { text: "View Profile", when: !!r.m.auth && !r.m.sys, run: () => S.prof(r.m.auth, r) },
             { sep: true, when: r.mine && !r.m.del },
             { text: "Delete", danger: true, when: r.mine && !r.m.del, run: () => r.askDel(!!(menu.mods & Qt.ShiftModifier)) }
         ]

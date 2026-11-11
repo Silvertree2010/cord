@@ -51,11 +51,14 @@ function inl(s, o) {
     const k = h => { keep.push(h); return "\u0000" + (keep.length - 1) + "\u0000" }
     s = s.replace(/`([^`\n]+)`/g, (m, a) => k('<code style="background:' + cb + ';font-family:\'' + mono + '\'">&nbsp;' + a + '&nbsp;</code>'))
     s = s.replace(/&lt;(a?):(\w+):(\d+)&gt;/g, (m, an, n, id) => k('<img src="https://cdn.discordapp.com/emojis/' + id + '.' + (an ? "gif" : "webp") + '?size=48" width="' + em + '" height="' + em + '" alt=":' + n + ':">'))
-    s = s.replace(/&lt;@!?(\d+)&gt;/g, (m, id) => k('<a href="cord:usr/' + id + '" style="color:' + ac + ';text-decoration:none;background:' + cb + '">@' + esc(nm[id] || id) + '</a>'))
-    s = s.replace(/&lt;#(\d+)&gt;/g, (m, id) => k('<a href="cord:chan/' + id + '" style="color:' + ac + ';text-decoration:none">#' + esc(nm[id] || id) + '</a>'))
-    s = s.replace(/&lt;@&amp;(\d+)&gt;/g, (m, id) => k('<span style="color:' + ac + ';text-decoration:none">@' + esc(nm[id] || "role") + '</span>'))
+    const mt = o.mt || ac, mb = o.mb || cb
+    const pill = (t) => 'style="color:' + mt + ';background-color:' + mb + ';font-weight:600;text-decoration:none">&#8202;' + t + '&#8202;'
+    s = s.replace(/&lt;@!?(\d+)&gt;/g, (m, id) => k('<a href="cord:usr/' + id + '" ' + pill("@" + esc(nm[id] || id)) + '</a>'))
+    s = s.replace(/&lt;#(\d+)&gt;/g, (m, id) => k('<a href="cord:chan/' + id + '" ' + pill("#" + esc(nm[id] || id)) + '</a>'))
+    s = s.replace(/&lt;@&amp;(\d+)&gt;/g, (m, id) => k('<span ' + pill("@" + esc(nm[id] || "role")) + '</span>'))
+    s = s.replace(/(^|[^\w&;])@(everyone|here)\b/g, (m, p, w) => p + k('<span ' + pill("@" + w) + '</span>'))
     s = s.replace(/&lt;t:(-?\d+)(?::([tTdDfFR]))?&gt;/g, (m, t, f) => k('<span style="background:' + cb + '">' + stamp(parseInt(t) * 1000, f || "f", o.now) + '</span>'))
-    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (m, t, u) => k('<a href="' + u + '" style="color:' + ac + ';text-decoration:none">' + t + '</a>'))
+    s = s.replace(/\[([^\]]+)\]\((?:&lt;)?(https?:\/\/(?:[^\s)&]|&(?!gt;))+)(?:&gt;)?\)/g, (m, t, u) => k('<a href="' + u.replace(/&amp;/g, "&") + '" style="color:' + ac + ';text-decoration:none">' + t + '</a>'))
     s = s.replace(/&lt;(https?:\/\/[^\s<]+?)&gt;/g, (m, u) => k('<a href="' + u + '" style="color:' + ac + ';text-decoration:none">' + u + '</a>'))
     s = s.replace(/(https?:\/\/(?:[^\s<&]|&(?!gt;|lt;))+[^\s<.,:;"')\]&])/g, (m, u) => k('<a href="' + u + '" style="color:' + ac + ';text-decoration:none">' + u + '</a>'))
     s = s.replace(/\*\*\*(.+?)\*\*\*/g, "<b><i>$1</i></b>")

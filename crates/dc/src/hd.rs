@@ -493,6 +493,17 @@ pub fn dis(sh: &Sh, tx: &Tx, t: &str, d: Value) {
                 }
             }
         }
+        "GUILD_MEMBERS_CHUNK" => {
+            let Some(g) = s(&d, "guild_id") else { return };
+            for m in arr(&d, "members").iter() {
+                if let Some(x) = mem(a, g, m) {
+                    if let Some(id) = x.usr.id.clone() {
+                        sh.us.lock().insert(id.raw.to_string(), x.usr.clone());
+                    }
+                    let _ = tx.send(Ev::Mem(x));
+                }
+            }
+        }
         "GUILD_MEMBER_LIST_UPDATE" => {
             let Some(g) = s(&d, "guild_id") else { return };
             let mut row = |it: &Value| -> Option<MRow> {

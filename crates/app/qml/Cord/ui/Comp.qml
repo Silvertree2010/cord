@@ -31,6 +31,15 @@ Item {
     readonly property real pad: Math.max(8, (48 - fm_.height) / 2)
     FontMetrics { id: fm_; font: ta.font }
 
+    Connections {
+        target: S
+        function onInsReqChanged() {
+            if (!S.insReq || r.slot !== (S.focusSlot || 0)) return
+            ta.insert(ta.cursorPosition, S.insReq)
+            ta.forceActiveFocus()
+            S.insReq = ""
+        }
+    }
     function setText(t) {
         prog = true
         ta.text = t
@@ -270,10 +279,25 @@ Item {
             width: parent.width
             height: Math.max(48, Math.min(ta.contentHeight + r.pad * 2, 300))
             radius: Th.r
-            color: Th.bg3
+            color: Th.bg
             border.color: Th.ln
             border.width: 1
+            readonly property bool locked: !!(r.ch && r.ch.hidden)
+            Row {
+                visible: bx.locked
+                x: 16
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 10
+                Ico { n: "lock"; sz: 18; col: Th.tx2; anchors.verticalCenter: parent.verticalCenter }
+                Lbl {
+                    width: bx.width - 60
+                    text: "You do not have permission to send messages in this channel."
+                    color: Th.tx2
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
             RowLayout {
+                visible: !bx.locked
                 anchors.fill: parent
                 anchors.leftMargin: 7
                 anchors.rightMargin: 7
@@ -342,6 +366,33 @@ Item {
                         }
                     }
                 }
+                Rectangle {
+                    id: gb
+                    visible: S.svc(r.cid) === "dc"
+                    Layout.alignment: Qt.AlignTop
+                    Layout.topMargin: 11
+                    width: 32
+                    height: 22
+                    radius: 5
+                    color: gbm.containsMouse ? Th.hov : "transparent"
+                    border.color: gbm.containsMouse ? Th.tx : Th.tx2
+                    border.width: 1.5
+                    Lbl { anchors.centerIn: parent; text: "GIF"; font.pixelSize: 10; font.weight: Font.Bold; color: gbm.containsMouse ? Th.tx : Th.tx2 }
+                    MouseArea {
+                        id: gbm
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            const p = gb.mapToItem(gifP.parent, 0, 0)
+                            gifP.cid = r.cid
+                            gifP.cb = u => S.send(r.cid, u, [], r.slot)
+                            gifP.x = Math.max(8, p.x + gb.width - gifP.width)
+                            gifP.y = Math.max(8, p.y - gifP.height - 12)
+                            gifP.open()
+                        }
+                    }
+                }
                 IBtn { n: "smile"; tip: "Emoji"; Layout.alignment: Qt.AlignTop; Layout.topMargin: 8; onClicked: S.emoji(bx, e => { ta.insert(ta.cursorPosition, e.id ? "<" + (e.anim ? "a" : "") + ":" + e.name + ":" + e.id.raw + ">" : e.name); ta.forceActiveFocus() }) }
                 IBtn { n: "send"; tip: "Send"; visible: ta.text.length > 0 || r.files.length > 0; Layout.alignment: Qt.AlignTop; Layout.topMargin: 8; onClicked: r.go() }
             }
@@ -399,7 +450,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 x: 4
                 width: parent.width - 8 - (r.stat ? rb.width + 8 : 0)
-                text: r.stat ? r.stat : parent.hid ? "You do not have access to this channel" : parent.ty.length === 0 ? "" : parent.ty.length > 3 ? "Several people are typing…" : parent.ty.map(t => t.n).join(", ") + (parent.ty.length > 1 ? " are typing…" : " is typing…")
+                text: r.stat ? r.stat : parent.ty.length === 0 ? "" : parent.ty.length > 3 ? "Several people are typing…" : parent.ty.map(t => t.n).join(", ") + (parent.ty.length > 1 ? " are typing…" : " is typing…")
                 color: r.stat ? (r.emptyEdit ? Th.tx2 : Th.err) : parent.hid ? Th.tx3 : Th.tx2
                 font.pixelSize: 12
                 elide: Text.ElideRight
@@ -469,4 +520,5 @@ Item {
             S.setSlot(slot, "reply", "")
         }
     }
+    Gifs { id: gifP; parent: Overlay.overlay }
 }

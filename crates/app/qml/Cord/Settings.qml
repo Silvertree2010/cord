@@ -6,13 +6,30 @@ import "Lay.js" as L
 
 Rectangle {
     id: r
-    color: Th.bgc
+    color: Th.bg
+    NumberAnimation on opacity { from: 0; to: 1; duration: Th.mM; easing.type: Easing.OutCubic }
+    NumberAnimation on scale { from: 1.02; to: 1; duration: Th.mS; easing.type: Easing.OutCubic }
     MouseArea { anchors.fill: parent }
     readonly property var pages: [
-        ["accounts", "Accounts", "users"], ["layout", "Layout", "layout"], ["look", "Appearance", "eye"],
-        ["feat", "Features", "grid"], ["voice", "Voice and video", "mic"], ["mods", "Mods and themes", "package"],
-        ["keys", "Shortcuts", "keyboard"], ["about", "About", "info"]
+        ["accounts", "My accounts", "users"], ["privacy", "Privacy", "lock"],
+        ["look", "Appearance", "eye"], ["layout", "Layout", "layout"], ["notif", "Notifications", "bell"], ["voice", "Voice and video", "mic"],
+        ["feat", "Client mods", "grid"],
+        ["mods", "Mods and themes", "package"], ["keys", "Shortcuts", "keyboard"], ["about", "About", "info"]
     ]
+    readonly property var fcat: ({
+        privacy: ["silenttyping", "noread", "notrack", "noreplyping"],
+        notif: ["relnotif"],
+        voice: ["streamq", "callTimer"],
+        look: ["anim", "platform", "typingtweaks"],
+        chat: ["msglog", "hidden", "spoilers", "translate", "copyraw", "readall", "pinDms"],
+        media: ["fakenitro", "spotify"]
+    })
+    function fdef(k) { return S.featDefs.find(x => x.k === k) || null }
+    function fother() {
+        const used = {}
+        for (const c in r.fcat) for (const k of r.fcat[c]) used[k] = true
+        return S.featDefs.filter(x => !used[x.k]).map(x => x.k)
+    }
     readonly property var cur: pages.find(p => p[0] === S.setPage) || pages[0]
     property string pasteErr: ""
     function tcols(t) {
@@ -26,80 +43,256 @@ Rectangle {
         return [j.bg || Th.bg, j.bg3 || Th.bg3, j.ac || Th.ac]
     }
 
+    property string q: ""
+    readonly property var groups: [
+        ["User settings", ["accounts", "privacy"]],
+        ["App settings", ["look", "layout", "notif", "voice"]],
+        ["Client mods", ["feat"]],
+        ["Advanced", ["mods", "keys", "about"]]
+    ]
+    readonly property var desc: ({
+        accounts: "Your Discord, Matrix and Stoat accounts and your status",
+        privacy: "What other people and Discord can see from you",
+        layout: "Presets, blocks and the layout editor",
+        look: "Theme, accent, text size, density and motion",
+        notif: "Desktop alerts and relationship changes",
+        feat: "Built-in tweaks for chat and media",
+        voice: "Microphone, push to talk, calls and screen share",
+        mods: "Your own QML mods, blocks and themes",
+        keys: "Keyboard and mouse shortcuts",
+        about: "Version, license and source"
+    })
+    function pgOf(id) { return r.pages.find(p => p[0] === id) }
+    function hit(id) {
+        const p = pgOf(id)
+        const t = r.q.trim().toLowerCase()
+        return !t || p[1].toLowerCase().indexOf(t) >= 0 || (r.desc[id] || "").toLowerCase().indexOf(t) >= 0
+    }
+    Keys.onEscapePressed: S.showSet = false
+    property var al: Object.values(S.accs)
+    property var me: al.length ? al[0] : null
+
     RowLayout {
         anchors.fill: parent
-        spacing: 0
+        anchors.margins: Th.gap + 2
+        spacing: Th.gap
         Rectangle {
             Layout.fillHeight: true
-            Layout.preferredWidth: 240
-            color: Th.bg2
+            Layout.preferredWidth: 272
+            radius: Th.r
+            color: Th.bgc
+            border.color: Th.ln
             Column {
                 anchors.fill: parent
-                anchors.topMargin: 48
-                anchors.leftMargin: 12
-                anchors.rightMargin: 12
+                anchors.margins: 10
                 spacing: 2
-                Lbl { text: "Settings"; color: Th.tx2; font.pixelSize: Th.fsS; font.weight: Font.DemiBold; leftPadding: 10; bottomPadding: 6 }
+                Rectangle {
+                    width: parent.width
+                    height: 60
+                    radius: Th.rs
+                    color: "transparent"
+                    Av { id: ma_; x: 6; anchors.verticalCenter: parent.verticalCenter; sz: 40; src: r.me ? (r.me.me.av || "") : ""; name: r.me ? r.me.me.name : "?"; st: S.ui.st || "On"; ring: Th.bgc }
+                    Column {
+                        anchors.left: ma_.right
+                        anchors.leftMargin: 12
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        Lbl { width: parent.width; text: r.me ? (r.me.me.disp || r.me.me.name) : "cord"; font.pixelSize: Th.fs + 1; font.weight: Font.DemiBold }
+                        Lbl { width: parent.width; text: r.al.length > 1 ? r.al.length + " accounts" : r.me ? r.me.me.name : "No account"; color: Th.tx2; font.pixelSize: Th.fsS }
+                    }
+                }
+                Item { width: 1; height: 6 }
+                Rectangle {
+                    width: parent.width
+                    height: 34
+                    radius: 6
+                    color: Th.bg
+                    Ico { id: si; x: 10; anchors.verticalCenter: parent.verticalCenter; n: "search"; sz: 15; col: Th.tx2 }
+                    TextInput {
+                        id: sq
+                        anchors.left: si.right
+                        anchors.leftMargin: 8
+                        anchors.right: parent.right
+                        anchors.rightMargin: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: Th.tx
+                        font.family: Th.font
+                        font.pixelSize: Th.fsS + 1
+                        clip: true
+                        selectByMouse: true
+                        onTextChanged: r.q = text
+                        Keys.onReturnPressed: { const f = r.pages.find(p => r.hit(p[0])); if (f) S.setPage = f[0] }
+                        Lbl { visible: !sq.text; text: "Search settings"; color: Th.tx2; font.pixelSize: Th.fsS + 1; anchors.verticalCenter: parent.verticalCenter }
+                    }
+                }
+                Item { width: 1; height: 6 }
                 Repeater {
-                    model: r.pages
-                    Rectangle {
+                    model: r.groups
+                    Column {
                         width: parent.width
-                        height: 36
-                        radius: Th.rs
-                        color: S.setPage === modelData[0] ? Th.sel : pm.containsMouse ? Th.hov : "transparent"
-                        activeFocusOnTab: true
-                        Accessible.role: Accessible.Button
-                        Accessible.name: modelData[1]
-                        Keys.onReturnPressed: S.setPage = modelData[0]
-                        Keys.onSpacePressed: S.setPage = modelData[0]
-                        Row {
-                            x: 10
-                            spacing: 10
-                            anchors.verticalCenter: parent.verticalCenter
-                            Ico { n: modelData[2]; sz: 16; col: S.setPage === modelData[0] ? Th.tx : Th.tx2; anchors.verticalCenter: parent.verticalCenter }
-                            Lbl { text: modelData[1]; color: S.setPage === modelData[0] ? Th.tx : Th.tx2; anchors.verticalCenter: parent.verticalCenter }
+                        spacing: 2
+                        readonly property var ids: modelData[1].filter(x => r.hit(x))
+                        visible: ids.length > 0
+                        Lbl { text: modelData[0]; color: Th.tx2; font.pixelSize: Th.fsS; font.weight: Font.DemiBold; leftPadding: 10; topPadding: 10; bottomPadding: 4 }
+                        Repeater {
+                            model: parent.ids
+                            Rectangle {
+                                readonly property var pp: r.pgOf(modelData)
+                                readonly property bool on: S.setPage === modelData
+                                width: parent.width
+                                height: 38
+                                radius: 6
+                                color: on ? Th.sel : pm.containsMouse ? Th.hov : "transparent"
+                                Behavior on color { ColorAnimation { duration: Th.mF } }
+                                activeFocusOnTab: true
+                                Accessible.role: Accessible.Button
+                                Accessible.name: pp[1]
+                                Keys.onReturnPressed: S.setPage = modelData
+                                Keys.onSpacePressed: S.setPage = modelData
+                                Rectangle {
+                                    visible: parent.on
+                                    width: 3
+                                    height: 18
+                                    radius: 2
+                                    x: 0
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    color: Th.ac
+                                }
+                                Row {
+                                    x: 12
+                                    spacing: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    Ico { n: pp[2]; sz: 18; col: parent.parent.on || pm.containsMouse ? Th.tx : Th.tx2; anchors.verticalCenter: parent.verticalCenter }
+                                    Lbl { text: pp[1]; color: parent.parent.on || pm.containsMouse ? Th.tx : Th.tx2; font.pixelSize: Th.fs; font.weight: Font.Medium; anchors.verticalCenter: parent.verticalCenter }
+                                }
+                                Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: Th.ac; border.width: 2; visible: parent.activeFocus }
+                                MouseArea { id: pm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.setPage = modelData }
+                            }
                         }
-                        Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: Th.ac; border.width: 2; visible: parent.activeFocus }
-                        MouseArea { id: pm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.setPage = modelData[0] }
                     }
                 }
             }
+            Lbl {
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 14
+                x: 22
+                text: "cord 0.1.0"
+                color: Th.tx2
+                font.pixelSize: Th.fsS
+            }
         }
-        Item {
+        Rectangle {
             id: pane
             Layout.fillWidth: true
             Layout.fillHeight: true
-            readonly property real cw: Math.min(width - 80, 720)
+            radius: Th.r
+            color: Th.bgc
+            border.color: Th.ln
+            readonly property real cw: Math.min(width - 72, 760)
             readonly property real cx: (width - cw) / 2
             Item {
                 id: hd
                 x: pane.cx
                 y: 0
                 width: pane.cw
-                height: 72
-                Lbl { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 6; text: r.cur[1]; font.pixelSize: Th.fsXL; font.weight: Font.Bold }
-                IBtn { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 6; n: "x"; sz: 36; tip: "Close  (Esc)"; onClicked: S.showSet = false }
+                height: 96
+                Column {
+                    anchors.left: parent.left
+                    anchors.right: cl.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenterOffset: 6
+                    spacing: 4
+                    Lbl { text: r.cur[1]; font.pixelSize: Th.fsXL + 2; font.weight: Font.Bold }
+                    Lbl { width: parent.width; text: r.desc[r.cur[0]] || ""; color: Th.tx2 }
+                }
+                Column {
+                    id: cl
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenterOffset: 6
+                    spacing: 4
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: 36
+                        height: 36
+                        radius: 18
+                        color: xm.containsMouse ? Th.hov : "transparent"
+                        border.color: xm.containsMouse ? Th.tx2 : Th.ln
+                        border.width: 2
+                        Behavior on border.color { ColorAnimation { duration: Th.mF } }
+                        Ico { anchors.centerIn: parent; n: "x"; sz: 16; col: xm.containsMouse ? Th.tx : Th.tx2 }
+                        MouseArea { id: xm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.showSet = false }
+                    }
+                    Lbl { anchors.horizontalCenter: parent.horizontalCenter; text: "ESC"; color: Th.tx2; font.pixelSize: 11; font.weight: Font.DemiBold }
+                }
             }
+            Rectangle { x: pane.cx; y: hd.height; width: pane.cw; height: 1; color: Th.ln }
             ScrollView {
                 id: sv
                 anchors.top: hd.bottom
+                anchors.topMargin: 1
                 anchors.bottom: parent.bottom
+                anchors.bottomMargin: 2
                 anchors.left: parent.left
                 anchors.right: parent.right
                 contentWidth: availableWidth
-                contentHeight: pg.height + 96
+                contentHeight: pg.height + 72
                 clip: true
                 Loader {
                     id: pg
                     x: pane.cx
+                    y: 8
                     width: pane.cw
-                    sourceComponent: ({ accounts: acP, layout: layP, look: lookP, feat: featP, voice: voiceP, mods: modP, keys: keyP, about: aboutP })[S.setPage] || acP
+                    sourceComponent: ({ accounts: acP, privacy: privP, layout: layP, look: lookP, notif: notifP, feat: featP, voice: voiceP, mods: modP, keys: keyP, about: aboutP })[S.setPage] || acP
+                    onLoaded: { pgA.restart(); sv.contentItem.contentY = 0 }
+                    transform: Translate { id: pgT }
+                    ParallelAnimation {
+                        id: pgA
+                        NumberAnimation { target: pg; property: "opacity"; from: 0; to: 1; duration: Th.mM; easing.type: Easing.OutCubic }
+                        NumberAnimation { target: pgT; property: "y"; from: 10; to: 0; duration: Th.mS; easing.type: Easing.OutCubic }
+                    }
                 }
             }
         }
     }
 
-    component Sub: Lbl { font.pixelSize: Th.fs; font.weight: Font.DemiBold; topPadding: 20; bottomPadding: 8 }
+    component Sub: Lbl { font.pixelSize: Th.fsS - 1; font.weight: Font.Bold; font.letterSpacing: 0.7; font.capitalization: Font.AllUppercase; color: Th.tx2; topPadding: 24; bottomPadding: 6 }
+    component Row_: Item {
+        id: rw
+        property string t
+        property string d
+        width: parent ? parent.width : 400
+        height: Math.max(60, rc.implicitHeight + 24)
+        Rectangle { visible: rw.y > 0; anchors.top: parent.top; x: 16; width: parent.width - 32; height: 1; color: Th.ln }
+        Column {
+            id: rc
+            x: 16
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 2
+            Lbl { text: rw.t; font.weight: Font.Medium }
+            Lbl { visible: rw.d !== ""; text: rw.d; color: Th.tx2; font.pixelSize: Th.fsS }
+        }
+    }
+    component FOpt: Opt {
+        property string k
+        readonly property var fd: r.fdef(k)
+        visible: !!fd
+        t: fd ? fd.n : ""
+        d: fd ? fd.d : ""
+        tag: fd && fd.risk === "ban" ? "Ban risk" : ""
+        on: S.f(k)
+        onTog: v => S.setF(k, v)
+    }
+    component Group: Rectangle {
+        id: gp
+        default property alias content: grpC.data
+        width: parent ? parent.width : 400
+        height: grpC.implicitHeight
+        radius: Th.r
+        color: Th.bg
+        border.color: Th.ln
+        Column { id: grpC; width: parent.width }
+    }
     component Opt: Rectangle {
         id: op
         property string t
@@ -108,13 +301,17 @@ Rectangle {
         property alias on: tg.on
         signal tog(bool v)
         width: parent ? parent.width : 400
-        height: Math.max(56, oc.implicitHeight + 20)
-        color: "transparent"
-        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Th.ln }
+        height: Math.max(60, oc.implicitHeight + 24)
+        color: om.containsMouse ? Th.a(Th.tx, 0.025) : "transparent"
+        radius: Th.r
+        HoverHandler { id: omh }
+        readonly property alias om: omh
+        Rectangle { visible: op.y > 0; anchors.top: parent.top; x: 16; width: parent.width - 32; height: 1; color: Th.ln }
         Column {
             id: oc
+            x: 16
             anchors.verticalCenter: parent.verticalCenter
-            width: parent.width - 70
+            width: parent.width - 100
             spacing: 2
             Row {
                 spacing: 8
@@ -131,7 +328,7 @@ Rectangle {
             }
             Lbl { visible: op.d !== ""; text: op.d; color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.WrapAtWordBoundaryOrAnywhere; elide: Text.ElideNone; width: parent.width }
         }
-        Tog { id: tg; label: op.t; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; onToggled: v => op.tog(v) }
+        Tog { id: tg; label: op.t; anchors.right: parent.right; anchors.rightMargin: 16; anchors.verticalCenter: parent.verticalCenter; onToggled: v => op.tog(v) }
     }
 
     Component {
@@ -147,14 +344,16 @@ Rectangle {
                 border.color: Th.err
                 Lbl { id: sw; x: 12; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 24; wrapMode: Text.Wrap; elide: Text.ElideNone; text: "No system keyring was found. Account tokens are stored in a file in " + S.c.home() + " without encryption." }
             }
+            Sub { text: "Connected accounts"; topPadding: 4 }
             Repeater {
                 model: S.cfgAccs
                 Rectangle {
                     id: ar
                     width: parent.width
-                    height: 64
+                    height: 68
                     radius: Th.r
-                    color: Th.bg3
+                    color: Th.bg
+                    border.color: Th.ln
                     property var a: S.accs[modelData.id]
                     property string who: a ? (a.me.disp || a.me.name) : modelData.base === "demo" ? "Demo account" : "Not connected"
                     Av { id: aa; x: 14; anchors.verticalCenter: parent.verticalCenter; sz: 38; src: parent.a ? (parent.a.me.av || "") : ""; name: parent.a ? parent.a.me.name : "?" }
@@ -198,11 +397,27 @@ Rectangle {
                     }
                 }
             }
-            Item { visible: S.cfgAccs.some(a => a.base === "demo"); width: 1; height: 8 }
+            Item { visible: S.cfgAccs.some(a => a.base === "demo"); width: 1; height: 4 }
             Btn {
                 visible: S.cfgAccs.some(a => a.base === "demo")
                 text: "Exit demo"
+                out: true
                 onClicked: U.exitDemo()
+            }
+            Sub { text: "Status" }
+            Group {
+                Row_ {
+                    t: "Online status"
+                    d: "Shown to friends on every account"
+                    Seg {
+                        anchors.right: parent.right
+                        anchors.rightMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        opts: [["On", "Online"], ["Idle", "Idle"], ["Dnd", "Do not disturb"], ["Off", "Invisible"]]
+                        cur: S.ui.st || "On"
+                        onPick: v => { S.setUi("st", v); S.c.set_st(v.toLowerCase(), "") }
+                    }
+                }
             }
             Sub { text: "Add account" }
             AccAdd { onDone: U.flash("Account added") }
@@ -226,7 +441,7 @@ Rectangle {
                         width: (pgr.width - 24) / 3
                         height: 132
                         radius: Th.r
-                        color: Th.bg3
+                        color: Th.bg
                         border.color: pm2.containsMouse || activeFocus ? Th.ac : Th.ln
                         border.width: activeFocus ? 2 : 1
                         activeFocusOnTab: true
@@ -241,16 +456,19 @@ Rectangle {
                 }
             }
             Sub { text: "Blocks" }
+            Group {
             Repeater {
                 model: S.allBlks().filter(b => b.id !== "chat")
                 Rectangle {
+                    id: br_
                     width: parent.width
-                    height: 52
+                    height: 54
                     color: "transparent"
-                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Th.ln }
-                    Lbl { anchors.verticalCenter: parent.verticalCenter; text: modelData.name; font.weight: Font.Medium }
+                    Rectangle { visible: br_.y > 0; anchors.top: parent.top; x: 16; width: parent.width - 32; height: 1; color: Th.ln }
+                    Lbl { x: 16; anchors.verticalCenter: parent.verticalCenter; text: modelData.name; font.weight: Font.Medium }
                     Seg {
                         anchors.right: parent.right
+                        anchors.rightMargin: 12
                         anchors.verticalCenter: parent.verticalCenter
                         opts: [["l", "Left"], ["r", "Right"], ["off", "Off"]]
                         cur: { void S.lay; return S.sideOf(modelData.id) }
@@ -261,6 +479,7 @@ Rectangle {
                         }
                     }
                 }
+            }
             }
             Sub { text: "Advanced" }
             Row {
@@ -300,20 +519,47 @@ Rectangle {
                 Repeater {
                     model: S.themes()
                     Rectangle {
-                        width: 150
-                        height: 72
+                        width: 176
+                        height: 128
                         radius: Th.r
-                        color: Th.bg3
+                        color: Th.bg
                         property var cs: r.tcols(modelData)
-                        border.color: (S.ui.theme || "graphite") === modelData.id ? Th.ac : tm.containsMouse ? Th.tx3 : Th.ln
-                        border.width: 1
+                        Rectangle {
+                            x: 10
+                            y: 10
+                            width: parent.width - 20
+                            height: 72
+                            radius: 8
+                            color: parent.cs[0]
+                            border.color: Th.a(Th.tx, 0.08)
+                            Rectangle { x: 6; y: 6; width: 14; height: parent.height - 12; radius: 4; color: parent.parent.cs[1] }
+                            Rectangle { x: 24; y: 6; width: 40; height: parent.height - 12; radius: 4; color: parent.parent.cs[1] }
+                            Rectangle { x: 68; y: 6; width: parent.width - 74; height: parent.height - 12; radius: 4; color: parent.parent.cs[1]; opacity: 0.7 }
+                            Rectangle { x: 28; y: 12; width: 28; height: 6; radius: 3; color: parent.parent.cs[2] }
+                            Rectangle { x: 74; y: parent.height - 20; width: parent.width - 86; height: 8; radius: 4; color: Th.a(parent.parent.cs[2], 0.5) }
+                        }
+                        Rectangle {
+                            visible: (S.ui.theme || "midnight") === modelData.id
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.margins: 12
+                            width: 18
+                            height: 18
+                            radius: 9
+                            color: Th.ac
+                            Ico { anchors.centerIn: parent; n: "check"; sz: 12; col: Th.acTx }
+                        }
+                        border.color: (S.ui.theme || "midnight") === modelData.id ? Th.ac : tm.containsMouse ? Th.tx3 : Th.ln
+                        border.width: (S.ui.theme || "midnight") === modelData.id ? 2 : 1
+                        Behavior on border.color { ColorAnimation { duration: Th.mF } }
                         activeFocusOnTab: true
                         Accessible.role: Accessible.Button
                         Accessible.name: modelData.id
                         Keys.onReturnPressed: { S.setUi("theme", modelData.id); S.loadTheme() }
                         Keys.onSpacePressed: { S.setUi("theme", modelData.id); S.loadTheme() }
-                        Lbl { x: 12; y: 12; width: parent.width - 24; text: modelData.id.charAt(0).toUpperCase() + modelData.id.slice(1) }
+                        Lbl { x: 12; y: 96; width: parent.width - 48; text: modelData.id.charAt(0).toUpperCase() + modelData.id.slice(1); font.weight: Font.DemiBold }
                         Row {
+                            visible: false
                             x: 12
                             y: 44
                             width: parent.width - 24
@@ -338,12 +584,12 @@ Rectangle {
                     }
                 }
             }
-            Lbl { text: "Drop .json themes into " + S.c.home() + "/themes. Changes load live."; color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone; width: parent.width }
+            Lbl { text: "More themes: Advanced, Mods and themes."; color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone; width: parent.width }
             Sub { text: "Accent" }
             Row {
                 spacing: 6
                 Repeater {
-                    model: ["#8fb3ff", "#6ea8fe", "#5fc4d6", "#7dd3c0", "#9aa7ff", "#b69cff"]
+                    model: ["#a2b0e0", "#8fb3ff", "#6ea8fe", "#5fc4d6", "#7dd3c0", "#9aa7ff", "#b69cff", "#f2c9da"]
                     Rectangle {
                         id: sw
                         readonly property bool on: String(Th.ac).toLowerCase() === modelData
@@ -364,14 +610,20 @@ Rectangle {
                 }
                 Btn { visible: !!S.ui.ac; text: "Reset"; height: 28; flat: true; onClicked: { S.setUi("ac", ""); S.loadTheme() } }
             }
-            Sub { text: "Text size" }
-            Seg { opts: [["12", "12"], ["13", "13"], ["14", "14"], ["15", "15"], ["16", "16"], ["18", "18"]]; cur: String(S.ui.fs || 14); onPick: v => { S.setUi("fs", parseInt(v)); S.loadTheme() } }
-            Sub { text: "Density" }
-            Seg { opts: [["0.85", "Compact"], ["1", "Default"], ["1.15", "Spacious"]]; cur: String(S.ui.dens || 1); onPick: v => { S.setUi("dens", parseFloat(v)); S.loadTheme() } }
-            Sub { text: "Notifications" }
-            Opt { t: "Desktop notifications"; d: "Direct messages and mentions while the window is not focused"; on: S.ui.notif !== false; onTog: v => S.setUi("notif", v) }
-            Sub { text: "Network badges" }
-            Opt { t: "Show network badges"; d: "Marks for Discord, Matrix and Stoat on servers, avatars and DMs"; on: S.ui.badges !== false; onTog: v => S.setUi("badges", v) }
+            Sub { text: "Display" }
+            Group {
+                Row_ { t: "Text size"; d: "Size of messages and the interface"; Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["12", "12"], ["13", "13"], ["14", "14"], ["15", "15"], ["16", "16"], ["18", "18"]]; cur: String(S.ui.fs || Th.fs); onPick: v => { S.setUi("fs", parseInt(v)); S.loadTheme() } } }
+                Row_ { t: "Density"; d: "Space between rows and messages"; Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["0.85", "Compact"], ["1", "Default"], ["1.15", "Spacious"]]; cur: String(S.ui.dens || 1); onPick: v => { S.setUi("dens", parseFloat(v)); S.loadTheme() } } }
+            }
+            Sub { text: "Details" }
+            Group {
+                Opt { t: "Show network badges"; d: "Marks for Discord, Matrix and Stoat on servers, avatars and DMs"; on: S.ui.badges !== false; onTog: v => S.setUi("badges", v) }
+                Opt { t: "Avatar decorations"; d: "Show Discord avatar decorations around profile pictures"; on: S.ui.decos !== false; onTog: v => S.setUi("decos", v) }
+                Opt { t: "Nameplates"; d: "Show Discord nameplates behind names in the member and DM lists"; on: S.ui.plates !== false; onTog: v => S.setUi("plates", v) }
+                Opt { t: "Display name styles"; d: "Show colors and gradients people picked for their display name"; on: S.ui.nstyle !== false; onTog: v => S.setUi("nstyle", v) }
+                Opt { t: "Profile effects"; d: "Play Discord profile effects when you open a profile"; on: S.ui.peff !== false; onTog: v => S.setUi("peff", v) }
+                Repeater { model: r.fcat.look; FOpt { k: modelData } }
+            }
         }
     }
 
@@ -379,12 +631,53 @@ Rectangle {
         id: featP
         Column {
             spacing: 0
-            Lbl { width: parent.width; text: "Built-in client mods. Each one can be turned off."; color: Th.tx2; bottomPadding: 4 }
-            Lbl { width: parent.width; text: "Client mods on Discord can get an account banned, see the Ban risk tags."; color: Th.tx3; font.pixelSize: Th.fsS; bottomPadding: 10 }
-            Repeater {
-                model: S.featDefs
-                Opt { t: modelData.n; d: modelData.d; tag: modelData.risk === "ban" ? "Ban risk" : ""; on: S.f(modelData.k); onTog: v => S.setF(modelData.k, v) }
+            Lbl { width: parent.width; text: "Client mods on Discord can get an account banned, see the Ban risk tags."; color: Th.tx2; font.pixelSize: Th.fsS; bottomPadding: 4 }
+            Sub { text: "Chat" }
+            Group { Repeater { model: r.fcat.chat; FOpt { k: modelData } } }
+            Sub { text: "Media" }
+            Group { Repeater { model: r.fcat.media; FOpt { k: modelData } } }
+            Sub { text: "Other"; visible: r.fother().length > 0 }
+            Group { visible: r.fother().length > 0; Repeater { model: r.fother(); FOpt { k: modelData } } }
+            Lbl { width: parent.width; topPadding: 16; text: "Privacy, notification, call and appearance tweaks live on their own pages."; color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone }
+        }
+    }
+
+    Component {
+        id: privP
+        Column {
+            spacing: 0
+            Sub { text: "Activity"; topPadding: 4 }
+            Group { Repeater { model: r.fcat.privacy; FOpt { k: modelData } } }
+            Sub { text: "Account storage" }
+            Group {
+                Row_ {
+                    t: "Token storage"
+                    d: S.secretBackend === "file" ? "No system keyring found, tokens are stored unencrypted in a file" : "Tokens are kept in the system keyring"
+                    Rectangle {
+                        anchors.right: parent.right
+                        anchors.rightMargin: 16
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: kt.implicitWidth + 16
+                        height: 24
+                        radius: 12
+                        color: S.secretBackend === "file" ? Th.a(Th.err, 0.18) : Th.a(Th.ok, 0.18)
+                        Lbl { id: kt; anchors.centerIn: parent; text: S.secretBackend === "file" ? "Unencrypted" : "Keyring"; color: S.secretBackend === "file" ? Th.err : Th.ok; font.pixelSize: Th.fsS; font.weight: Font.DemiBold }
+                    }
+                }
             }
+        }
+    }
+
+    Component {
+        id: notifP
+        Column {
+            spacing: 0
+            Sub { text: "Desktop"; topPadding: 4 }
+            Group {
+                Opt { t: "Desktop notifications"; d: "Direct messages and mentions while the window is not focused"; on: S.ui.notif !== false; onTog: v => S.setUi("notif", v) }
+            }
+            Sub { text: "Relationships" }
+            Group { Repeater { model: r.fcat.notif; FOpt { k: modelData } } }
         }
     }
 
@@ -392,8 +685,11 @@ Rectangle {
         id: voiceP
         Column {
             spacing: 8
+            Sub { text: "Input"; topPadding: 4 }
+            Group {
             Opt { t: "Noise suppression"; d: "Filter background noise from your microphone"; on: S.ui.ns !== false; onTog: v => { S.setUi("ns", v); S.c.cset("voice.json", JSON.stringify({ ns: v, vad: S.ui.vad || -50, ptt: !!S.ui.ptt })) } }
             Opt { t: "Push to talk"; d: "Only send audio while the key is held (" + (Qt.platform.os === "osx" ? "⌃`" : "Ctrl+`") + ", while cord is focused)"; on: !!S.ui.ptt; onTog: v => { S.setUi("ptt", v); S.c.cset("voice.json", JSON.stringify({ ns: S.ui.ns !== false, vad: S.ui.vad || -50, ptt: v })) } }
+            }
             Sub { text: "Input sensitivity" }
             Sld {
                 width: parent.width
@@ -418,8 +714,13 @@ Rectangle {
                     Seg { opts: [["30", "30"], ["60", "60"], ["120", "120"], ["144", "144"]]; cur: String(S.ui.sfps || 60); onPick: v => S.setUi("sfps", parseInt(v)) }
                 }
             }
+            Group {
+            FOpt { k: "streamq" }
             Opt { t: "Share audio"; d: Qt.platform.os === "osx" ? "System audio capture is not available on macOS yet" : "Send application and system audio with your stream"; enabled: Qt.platform.os !== "osx"; opacity: enabled ? 1 : 0.5; on: Qt.platform.os !== "osx" && S.ui.ssnd !== false; onTog: v => S.setUi("ssnd", v) }
-            Lbl { visible: !S.f("streamq"); text: "Turn on Stream quality unlock in Features to go above 720p30."; color: Th.tx2; font.pixelSize: Th.fsS }
+            }
+            Lbl { visible: !S.f("streamq"); text: "Turn on Stream quality unlock to go above 720p30."; color: Th.tx2; font.pixelSize: Th.fsS }
+            Sub { text: "Calls" }
+            Group { FOpt { k: "callTimer" } }
         }
     }
 
@@ -434,12 +735,15 @@ Rectangle {
                 color: Th.tx2
                 text: "A mod is a folder in " + S.c.home() + "/mods with a main.qml. It can import Cord, register blocks with S.regBlk, and hook render, send and ev. A block named like a built-in one in " + S.c.home() + "/blocks replaces it."
             }
+            Lbl { width: parent.width; wrapMode: Text.Wrap; elide: Text.ElideNone; color: Th.tx2; text: "A theme is a .json file in " + S.c.home() + "/themes. It shows up in Appearance and reloads live." }
             Row {
                 spacing: 8
                 Btn { text: "Open config folder"; onClicked: Qt.openUrlExternally("file://" + S.c.home()) }
                 Btn { text: "Reload"; onClicked: { S.scanMods(); S.loadTheme() } }
             }
             Sub { text: "Installed" }
+            Group {
+            visible: S.mods.length > 0
             Repeater {
                 model: S.mods
                 Opt {
@@ -449,29 +753,32 @@ Rectangle {
                     onTog: v => { const m = Object.assign({}, S.ui.mods || {}); m[modelData.id] = v; S.setUi("mods", m); S.scanMods() }
                 }
             }
+            }
             Lbl { visible: S.mods.length === 0; text: "No mods installed"; color: Th.tx3 }
         }
     }
 
     Component {
         id: keyP
-        Column {
-            spacing: 0
+        Group {
             Repeater {
                 model: [[Th.mod + "K", "Quick switcher"], [Th.mod + ",", "Settings"], [Th.mod + "E", "Edit layout"], ["Alt+Up / Alt+Down", "Previous or next channel"], ["Shift+Esc", "Mark channel as read"], ["Up", "Edit your last message"], ["Esc", "Close popup, cancel reply, edit or layout editing"], ["Shift+click Delete", "Delete a message without confirmation"], ["Middle click", "Open a channel in the second chat block"]]
                 Rectangle {
+                    id: kr_
                     width: parent.width
-                    height: 44
+                    height: 50
                     color: "transparent"
-                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Th.ln }
-                    Lbl { anchors.verticalCenter: parent.verticalCenter; text: modelData[1] }
+                    Rectangle { visible: kr_.y > 0; anchors.top: parent.top; x: 16; width: parent.width - 32; height: 1; color: Th.ln }
+                    Lbl { x: 16; anchors.verticalCenter: parent.verticalCenter; text: modelData[1] }
                     Rectangle {
                         anchors.right: parent.right
+                        anchors.rightMargin: 16
                         anchors.verticalCenter: parent.verticalCenter
                         width: kl.implicitWidth + 16
                         height: 26
                         radius: 5
-                        color: Th.bg3
+                        color: Th.bg4
+                        border.color: Th.a(Th.tx, 0.08)
                         Lbl { id: kl; anchors.centerIn: parent; text: modelData[0]; font.family: Th.mono; font.pixelSize: Th.fsS }
                     }
                 }
@@ -483,8 +790,23 @@ Rectangle {
         id: aboutP
         Column {
             spacing: 8
-            Lbl { text: "Version 0.1.0"; color: Th.tx2 }
-            Lbl { text: "A native client for Discord, Matrix and Stoat. GPL-3.0-or-later."; color: Th.tx2 }
+            Group {
+                Item {
+                    width: parent.width
+                    height: 96
+                    Rectangle { id: lg; x: 16; anchors.verticalCenter: parent.verticalCenter; width: 56; height: 56; radius: 16; color: Th.ac; Lbl { anchors.centerIn: parent; text: "c"; color: Th.acTx; font.pixelSize: 30; font.weight: Font.Bold } }
+                    Column {
+                        anchors.left: lg.right
+                        anchors.leftMargin: 16
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 2
+                        Lbl { text: "cord"; font.pixelSize: Th.fsL + 2; font.weight: Font.Bold }
+                        Lbl { text: "Version 0.1.0 · GPL-3.0-or-later"; color: Th.tx2 }
+                        Lbl { text: "A native client for Discord, Matrix and Stoat."; color: Th.tx2 }
+                    }
+                }
+            }
+            Item { width: 1; height: 4 }
             Btn { text: "Source code"; ico: "link"; onClicked: Qt.openUrlExternally("https://github.com/Silvertree2010/cord") }
             Lbl {
                 width: parent.width

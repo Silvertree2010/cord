@@ -35,7 +35,26 @@ Rectangle {
         return { m: m, mid: mid, g: g && !d, d: d, aname: m.auth.name, aid: m.auth.id ? m.auth.id.raw : "", ts: m.ts, sys: !!m.sys }
     }
     function entry(w, sec) { return { mid: w.mid, rev: 0, sec: sec } }
+    function wantMems(list) {
+        const c = r.ch
+        if (!c || !c.grid || S.svc(r.cid) !== "dc") return
+        const mc = U.memC[c.grid] || {}
+        const pre = "dc:" + S.acc(r.cid) + ":"
+        const ids = {}
+        for (const m of list) {
+            if (m.auth && m.auth.id && !mc[S.ridOf(m.auth.id)]) ids[m.auth.id.raw] = true
+            const b = m.body || ""
+            b.replace(/<@!?(\d+)>/g, (x, i) => { if (!mc[pre + i]) ids[i] = true; return x })
+        }
+        const k = Object.keys(ids).filter(i => !r.asked[i])
+        if (!k.length) return
+        for (const i of k) r.asked[i] = true
+        S.api(S.acc(r.cid), "req_mems", { gld: S.raw(c.grid), ids: k.slice(0, 100) })
+    }
+    property var asked: ({})
     function fill(list, stick) {
+        Qt.callLater(() => r.wantMems(list))
+        liveAdd = false
         const rows = []
         const secs = []
         let p = null
@@ -54,6 +73,8 @@ Rectangle {
         if (stick) Qt.callLater(() => lv.positionViewAtEnd())
     }
     function prepend(list) {
+        Qt.callLater(() => r.wantMems(list))
+        liveAdd = false
         if (!list.length) return
         const have = {}
         for (const x of arr) have[x.mid] = true
@@ -94,6 +115,8 @@ Rectangle {
         }
     }
     function merge(list, stick) {
+        Qt.callLater(() => r.wantMems(list))
+        liveAdd = false
         if (!arr.length) { fill(list, stick); return }
         if (!list.length) return
         const ids = {}
@@ -166,7 +189,10 @@ Rectangle {
         arr = []
     }
 
+    property bool liveAdd: false
     onCidChanged: {
+        liveAdd = false
+        swA.restart()
         reset()
         if (!cid || cid === "inbox") return
         const u = S.unr[cid]
@@ -203,6 +229,7 @@ Rectangle {
             const end = lv.nearEnd
             const w = r.mk(m, r.arr.length ? r.arr[r.arr.length - 1] : null)
             r.arr.push(w)
+            r.liveAdd = true
             mm.append(r.entry(w, r.markId ? "1" : "0"))
             if (end || S.isMe(m.auth, S.acc(chan))) Qt.callLater(() => lv.positionViewAtEnd())
             else r.below++
@@ -253,7 +280,8 @@ Rectangle {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 48
+            Layout.preferredHeight: visible ? 48 : 0
+            visible: !(S.hasBlk("bar") && r.slot === 0)
             color: "transparent"
             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Th.ln }
             RowLayout {
@@ -301,6 +329,15 @@ Rectangle {
             bottomMargin: 4
             boundsBehavior: Flickable.StopAtBounds
             ScrollBar.vertical: Scr {}
+            Smooth { id: sw }
+            transform: Translate { id: lvT }
+            add: Transition {
+                enabled: r.liveAdd
+                ParallelAnimation {
+                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Th.mM; easing.type: Easing.OutCubic }
+                    NumberAnimation { property: "scale"; from: 0.985; to: 1; duration: Th.mM; easing.type: Easing.OutCubic }
+                }
+            }
             section.property: "sec"
             section.criteria: ViewSection.FullString
             section.labelPositioning: ViewSection.InlineLabels
@@ -343,12 +380,37 @@ Rectangle {
                 }
                 Column {
                     id: wl
+                    readonly property bool dm: !!r.ch && (r.ch.k === "Dm" || r.ch.k === "Grp")
+                    readonly property var u: r.ch && r.ch.k === "Dm" && r.ch.rcp && r.ch.rcp.length ? r.ch.rcp[0] : null
                     visible: !r.more && !r.failed
                     x: 16
                     y: 24
-                    spacing: 6
-                    Lbl { text: r.ch && (r.ch.k === "Dm" || r.ch.k === "Grp") ? S.chName(r.cid) : "Welcome to #" + S.chName(r.cid); font.pixelSize: Th.fsXL + 6; font.weight: Font.Bold }
-                    Lbl { text: "This is the start of the conversation."; color: Th.tx2 }
+                    width: lv.width - 64
+                    spacing: 8
+                    Av {
+                        visible: wl.dm
+                        sz: 80
+                        src: wl.u ? (wl.u.av || "") : (r.ch && r.ch.icon ? r.ch.icon : "")
+                        name: S.chName(r.cid)
+                    }
+                    Rectangle {
+                        visible: !wl.dm
+                        width: 68
+                        height: 68
+                        radius: 34
+                        color: Th.bg4
+                        Ico { anchors.centerIn: parent; n: "hash"; sz: 40; col: Th.tx }
+                    }
+                    Lbl { text: wl.dm ? S.chName(r.cid) : "Welcome to #" + S.chName(r.cid); font.pixelSize: 32; font.weight: Font.Bold }
+                    Lbl {
+                        width: Math.min(parent.width, 620)
+                        wrapMode: Text.Wrap
+                        elide: Text.ElideNone
+                        text: wl.u ? "This is the beginning of your direct message history with " + (wl.u.disp || wl.u.name) + "." : wl.dm ? "Welcome to the beginning of the " + S.chName(r.cid) + " group." : "This is the start of the #" + S.chName(r.cid) + " channel."
+                        color: Th.tx
+                        lineHeight: 1.15
+                    }
+                    Item { width: 1; height: 8 }
                 }
             }
             footer: Item { width: 1; height: 18 }
@@ -365,7 +427,7 @@ Rectangle {
                 onJump: id => { const i = r.idx(id); if (i >= 0) lv.positionViewAtIndex(i, ListView.Center) }
             }
             onContentYChanged: {
-                if ((moving || dragging) && contentY - originY < 400) r.more_()
+                if ((moving || dragging || sw.busy) && contentY - originY < 400) r.more_()
             }
             readonly property bool nearEnd: atYEnd || (originY + contentHeight + bottomMargin - height - contentY) < 30
             onNearEndChanged: if (nearEnd) r.below = 0
@@ -376,10 +438,14 @@ Rectangle {
             Layout.preferredHeight: 0
             z: 5
             Rectangle {
-                visible: !lv.nearEnd && r.arr.length > 0
+                readonly property bool on: !lv.nearEnd && r.arr.length > 0
+                visible: opacity > 0.01
+                opacity: on ? 1 : 0
                 anchors.bottom: parent.bottom
                 anchors.horizontalCenter: parent.horizontalCenter
-                anchors.bottomMargin: 12
+                anchors.bottomMargin: on ? 12 : 0
+                Behavior on opacity { NumberAnimation { duration: Th.mM; easing.type: Easing.OutCubic } }
+                Behavior on anchors.bottomMargin { NumberAnimation { duration: Th.mM; easing.type: Easing.OutCubic } }
                 width: jl.implicitWidth + 24
                 height: 30
                 radius: 15
@@ -415,10 +481,24 @@ Rectangle {
         Lbl { anchors.centerIn: parent; text: "Middle click or Ctrl+click a channel to open it here"; color: Th.tx3 }
     }
 
+    Connections {
+        target: S
+        function onPinReqChanged() { if (r.slot === 0 && r.ch) pins.open() }
+    }
+
+    ParallelAnimation {
+        id: swA
+        NumberAnimation { target: lv; property: "opacity"; from: 0; to: 1; duration: Th.mM; easing.type: Easing.OutCubic }
+        NumberAnimation { target: lvT; property: "y"; from: 10; to: 0; duration: Th.mS; easing.type: Easing.OutCubic }
+    }
+
     Popup {
         id: pins
+        enter: PopIn {}
+        exit: PopOut {}
+        transformOrigin: Popup.TopRight
         x: r.width - width - 16
-        y: 52
+        y: S.hasBlk("bar") ? 8 : 52
         width: 420
         height: Math.min(r.height - 80, 560)
         padding: 0

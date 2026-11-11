@@ -12,6 +12,7 @@ mod img;
 mod br;
 mod cfg;
 mod rt;
+mod sheet;
 
 use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QString, QUrl};
 

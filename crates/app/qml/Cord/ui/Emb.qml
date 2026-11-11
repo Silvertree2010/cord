@@ -16,10 +16,10 @@ Rectangle {
     width: media ? mw.width : Math.min(maxW, 520)
     height: media ? mw.height : cl.implicitHeight + 24
     radius: Th.rs
-    color: media ? "transparent" : Th.bg3
+    color: media ? "transparent" : Th.bg
     function open(u) { if (u) Qt.openUrlExternally(u) }
     Rectangle {
-        visible: !r.media
+        visible: !r.media && !!r.e.col
         width: 4
         height: parent.height
         radius: 2
@@ -38,6 +38,7 @@ Rectangle {
         horizontalAlignment: Image.AlignRight
         verticalAlignment: Image.AlignTop
         asynchronous: true
+        onStatusChanged: if (status === Image.Error) { const o = S.unproxy(source.toString()); if (o !== source.toString()) source = o }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: S.view(r.e.thumb) }
     }
     Column {
@@ -128,6 +129,7 @@ Rectangle {
                 source: r.e.img || (r.bigThumb ? r.e.thumb : "")
                 fillMode: Image.PreserveAspectFit
                 asynchronous: true
+                onStatusChanged: if (status === Image.Error) { const o = S.unproxy(source.toString()); if (o !== source.toString()) source = o }
             }
             Rectangle {
                 visible: r.vidCard
@@ -169,6 +171,7 @@ Rectangle {
             visible: !(gv.item && gv.item.vw > 0)
             source: r.media ? r.mediaSrc : ""
             asynchronous: true
+            onStatusChanged: if (status === Image.Error) { const o = S.unproxy(source.toString()); if (o !== source.toString()) source = o }
             fillMode: Image.PreserveAspectFit
         }
         Loader {
@@ -186,6 +189,17 @@ Rectangle {
             radius: 26
             color: Th.a("#000000", 0.6)
             Ico { anchors.centerIn: parent; n: "play"; sz: 24; col: "#ffffff" }
+        }
+        Rectangle {
+            visible: r.gifv || /\.gif(\?|$)/i.test(r.mediaSrc)
+            x: 8
+            y: 8
+            z: 3
+            width: gl.implicitWidth + 10
+            height: 20
+            radius: 5
+            color: Th.a("#000000", 0.65)
+            Lbl { id: gl; anchors.centerIn: parent; text: "GIF"; color: "#ffffff"; font.pixelSize: 11; font.weight: Font.Bold }
         }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: r.gifv ? S.view(r.e.vid, true) : r.e.vid ? S.view(r.e.vid, true) : S.view(im.source) }
     }

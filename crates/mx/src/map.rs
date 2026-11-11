@@ -22,6 +22,7 @@ pub fn usr(cx: &Cx, id: &str, disp: Option<&str>, av: Option<&str>) -> Usr {
         av: av.map(String::from),
         bot: false,
         col: None,
+        ..Default::default()
     }
 }
 

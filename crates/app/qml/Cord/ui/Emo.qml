@@ -5,6 +5,9 @@ import "emo.js" as E
 
 Popup {
     id: r
+    enter: PopIn {}
+    exit: PopOut {}
+    transformOrigin: Popup.Bottom
     property var cb: null
     width: 420
     height: 460

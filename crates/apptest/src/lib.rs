@@ -11,5 +11,7 @@ pub mod rt;
 pub mod frames;
 #[path = "../../app/src/out.rs"]
 pub mod out;
+#[path = "../../app/src/sheet.rs"]
+pub mod sheet;
 #[path = "../../app/src/feat_ctl.rs"]
 pub mod feat_ctl;

@@ -138,6 +138,7 @@ pub fn usr(cx: &Cx, u: &w::User) -> Usr {
         av: Some(avatar(cx, u)),
         bot: u.bot.is_some(),
         col: None,
+        ..Default::default()
     }
 }
 
@@ -335,6 +336,7 @@ pub fn gld(cx: &Cx, s: &w::Server, emojis: &[w::Emoji], pos: i64) -> Gld {
             pos: r.rank,
             perm: r.permissions.a as u64,
             hoist: r.hoist,
+            icon: None,
         })
         .collect();
     roles.sort_by_key(|r| r.pos);

@@ -3,34 +3,40 @@ import QtQuick
 
 QtObject {
     id: t
-    property string name: "Graphite"
+    property string name: "Midnight"
     property bool dark: true
-    property color bg: "#0d0e10"
-    property color bg2: "#121316"
-    property color bgc: "#17181b"
-    property color bg3: "#1e1f23"
-    property color bg4: "#27292e"
-    property color hov: "#0affffff"
-    property color sel: "#12ffffff"
-    property color ln: "#202125"
-    property color tx: "#ededf0"
-    property color tx2: "#a3a4ab"
-    property color tx3: "#70727b"
-    property color ac: "#8b9dff"
-    property color acTx: "#0d0e10"
+    property color bg: "#0d0f13"
+    property color bg2: "#181a20"
+    property color bgc: "#181a20"
+    property color bg3: "#1d1f26"
+    property color bg4: "#272930"
+    property color hov: "#0cffffff"
+    property color sel: "#16ffffff"
+    property color ln: "#292b32"
+    property color tx: "#dbdbe6"
+    property color tx2: "#6f717b"
+    property color tx3: "#6f717b"
+    property color ac: "#a2b0e0"
+    property color acTx: "#333e5e"
     property color ok: "#3fb984"
-    property color warn: "#9d8cff"
-    property color err: "#ef5350"
-    property color ment: "#1f8b9dff"
+    property color warn: "#f0b232"
+    property color err: "#ec5e73"
+    property color ment: "#1aa2b0e0"
     property color dc: "#5865f2"
     property color mx: "#2fa585"
     property color st: "#c0689f"
     property real r: 12
+    property real gap: 12
+    property bool motion: true
+    readonly property int mF: motion ? 120 : 0
+    readonly property int mM: motion ? 200 : 0
+    readonly property int mS: motion ? 260 : 0
+    property color lnk: "#b3bde4"
     property real rs: 8
-    property string font: "Inter"
+    property string font: "Figtree"
     property string mono: "JetBrains Mono"
     readonly property string mod: Qt.platform.os === "osx" ? "⌘" : "Ctrl+"
-    property real fs: 14
+    property real fs: 15
     property real dens: 1.0
     property real ui: 1.0
     readonly property color mr: Qt.darker(err, 1.35)

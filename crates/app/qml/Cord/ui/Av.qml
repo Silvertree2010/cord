@@ -14,6 +14,8 @@ Item {
     property string sv: ""
     property bool speak: false
     property bool gray: false
+    property string deco: ""
+    property bool anim: false
     width: sz
     height: sz
     Rectangle {
@@ -74,6 +76,17 @@ Item {
         border.color: Th.ok
         border.width: 2
         visible: r.speak
+    }
+    Loader {
+        active: r.deco !== "" && S.ui.decos !== false
+        width: r.sz * 1.2
+        height: width
+        anchors.centerIn: parent
+        sourceComponent: Apng {
+            still: S.decoUrl(r.deco, Math.max(48, Math.round(r.sz * 2.4)), false)
+            src: r.anim && Th.motion ? S.decoUrl(r.deco, Math.max(96, Math.round(r.sz * 2.4)), true) : ""
+            max: Math.round(r.sz * 2.4)
+        }
     }
     Rectangle {
         visible: r.st !== ""

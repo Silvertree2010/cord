@@ -5,6 +5,7 @@ import Cord
 Rectangle {
     id: r
     color: "#80000000"
+    NumberAnimation on opacity { from: 0; to: 1; duration: Th.mF + 20; easing.type: Easing.OutCubic }
     MouseArea { anchors.fill: parent; onClicked: S.qk = false }
     readonly property var secs: ({ r: "Recent and unread", c: "Channels", d: "Direct messages", g: "Servers" })
     readonly property string q: fl.text.toLowerCase().replace(/^[#@*]/, "")
@@ -91,6 +92,8 @@ Rectangle {
     Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
         y: parent.height * 0.15
+        transformOrigin: Item.Top
+        NumberAnimation on scale { from: 0.95; to: 1; duration: Th.mM; easing.type: Easing.OutCubic }
         width: Math.min(parent.width - 48, 560)
         height: col.implicitHeight + 24
         radius: 6
@@ -116,6 +119,7 @@ Rectangle {
                 Keys.onEscapePressed: S.qk = false
             }
             ListView {
+                Smooth {}
                 id: lv
                 width: parent.width
                 height: Math.min(contentHeight, r.height * 0.55)

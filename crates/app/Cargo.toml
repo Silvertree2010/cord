@@ -26,6 +26,8 @@ notify = "8"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 notify-rust = "4"
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
+reqwest.workspace = true
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [build-dependencies]
 cxx-qt-build = "0.10"

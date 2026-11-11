@@ -14,18 +14,22 @@ Item {
     property bool canRm: !(r.n.b === "chat" && U.cnt("chat") <= 1)
     visible: shown
     clip: !S.edit
-    readonly property bool card: !S.edit && ["chat", "mems", "inbox", "stage"].indexOf(r.n.b) >= 0
-    readonly property real gap: card ? 8 : 0
+    readonly property bool card: !S.edit
+    readonly property real gap: card ? Th.gap / 2 : 0
+    readonly property bool deep: r.n.b === "mems"
     Rectangle {
+        id: cardBg
         visible: r.card
-        anchors.fill: parent
-        color: Th.bg2
+        anchors.fill: ld
+        radius: Th.r
+        color: r.deep ? Th.bg : Th.bgc
     }
     Rectangle {
         visible: r.card
         anchors.fill: ld
+        z: 10
         radius: Th.r
-        color: Th.bgc
+        color: "transparent"
         border.color: Th.ln
         border.width: 1
     }
@@ -36,10 +40,11 @@ Item {
         anchors.topMargin: S.edit ? r.strip : r.gap
         anchors.bottomMargin: r.gap
         anchors.rightMargin: r.gap
+        anchors.leftMargin: r.gap
         source: S.blkUrl(r.n.b)
         onLoaded: {
             if (item && "o" in item) item.o = r.n.o || {}
-            if (item && r.card && "color" in item) item.color = "transparent"
+            if (item && "color" in item) item.color = Qt.binding(() => r.card ? "transparent" : (r.deep ? Th.bg : Th.bg2))
         }
         onStatusChanged: if (status === Loader.Error) console.warn("block failed:", r.n.b)
     }

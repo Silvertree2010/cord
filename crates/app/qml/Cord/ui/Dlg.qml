@@ -4,6 +4,8 @@ import Cord
 
 Popup {
     id: r
+    enter: PopIn {}
+    exit: PopOut {}
     property string title: ""
     property string body: ""
     property string ok: "Confirm"

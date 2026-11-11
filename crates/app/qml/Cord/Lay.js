@@ -3,7 +3,7 @@
 function cp(o) { return JSON.parse(JSON.stringify(o)) }
 
 const presets = {
-    classic: { name: "Classic", t: "row", ch: [{ b: "rail", w: 72 }, { t: "col", w: 248, ch: [{ b: "side", grow: true }, { b: "call" }, { b: "me" }] }, { b: "chat", grow: true }, { b: "mems", w: 248 }] },
+    classic: { name: "Classic", t: "row", ch: [{ t: "col", w: 360, ch: [{ t: "row", grow: true, ch: [{ b: "rail", w: 76 }, { b: "side", grow: true }] }, { b: "call" }, { b: "me" }] }, { t: "col", grow: true, ch: [{ b: "bar" }, { t: "row", grow: true, ch: [{ b: "chat", grow: true }, { b: "mems", w: 310 }] }] }] },
     compact: { name: "Compact", t: "row", ch: [{ b: "rail", w: 56 }, { t: "col", w: 208, ch: [{ b: "side", grow: true }, { b: "call" }, { b: "me" }] }, { b: "chat", grow: true }] },
     minimal: { name: "Minimal", t: "row", ch: [{ t: "col", w: 260, ch: [{ b: "rail", o: { horiz: true }, h: 56 }, { b: "side", grow: true }, { b: "call" }, { b: "me" }] }, { b: "chat", grow: true }] },
     stream: { name: "Streamer", t: "row", ch: [{ b: "rail", w: 72 }, { t: "col", w: 232, ch: [{ b: "side", grow: true }, { b: "call" }, { b: "me" }] }, { b: "stage", grow: true }, { b: "chat", w: 380 }] },
@@ -112,7 +112,7 @@ function move(root, from, to, side) {
     return strip(ins(r, np, side, node))
 }
 
-const known = ["rail", "side", "chat", "mems", "me", "call", "stage", "inbox", "player"]
+const known = ["rail", "side", "chat", "mems", "me", "call", "stage", "inbox", "player", "bar"]
 
 function valid(n, ids, d) {
     d = d || 0

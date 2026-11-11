@@ -28,6 +28,11 @@ impl Demo {
             av: None,
             bot: false,
             col: [None, Some(0x5865f2), Some(0x3ba55c), Some(0xeb459e)][i as usize % 4],
+            tag: if i % 3 == 1 { Some(Tag { t: "RUST".into(), badge: None }) } else { None },
+            deco: if i % 4 == 2 { Some("a_f997880d666be69b7782bb377617b4fd".into()) } else { None },
+            ncol: if i == 1 { vec![0xd36bff, 0x7a5cff] } else { vec![] },
+            plate: if i == 3 { Some("https://cdn.discordapp.com/assets/collectibles/nameplates/nameplates/cherry_blossoms/".into()) } else { None },
+            ..Default::default()
         }
     }
     fn now() -> i64 {
@@ -42,7 +47,7 @@ impl Demo {
             "`cargo build` takes forever on this machine",
             "> quote test\nreply under it",
             "https://example.org",
-            "brb",
+            "brb, ***really*** *quick* **ping** @everyone",
         ];
         Msg {
             id: self.r(format!("m{}_{i}", self.run)),
@@ -132,6 +137,9 @@ impl Bk for Demo {
                 tx.send(Ev::Chan(Chan { id: self.r(format!("dm{i}")), gld: None, par: None, k: ChK::Dm, name: u.shown().into(), topic: None, pos: 0, nsfw: false, hidden: false, last: None, rcp: vec![u], icon: None, enc: false, mute: false }))?;
             }
         }
+        if self.sv == Svc::Dc {
+            tx.send(Ev::Chan(Chan { id: self.r("grp0"), gld: None, par: None, k: ChK::Grp, name: "Weekend squad".into(), topic: None, pos: 0, nsfw: false, hidden: false, last: None, rcp: vec![self.u(1), self.u(2), self.u(3)], icon: None, enc: false, mute: false }))?;
+        }
         let c = self.r("g0c0");
         let s = Self { a: self.a, sv: self.sv, n: AtomicU64::new(0), run: self.run, tx: Default::default(), jh: Default::default() };
         let jh = tokio::spawn(async move {
@@ -159,6 +167,33 @@ impl Bk for Demo {
         if let Some(j) = self.jh.lock().ok().and_then(|mut g| g.take()) {
             j.abort();
         }
+    }
+    async fn profile(&self, usr: &Rid, _gld: Option<&Rid>) -> Res<serde_json::Value> {
+        let i: u32 = usr.raw.trim_start_matches('u').parse().unwrap_or(0);
+        Ok(serde_json::json!({
+            "id": &*usr.raw,
+            "bio": "Building **cord** in my free time.\nRust, Qt and too much coffee.",
+            "pronouns": "they/them",
+            "banner": null,
+            "accent": null,
+            "theme": if i % 2 == 1 { serde_json::json!([0x5865f2, 0x1e1f4a]) } else { serde_json::Value::Null },
+            "effect": null,
+            "badges": [
+                {"id": "hypesquad_house_3", "d": "HypeSquad Balance", "icon": "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png", "link": "https://discord.com/settings/hypesquad-online"},
+                {"id": "active_developer", "d": "Active Developer", "icon": "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", "link": null}
+            ],
+            "conns": [
+                {"t": "github", "id": "1", "name": "cord-dev", "ok": true, "url": "https://github.com/Silvertree2010/cord"},
+                {"t": "steam", "id": "2", "name": "cordplayer", "ok": false, "url": null}
+            ],
+            "mutual": ["g0", "g1"],
+            "mfriends": 2,
+            "since": null,
+            "joined": null,
+            "deco": if i % 4 == 2 { serde_json::json!("a_f997880d666be69b7782bb377617b4fd") } else { serde_json::Value::Null },
+            "tag": if i % 3 == 1 { serde_json::json!({"t": "RUST", "badge": null}) } else { serde_json::Value::Null },
+            "legacy": null
+        }))
     }
     async fn open_dm(&self, usr: &Rid) -> Res<Rid> {
         let c = self.r(format!("dm{}", usr.raw));

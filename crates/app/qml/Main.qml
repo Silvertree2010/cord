@@ -12,7 +12,7 @@ ApplicationWindow {
     minimumHeight: 480
     visible: true
     title: S.selC ? S.chName(S.selC) + " - cord" : "cord"
-    color: Th.bg2
+    color: Th.bg
     font.family: Th.font
     font.pixelSize: Th.fs
 
@@ -44,11 +44,23 @@ ApplicationWindow {
         onTriggered: (Qt.application.arguments.indexOf("--emo") >= 0 ? emoP.body : S.setup ? stp : S.showSet ? setL : root).grabToImage(r => { r.saveToFile(out); Qt.quit() })
     }
 
+    FontLoader { source: "Cord/fonts/Figtree-Regular.ttf" }
+    FontLoader { source: "Cord/fonts/Figtree-Medium.ttf" }
+    FontLoader { source: "Cord/fonts/Figtree-SemiBold.ttf" }
+    FontLoader { source: "Cord/fonts/Figtree-Bold.ttf" }
+    FontLoader { source: "Cord/fonts/Figtree-Italic.ttf" }
+    FontLoader { source: "Cord/fonts/Figtree-MediumItalic.ttf" }
+    FontLoader { source: "Cord/fonts/Figtree-SemiBoldItalic.ttf" }
+    FontLoader { source: "Cord/fonts/Figtree-BoldItalic.ttf" }
+
     Node {
         id: root
         anchors.fill: parent
-        anchors.bottomMargin: win.bar ? callBar.height : 0
-        anchors.topMargin: S.edit ? tb.height : 0
+        readonly property real pad: S.edit ? 0 : Th.gap / 2 + 2
+        anchors.leftMargin: pad
+        anchors.rightMargin: pad
+        anchors.bottomMargin: (win.bar ? callBar.height : 0) + pad
+        anchors.topMargin: S.edit ? tb.height : pad
         n: S.lay
         p: []
         visible: !S.setup
@@ -177,6 +189,14 @@ ApplicationWindow {
         Repeater {
             model: U.toasts
             Rectangle {
+                id: toR
+                transform: Translate { id: toT }
+                Component.onCompleted: toA.start()
+                ParallelAnimation {
+                    id: toA
+                    NumberAnimation { target: toT; property: "x"; from: 40; to: 0; duration: Th.mS; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: toR; property: "opacity"; from: 0; to: 1; duration: Th.mM; easing.type: Easing.OutCubic }
+                }
                 width: 420
                 height: Math.max(40, tx.implicitHeight + 20)
                 radius: Th.rs
@@ -223,7 +243,12 @@ ApplicationWindow {
 
     Rectangle {
         id: tipR
-        visible: U.tipText !== "" && U.tipOk && !!U.tipItem && U.tipItem.visible
+        readonly property bool on: U.tipText !== "" && U.tipOk && !!U.tipItem && U.tipItem.visible
+        visible: opacity > 0.01
+        opacity: on ? 1 : 0
+        scale: on ? 1 : 0.94
+        Behavior on opacity { NumberAnimation { duration: Th.mF; easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: Th.mF; easing.type: Easing.OutCubic } }
         z: 300
         width: tt.implicitWidth + 16
         height: 26

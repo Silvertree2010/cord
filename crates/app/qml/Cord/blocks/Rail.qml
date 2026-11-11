@@ -9,7 +9,7 @@ Rectangle {
     implicitWidth: hz ? 300 : 68
     implicitHeight: hz ? 56 : 300
     color: Th.bg2
-    readonly property real isz: Math.min(42, (hz ? height : width) - 24)
+    readonly property real isz: Math.min(44, (hz ? height : width) - 20)
     readonly property real fz: r.hz ? r.isz + 24 : r.isz + 20
 
     ListView {
@@ -33,7 +33,7 @@ Rectangle {
                 Ic {
                     gid: "home"
                     name: "Home"
-                    ico: "home"
+                    ico: "moon"
                     dotN: S.dmUnr().length
                 }
                 Repeater {
@@ -70,6 +70,24 @@ Rectangle {
             }
             width: r.hz ? r.isz + 12 : lv.width
             height: r.hz ? lv.height : r.isz
+            transform: Translate { id: rowT }
+            Component.onCompleted: {
+                if (!row.inF || S.lastFold !== row.inF.id || Date.now() - S.foldT > 400) return
+                const i = modelData.inF ? row.inF.glds.findIndex(x => S.ridOf(x) === (row.g ? row.g.rid : "")) : 0
+                row.opacity = 0
+                rowT.y = -10
+                inA.delay = Math.max(0, i) * 35
+                inA.start()
+            }
+            SequentialAnimation {
+                id: inA
+                property int delay: 0
+                PauseAnimation { duration: inA.delay }
+                ParallelAnimation {
+                    NumberAnimation { target: row; property: "opacity"; to: 1; duration: Th.mM; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: rowT; property: "y"; to: 0; duration: Th.mM; easing.type: Easing.OutCubic }
+                }
+            }
             Item {
                 id: strip
                 readonly property bool head: !!row.f && !!S.foldOpen[row.f.id]
@@ -119,7 +137,7 @@ Rectangle {
                 Rectangle {
                     anchors.fill: parent
                     radius: r.isz * 0.28
-                    color: ft.open ? "transparent" : Qt.tint(Th.bg3, Th.a(row.fc, fm.containsMouse ? 0.26 : 0.16))
+                    color: ft.open ? "transparent" : fm.containsMouse ? Qt.lighter(Th.bg4, 1.15) : Th.bg4
                     Behavior on color { ColorAnimation { duration: 120 } }
                 }
                 Ico { visible: ft.open; anchors.centerIn: parent; n: "folder"; sz: 24; col: row.fc }
@@ -139,7 +157,7 @@ Rectangle {
                     height: r.isz * 0.6
                     radius: 2
                     color: Th.tx
-                    x: -((r.width - r.isz) / 2) - 2
+                    x: -((r.width - r.isz) / 2) + 2
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Rectangle {
@@ -148,7 +166,7 @@ Rectangle {
                     height: 8
                     radius: 2
                     color: Th.tx
-                    x: -((r.width - r.isz) / 2)
+                    x: -((r.width - r.isz) / 2) + 2
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Rectangle {
@@ -182,14 +200,16 @@ Rectangle {
             }
         }
         ScrollBar.vertical: Scr {}
+        Smooth { enabled: !r.hz }
     }
 
     Item {
         id: gear
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        width: r.hz ? r.fz : parent.width
-        height: r.hz ? parent.height : r.fz
+        visible: !S.hasBlk("me")
+        width: visible ? (r.hz ? r.fz : parent.width) : 0
+        height: visible ? (r.hz ? parent.height : r.fz) : 0
         Rectangle {
             visible: !r.hz
             width: parent.width * 0.5
@@ -218,6 +238,8 @@ Rectangle {
     }
     Popup {
         id: joinP
+        enter: PopIn {}
+        exit: PopOut {}
         parent: Overlay.overlay
         anchors.centerIn: Overlay.overlay
         modal: true
@@ -265,17 +287,21 @@ Rectangle {
         activeFocusOnTab: true
         Accessible.role: Accessible.Button
         Accessible.name: ic.name
+        scale: ma.pressed ? 0.92 : 1
+        Behavior on scale { NumberAnimation { duration: Th.mF; easing.type: Easing.OutBack } }
         Keys.onReturnPressed: ic.pick()
         Keys.onSpacePressed: ic.pick()
         onPick: S.pick(gid)
         Rectangle {
-            visible: !r.hz && ic.cur
+            visible: !r.hz && height > 0.5
             width: 4
-            height: r.isz * 0.6
+            height: ic.cur ? r.isz * 0.9 : ma.containsMouse ? 20 : ic.dotN > 0 ? 8 : 0
             radius: 2
             color: Th.tx
-            x: -((r.width - r.isz) / 2) - 2
+            opacity: ic.cur || ma.containsMouse ? 1 : 0.8
+            x: -((r.width - r.isz) / 2) + 2
             anchors.verticalCenter: parent.verticalCenter
+            Behavior on height { NumberAnimation { duration: Th.mM; easing.type: Easing.OutCubic } }
         }
         Rectangle {
             visible: r.hz && ic.cur
@@ -288,7 +314,7 @@ Rectangle {
         Rectangle {
             anchors.fill: parent
             radius: ic.rad
-            color: ic.cur ? Th.bg4 : ma.containsMouse ? Qt.lighter(Th.bg3, 1.15) : Th.bg3
+            color: ic.cur && ic.ico !== "" ? Th.ac : ic.cur ? Qt.lighter(Th.bg4, 1.2) : ma.containsMouse ? Qt.lighter(Th.bg4, 1.15) : Th.bg4
             Behavior on color { ColorAnimation { duration: 120 } }
             visible: ic.ico !== "" || ic.img === ""
             Ico {
@@ -296,7 +322,7 @@ Rectangle {
                 anchors.centerIn: parent
                 n: ic.ico || "home"
                 sz: 22
-                col: ic.cur ? Th.ac : ma.containsMouse ? Th.tx : Th.tx2
+                col: ic.cur ? Th.acTx : Th.tx
             }
             Lbl {
                 visible: ic.ico === ""
@@ -356,16 +382,6 @@ Rectangle {
                 font.pixelSize: 10
                 font.weight: Font.Bold
             }
-        }
-        Rectangle {
-            visible: !r.hz && ic.dotN > 0 && !ic.cur
-            width: 4
-            height: ma.containsMouse ? 16 : 8
-            radius: 2
-            color: Th.tx2
-            x: -((r.width - r.isz) / 2) - 2
-            Behavior on height { NumberAnimation { duration: 120 } }
-            anchors.verticalCenter: parent.verticalCenter
         }
         Rectangle {
             visible: r.hz && ic.dotN > 0 && !ic.cur

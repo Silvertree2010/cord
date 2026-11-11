@@ -46,6 +46,12 @@ pub trait Bk: Send + Sync {
     async fn set_st(&self, _st: St, _act: Option<String>) -> Res<()> {
         Ok(())
     }
+    async fn api(&self, op: &str, _args: &serde_json::Value) -> Res<serde_json::Value> {
+        anyhow::bail!("{op} is not supported on this network")
+    }
+    async fn profile(&self, _usr: &Rid, _gld: Option<&Rid>) -> Res<serde_json::Value> {
+        anyhow::bail!("profiles unsupported on this network")
+    }
     async fn open_dm(&self, _usr: &Rid) -> Res<Rid> {
         anyhow::bail!("direct messages unsupported on this network")
     }

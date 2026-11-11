@@ -66,12 +66,15 @@ pub enum Out {
     Fs(String),
     Mpris(Option<Mp>),
     Dm { usr: String, chan: String, ok: bool, err: String },
+    Prof { usr: String, gld: String, ok: bool, p: serde_json::Value, err: String },
+    Api { tag: String, ok: bool, v: serde_json::Value, err: String },
+    Sheet { url: String, max: u32, ok: bool, s: serde_json::Value, err: String },
 }
 
 #[cfg(test)]
 pub const TAGS: &[&str] = &[
     "Acc", "Conn", "Gld", "GldDel", "Chan", "ChanDel", "Chans", "Msg", "MsgDel", "Msgs", "Typing", "PresBatch", "Rels", "Unr", "Mems", "Vs", "Speak", "Call", "Err", "Hist", "Sent", "Qr", "QrUsr", "Cap", "Folds", "MemList",
-    "Accs", "AccGone", "Fs", "Mpris", "Dm",
+    "Accs", "AccGone", "Fs", "Mpris", "Dm", "Prof", "Sheet", "Api",
 ];
 
 #[cfg(test)]
@@ -108,6 +111,9 @@ pub fn tag(o: &Out) -> &'static str {
         Out::Fs(_) => "Fs",
         Out::Mpris(_) => "Mpris",
         Out::Dm { .. } => "Dm",
+        Out::Prof { .. } => "Prof",
+        Out::Api { .. } => "Api",
+        Out::Sheet { .. } => "Sheet",
     }
 }
 

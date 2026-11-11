@@ -3,6 +3,7 @@ pub mod gw;
 pub mod hd;
 pub mod map;
 pub mod pb;
+pub mod prof;
 pub mod perm;
 pub mod ra;
 pub mod rest;
@@ -51,6 +52,7 @@ pub struct Sh {
     pub vo: vc::Vo,
     pub st: stm::Stm,
     pub jh: Mutex<Option<tokio::task::JoinHandle<()>>>,
+    pub eff: tokio::sync::Mutex<Option<Value>>,
 }
 
 pub struct Dc(Arc<Sh>);
@@ -100,6 +102,7 @@ impl Dc {
             vo: Default::default(),
             st: Default::default(),
             jh: Default::default(),
+            eff: Default::default(),
         })))
     }
 
@@ -171,6 +174,99 @@ impl Bk for Dc {
         self.0.st.stop_all(&self.0);
         let _ = self.0.vo.end();
         *self.0.gt.lock() = None;
+    }
+
+    async fn api(&self, op: &str, a: &Value) -> Res<Value> {
+        let st = |k: &str| a[k].as_str().unwrap_or("").to_string();
+        let enc = |x: &str| utf8_percent_encode(x, NON_ALPHANUMERIC).to_string();
+        let r = &self.0.rest;
+        match op {
+            "gifs" => {
+                let q = st("q");
+                let p = if q.is_empty() {
+                    "/gifs/trending?provider=tenor&locale=en-US&media_format=mp4".to_string()
+                } else {
+                    format!("/gifs/search?q={}&media_format=mp4&provider=tenor&locale=en-US", enc(&q))
+                };
+                r.js(Method::GET, &p, None).await
+            }
+            "search" => {
+                let base = if !st("gld").is_empty() { format!("/guilds/{}/messages/search", st("gld")) } else { format!("/channels/{}/messages/search", st("chan")) };
+                let mut p = format!("{base}?content={}", enc(&st("q")));
+                if !st("gld").is_empty() && !st("chan").is_empty() {
+                    p.push_str(&format!("&channel_id={}", st("chan")));
+                }
+                if let Some(o) = a["offset"].as_u64() {
+                    p.push_str(&format!("&offset={o}"));
+                }
+                let mut v = Value::Null;
+                for _ in 0..4 {
+                    v = r.js(Method::GET, &p, None).await?;
+                    if v.get("messages").is_some() {
+                        break;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+                }
+                let msgs: Vec<Value> = v["messages"]
+                    .as_array()
+                    .map(|a| a.iter().filter_map(|g| g.as_array().and_then(|x| x.first())).filter_map(|m| map::msg(self.0.a, m)).filter_map(|m| serde_json::to_value(m).ok()).collect())
+                    .unwrap_or_default();
+                Ok(json!({"total": v["total_results"], "msgs": msgs}))
+            }
+            "add_friend" => r.js(Method::POST, "/users/@me/relationships", Some(json!({"username": st("name").trim_start_matches('@').to_lowercase(), "discriminator": null}))).await.map(|_| json!({})),
+            "pin" | "unpin" => {
+                let p = format!("/channels/{}/pins/{}", st("chan"), st("msg"));
+                r.js(if op == "pin" { Method::PUT } else { Method::DELETE }, &p, None).await.map(|_| json!({}))
+            }
+            "unread" => {
+                let p = format!("/channels/{}/messages/{}/ack", st("chan"), st("msg"));
+                r.js(Method::POST, &p, Some(json!({"manual": true, "mention_count": 0}))).await.map(|_| json!({}))
+            }
+            "req_mems" => {
+                let ids: Vec<String> = a["ids"].as_array().map(|x| x.iter().filter_map(|i| i.as_str().map(str::to_string)).take(100).collect()).unwrap_or_default();
+                if ids.is_empty() {
+                    return Ok(json!({}));
+                }
+                self.gsend(json!({"op": 8, "d": {"guild_id": st("gld"), "user_ids": ids, "presences": false}}))?;
+                Ok(json!({}))
+            }
+            "custom_status" => {
+                let t = st("text");
+                let e = st("emoji");
+                let cs = if t.is_empty() && e.is_empty() { Value::Null } else { json!({"text": if t.is_empty() { Value::Null } else { json!(t) }, "emoji_name": if e.is_empty() { Value::Null } else { json!(e) }}) };
+                let _ = r.js(Method::PATCH, "/users/@me/settings", Some(json!({"custom_status": cs}))).await;
+                let mut p = self.0.pst.lock().clone();
+                let mut acts: Vec<Value> = p["activities"].as_array().cloned().unwrap_or_default().into_iter().filter(|x| x["type"].as_u64() != Some(4)).collect();
+                if !cs.is_null() {
+                    let mut c = json!({"type": 4, "name": "Custom Status", "state": t});
+                    if !e.is_empty() {
+                        c["emoji"] = json!({"name": e});
+                    }
+                    acts.insert(0, c);
+                }
+                p["activities"] = json!(acts);
+                *self.0.pst.lock() = p.clone();
+                self.gsend(json!({"op": 3, "d": p}))?;
+                Ok(json!({}))
+            }
+            _ => anyhow::bail!("unknown op {op}"),
+        }
+    }
+
+    async fn profile(&self, usr: &Rid, gld: Option<&Rid>) -> Res<Value> {
+        let mut p = format!("/users/{}/profile?with_mutual_guilds=true&with_mutual_friends=true&with_mutual_friends_count=true", usr.raw);
+        if let Some(g) = gld {
+            p.push_str(&format!("&guild_id={}", g.raw));
+        }
+        let v = self.0.rest.js(Method::GET, &p, None).await?;
+        let wants = v["user_profile"]["profile_effect"]["id"].is_string() || v["guild_member_profile"]["profile_effect"]["id"].is_string();
+        let mut eff = self.0.eff.lock().await;
+        if wants && eff.is_none() {
+            if let Ok(e) = self.0.rest.js(Method::GET, "/user-profile-effects", None).await {
+                *eff = Some(e);
+            }
+        }
+        Ok(prof::norm(&v, eff.as_ref()))
     }
 
     async fn open_dm(&self, usr: &Rid) -> Res<Rid> {

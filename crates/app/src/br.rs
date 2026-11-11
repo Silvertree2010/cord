@@ -71,6 +71,12 @@ pub mod q {
         #[qinvokable]
         fn open_dm(self: &Core, u: &QString);
         #[qinvokable]
+        fn profile(self: &Core, u: &QString, g: &QString);
+        #[qinvokable]
+        fn api(self: &Core, acc: i32, op: &QString, args: &QString, tag: &QString);
+        #[qinvokable]
+        fn sheet(self: &Core, url: &QString, max: i32);
+        #[qinvokable]
         fn feat(self: &Core, k: &QString, on: bool);
         #[qinvokable]
         fn features(self: &Core) -> QString;
@@ -564,6 +570,49 @@ impl q::Core {
             move |r| match r {
                 Ok(c) => Out::Dm { usr: us, chan: c.to_string(), ok: true, err: String::new() },
                 Err(x) => Out::Dm { usr: us, chan: String::new(), ok: false, err: x.to_string() },
+            },
+        );
+    }
+
+    pub fn profile(&self, u: &QString, g: &QString) {
+        let Some(u) = rid(u) else { return };
+        let g = rid(g);
+        let gs = g.as_ref().map(|x| x.to_string()).unwrap_or_default();
+        let us = u.to_string();
+        self.go_ack(
+            move |h| async move { h.bk(u.acc).await?.profile(&u, g.as_ref()).await },
+            move |r| match r {
+                Ok(p) => Out::Prof { usr: us, gld: gs, ok: true, p, err: String::new() },
+                Err(x) => Out::Prof { usr: us, gld: gs, ok: false, p: serde_json::Value::Null, err: x.to_string() },
+            },
+        );
+    }
+
+    pub fn api(&self, acc: i32, op: &QString, args: &QString, tag: &QString) {
+        let (op, tag) = (qs(op), qs(tag));
+        let args: serde_json::Value = serde_json::from_str(&qs(args)).unwrap_or_default();
+        let acc = acc.max(0) as u32;
+        self.go_ack(
+            move |h| async move { h.bk(acc).await?.api(&op, &args).await },
+            move |r| match r {
+                Ok(v) => Out::Api { tag, ok: true, v, err: String::new() },
+                Err(x) => Out::Api { tag, ok: false, v: serde_json::Value::Null, err: x.to_string() },
+            },
+        );
+    }
+
+    pub fn sheet(&self, url: &QString, max: i32) {
+        let url = qs(url);
+        if !url.starts_with("https://") {
+            return;
+        }
+        let max = max.max(0) as u32;
+        let u2 = url.clone();
+        self.go_ack(
+            move |_h| async move { crate::sheet::get(u2, max).await },
+            move |r| match r {
+                Ok(s) => Out::Sheet { url, max, ok: true, s: serde_json::to_value(s).unwrap_or_default(), err: String::new() },
+                Err(x) => Out::Sheet { url, max, ok: false, s: serde_json::Value::Null, err: x.to_string() },
             },
         );
     }

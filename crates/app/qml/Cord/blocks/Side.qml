@@ -18,12 +18,15 @@ Rectangle {
         spacing: 0
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 48
+            Layout.preferredHeight: 50
             color: "transparent"
-            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Th.ln }
+            Rectangle { anchors.bottom: parent.bottom; x: 8; width: parent.width - 16; height: 1; color: Th.ln }
             Loader {
+                id: hdL
                 anchors.fill: parent
                 sourceComponent: r.home ? homeHd : gHd
+                onLoaded: hdA.restart()
+                NumberAnimation { id: hdA; target: hdL; property: "opacity"; from: 0; to: 1; duration: Th.mM; easing.type: Easing.OutCubic }
             }
         }
         ListView {
@@ -33,9 +36,20 @@ Rectangle {
             clip: true
             topMargin: 8
             bottomMargin: 8
-            model: r.home ? S.dms() : S.chList(S.sel).filter(c => c.k === "Cat" || !r.col[c.prid])
+            model: r.home ? S.dms() : S.chList(S.sel).filter(c => c.k === "Cat" || !r.col[c.prid] || c.rid === S.selC || (!c.mute && S.unr[c.rid] && (S.unr[c.rid].n || S.unr[c.rid].ment)))
             ScrollBar.vertical: Scr {}
             header: r.home ? frHd : null
+            Smooth {}
+            transform: Translate { id: lvT }
+            Connections {
+                target: S
+                function onSelChanged() { lvA.restart() }
+            }
+            ParallelAnimation {
+                id: lvA
+                NumberAnimation { target: lv; property: "opacity"; from: 0; to: 1; duration: Th.mM; easing.type: Easing.OutCubic }
+                NumberAnimation { target: lvT; property: "x"; from: -12; to: 0; duration: Th.mS; easing.type: Easing.OutCubic }
+            }
             delegate: Item {
                 width: lv.width
                 height: ld.height
@@ -53,27 +67,20 @@ Rectangle {
         Item {
             Rectangle {
                 anchors.fill: parent
-                anchors.margins: 10
-                radius: Th.rs
-                color: Th.bg
+                anchors.margins: 9
+                anchors.leftMargin: 10
+                anchors.rightMargin: 10
+                radius: 6
+                color: hm.containsMouse ? Qt.lighter(Th.bg3, 1.12) : Th.bg3
                 Lbl {
-                    anchors.verticalCenter: parent.verticalCenter
-                    x: 10
+                    anchors.centerIn: parent
+                    width: Math.min(implicitWidth, parent.width - 16)
                     text: "Find or start a conversation"
-                    color: Th.tx3
-                    font.pixelSize: Th.fsS
+                    color: Th.tx
+                    font.pixelSize: Th.fsS + 1
+                    font.weight: Font.Medium
                 }
-                Rectangle {
-                    anchors.right: parent.right
-                    anchors.rightMargin: 6
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: kh.implicitWidth + 10
-                    height: 18
-                    radius: 4
-                    color: Th.bg3
-                    Lbl { id: kh; anchors.centerIn: parent; text: Th.mod + "K"; color: Th.tx3; font.pixelSize: 10; font.family: Th.mono }
-                }
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: S.quick() }
+                MouseArea { id: hm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.quick() }
             }
         }
     }
@@ -131,19 +138,32 @@ Rectangle {
         id: frHd
         Column {
             width: lv.width
-            spacing: 2
+            spacing: 0
             Row_ { ico: "users"; text: "Friends"; cur: S.selC === ""; onPick: S.open("") }
             Row_ { ico: "inbox"; text: "Inbox"; cur: S.selC === "inbox"; onPick: S.open("inbox"); visible: !S.hasBlk("inbox") }
             Item { width: 1; height: 10 }
-            Lbl {
-                x: 16
-                text: "DIRECT MESSAGES"
-                color: Th.tx3
-                font.pixelSize: Th.fsS - 1
-                font.weight: Font.Bold
-                font.letterSpacing: 0.4
+            Rectangle { x: 8; width: lv.width - 16; height: 1; color: Th.ln }
+            Item {
+                width: lv.width
+                height: 40
+                Lbl {
+                    x: 16
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Direct Messages"
+                    color: dh.hovered ? Th.tx : Th.tx2
+                    font.pixelSize: Th.fsS + 1
+                }
+                Ico {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 16
+                    anchors.verticalCenter: parent.verticalCenter
+                    n: "plus"
+                    sz: 16
+                    col: pm.containsMouse ? Th.tx : Th.tx2
+                    MouseArea { id: pm; anchors.fill: parent; anchors.margins: -6; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.quick() }
+                }
+                HoverHandler { id: dh }
             }
-            Item { width: 1; height: 4 }
         }
     }
     component Row_: Rectangle {
@@ -155,14 +175,15 @@ Rectangle {
         x: 8
         width: lv.width - 16
         height: 40 * Th.dens
-        radius: Th.rs
+        radius: 6
         color: cur ? Th.sel : ma.containsMouse ? Th.hov : "transparent"
+        Behavior on color { ColorAnimation { duration: Th.mF } }
         Row {
-            x: 10
+            x: 9
             spacing: 12
             anchors.verticalCenter: parent.verticalCenter
-            Ico { n: rw.ico; col: rw.cur ? Th.tx : Th.tx2; anchors.verticalCenter: parent.verticalCenter }
-            Lbl { text: rw.text; color: rw.cur ? Th.tx : Th.tx2; font.weight: Font.Medium; anchors.verticalCenter: parent.verticalCenter }
+            Ico { n: rw.ico; sz: 20; col: rw.cur || ma.containsMouse ? Th.tx : Th.tx2; anchors.verticalCenter: parent.verticalCenter }
+            Lbl { text: rw.text; color: rw.cur || ma.containsMouse ? Th.tx : Th.tx2; font.pixelSize: Th.fs + 1; font.weight: Font.Medium; anchors.verticalCenter: parent.verticalCenter }
         }
         MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: rw.pick() }
     }
@@ -214,11 +235,32 @@ Rectangle {
             property var inV: vc ? S.vsIn(ch.rid) : []
             property var ty: S.f("typingtweaks") ? Object.values(S.typing[ch.rid] || {}) : []
             Rectangle {
-                x: 8
-                width: lv.width - 16
-                height: 34 * Th.dens
+                x: ch.sub ? 30 : 8
+                width: lv.width - (ch.sub ? 38 : 16)
+                height: (ch.sub ? 30 : 34) * Th.dens
                 radius: Th.rs
                 color: cur ? Th.sel : ma.containsMouse ? Th.hov : "transparent"
+                Rectangle {
+                    visible: !!u && !!u.n && !cur && !ch.mute
+                    x: -parent.x - 2
+                    width: 6
+                    height: 8
+                    radius: 3
+                    color: Th.tx
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Rectangle {
+                    visible: !!ch.sub
+                    x: -12
+                    y: -parent.height / 2
+                    width: 10
+                    height: parent.height
+                    color: "transparent"
+                    border.color: Th.ln
+                    border.width: 0
+                    Rectangle { x: 0; width: 1.5; height: parent.height; color: Th.ln }
+                    Rectangle { x: 0; y: parent.height - 1.5; width: 10; height: 1.5; color: Th.ln }
+                }
                 Behavior on color { ColorAnimation { duration: 90 } }
                 opacity: ch.hidden ? 0.55 : 1
                 Row {
@@ -227,6 +269,7 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - 16
                     Ico {
+                        visible: !ch.sub
                         n: ch.hidden ? "lock" : ch.k === "Voice" ? "voice" : ch.k === "Stage" ? "stage" : ch.k === "Forum" ? "forum" : ch.k === "Ann" ? "ann" : "hash"
                         col: Th.tx3
                         anchors.verticalCenter: parent.verticalCenter
@@ -273,14 +316,7 @@ Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         Lbl { id: mn; anchors.centerIn: parent; text: u ? u.ment : ""; color: "#fff"; font.pixelSize: 11; font.weight: Font.Bold }
                     }
-                    Rectangle {
-                        visible: !!u && !!u.n && !(u.ment > 0) && !cur
-                        width: 6
-                        height: 6
-                        radius: 3
-                        color: Th.tx
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
+
                 }
                 MouseArea {
                     id: ma
@@ -349,13 +385,19 @@ Rectangle {
         Rectangle {
             property var u: S.unr[ch.rid] || null
             property bool cur: S.selC === ch.rid
-            property var usr: ch.rcp && ch.rcp.length ? ch.rcp[0] : null
+            property var usr: ch.k === "Dm" && ch.rcp && ch.rcp.length ? ch.rcp[0] : null
             property var p: usr && usr.id ? S.presOf(usr.id) : null
             x: 8
             width: lv.width - 16
             height: 44 * Th.dens
-            radius: Th.rs
+            radius: 6
             color: cur ? Th.sel : ma.containsMouse ? Th.hov : "transparent"
+            Behavior on color { ColorAnimation { duration: Th.mF } }
+            Loader {
+                anchors.fill: parent
+                active: !!(parent.usr && parent.usr.plate) && S.ui.plates !== false && (parent.cur || ma.containsMouse)
+                sourceComponent: Plate { src: usr.plate; radius: 6; anim: ma.containsMouse }
+            }
             Av {
                 id: av
                 x: 8
@@ -364,8 +406,10 @@ Rectangle {
                 src: parent.usr ? (parent.usr.av || "") : (ch.icon || "")
                 name: S.chName(ch.rid)
                 st: ch.k === "Dm" ? (parent.p ? parent.p.st : "Off") : ""
-                ring: parent.color.a > 0 ? Th.bg3 : Th.bg2
+                ring: parent.cur ? "#2c2d34" : Th.bg2
                 sv: S.svc(ch.rid)
+                deco: parent.usr && parent.usr.deco ? parent.usr.deco : ""
+                anim: ma.containsMouse
             }
             Column {
                 anchors.left: av.right
@@ -373,18 +417,27 @@ Rectangle {
                 anchors.right: parent.right
                 anchors.rightMargin: 30
                 anchors.verticalCenter: parent.verticalCenter
-                Lbl {
+                spacing: -1
+                Row {
                     width: parent.width
-                    text: S.chName(ch.rid)
-                    color: cur || (u && u.n) ? Th.tx : Th.tx2
-                    font.weight: u && u.n ? Font.DemiBold : Font.Medium
+                    spacing: 6
+                    Lbl {
+                        width: Math.min(implicitWidth, parent.width - (dtp.visible ? dtp.width + 6 : 0))
+                        text: S.chName(ch.rid)
+                        color: cur || (u && u.n) || ma.containsMouse ? Th.tx : Th.tx2
+                        font.pixelSize: Th.fs + 1
+                        font.weight: u && u.n ? Font.DemiBold : Font.Normal
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    TagPill { id: dtp; tag: usr && usr.tag ? usr.tag : null; fs: 10; anchors.verticalCenter: parent.verticalCenter }
                 }
                 Lbl {
                     width: parent.width
                     visible: text !== ""
-                    text: ch.k === "Grp" ? (ch.rcp || []).length + 1 + " members" : (p && p.act ? p.act : "")
-                    color: Th.tx3
-                    font.pixelSize: Th.fsS - 1
+                    text: ch.k === "Grp" ? (ch.rcp || []).length + 1 + " Members" : (p && p.act ? p.act : "")
+                    color: cur ? Th.tx : Th.tx2
+                    font.pixelSize: Th.fsS
+                    font.weight: cur ? Font.DemiBold : Font.Normal
                 }
             }
             Rectangle {
@@ -409,7 +462,19 @@ Rectangle {
                 Lbl { id: mn2; anchors.centerIn: parent; text: u ? u.ment : ""; color: "#fff"; font.pixelSize: 11; font.weight: Font.Bold }
             }
             Ico {
-                visible: (S.ui.pins || []).indexOf(ch.rid) >= 0 && !(u && (u.ment || u.n))
+                id: xb
+                visible: (cur || ma.containsMouse || xm.containsMouse) && !(u && u.ment > 0)
+                z: 2
+                n: "x"
+                sz: 16
+                col: xm.containsMouse ? Th.tx : Th.tx2
+                anchors.right: parent.right
+                anchors.rightMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+                MouseArea { id: xm; anchors.fill: parent; anchors.margins: -6; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.hideDm(ch.rid) }
+            }
+            Ico {
+                visible: !xb.visible && (S.ui.pins || []).indexOf(ch.rid) >= 0 && !(u && (u.ment || u.n))
                 n: "pin"
                 sz: 14
                 col: Th.tx3
