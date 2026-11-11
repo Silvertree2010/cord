@@ -152,6 +152,8 @@ QtObject {
     property bool edit: false
     property bool setup: false
     property bool showSet: false
+    property int accIdx: 0
+    property string accSub: "prof"
     property string setPage: "accounts"
     property var feats: ({})
     property var blks: ({})

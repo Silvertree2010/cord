@@ -213,6 +213,31 @@ impl Bk for Dc {
                     .unwrap_or_default();
                 Ok(json!({"total": v["total_results"], "msgs": msgs}))
             }
+            "acct" => {
+                let m = r.js(Method::GET, "/users/@me", None).await?;
+                let p = r.js(Method::GET, "/users/@me/profile", None).await.unwrap_or(Value::Null);
+                Ok(json!({"name": m["global_name"].as_str().unwrap_or(m["username"].as_str().unwrap_or("")), "user": m["username"], "email": m["email"], "bio": p["user_profile"]["bio"].as_str().or(m["bio"].as_str()).unwrap_or(""), "caps": ["name", "bio", "end"]}))
+            }
+            "set_name" => r.js(Method::PATCH, "/users/@me", Some(json!({"global_name": st("name")}))).await.map(|_| json!({})),
+            "set_bio" => r.js(Method::PATCH, "/users/@me/profile", Some(json!({"bio": st("bio")}))).await.map(|_| json!({})),
+            "sessions" => {
+                let v = r.js(Method::GET, "/auth/sessions", None).await?;
+                let list: Vec<Value> = v["user_sessions"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .map(|s| {
+                                let ci = &s["client_info"];
+                                let os = ci["os"].as_str().unwrap_or("");
+                                let pl = ci["platform"].as_str().unwrap_or("");
+                                json!({"id": s["id_hash"], "name": format!("{} {}", pl, os).trim(), "kind": if os.contains("Android") || os.contains("iOS") { "mobile" } else if pl.contains("Discord") { "desktop" } else { "web" }, "last": 0, "loc": ci["location"]})
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                Ok(json!({"cur": "", "list": list}))
+            }
+            "session_end" => r.js(Method::POST, "/auth/sessions/logout", Some(json!({"session_id_hashes": [st("id")]}))).await.map(|_| json!({})),
             "add_friend" => r.js(Method::POST, "/users/@me/relationships", Some(json!({"username": st("name").trim_start_matches('@').to_lowercase(), "discriminator": null}))).await.map(|_| json!({})),
             "pin" | "unpin" => {
                 let p = format!("/channels/{}/pins/{}", st("chan"), st("msg"));

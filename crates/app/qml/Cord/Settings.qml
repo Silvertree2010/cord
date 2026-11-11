@@ -353,59 +353,23 @@ Rectangle {
                 border.color: Th.err
                 Lbl { id: sw; x: 12; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 24; wrapMode: Text.Wrap; elide: Text.ElideNone; text: "No system keyring was found. Account tokens are stored in a file in " + S.c.home() + " without encryption." }
             }
-            Sub { text: "Connected accounts"; topPadding: 4 }
-            Repeater {
-                model: S.cfgAccs
-                Rectangle {
-                    id: ar
-                    width: parent.width
-                    height: 68
-                    radius: Th.r
-                    color: Th.bg
-                    border.color: Th.ln
-                    property var a: S.accs[modelData.id]
-                    property string who: a ? (a.me.disp || a.me.name) : modelData.base === "demo" ? "Demo account" : "Not connected"
-                    Av { id: aa; x: 14; anchors.verticalCenter: parent.verticalCenter; sz: 38; src: parent.a ? (parent.a.me.av || "") : ""; name: parent.a ? parent.a.me.name : "?" }
-                    Column {
-                        anchors.left: aa.right
-                        anchors.leftMargin: 12
-                        anchors.verticalCenter: parent.verticalCenter
-                        Row {
-                            spacing: 8
-                            Lbl { text: ar.who; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
-                            Rectangle {
-                                visible: modelData.base === "demo"
-                                width: dl.implicitWidth + 12
-                                height: 16
-                                radius: Th.rc
-                                color: Th.bg4
-                                anchors.verticalCenter: parent.verticalCenter
-                                Lbl { id: dl; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }
-                            }
-                        }
-                        Row {
-                            spacing: 8
-                            Badge { sv: modelData.svc; txt: true; anchors.verticalCenter: parent.verticalCenter }
-                            Rectangle { width: 8; height: 8; radius: 4; color: S.up.indexOf(modelData.id) >= 0 ? Th.ok : Th.tx3; anchors.verticalCenter: parent.verticalCenter }
-                            Lbl { text: S.up.indexOf(modelData.id) >= 0 ? "Online" : "Offline"; color: Th.tx3; font.pixelSize: Th.fsT; anchors.verticalCenter: parent.verticalCenter }
-                        }
-                    }
-                    Btn {
-                        anchors.right: parent.right
-                        anchors.rightMargin: 14
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.base === "demo" ? "Remove" : "Log out"
-                        gh: true
-                        onClicked: U.ask({
-                            title: modelData.base === "demo" ? "Remove demo account" : "Log out",
-                            body: (modelData.base === "demo" ? "Remove " : "Log out of ") + ar.who + " on " + Th.svcName(S.tag(modelData.svc)) + "?",
-                            ok: modelData.base === "demo" ? "Remove" : "Log out",
-                            danger: true,
-                            run: () => S.c.rm_acc(modelData.id)
-                        })
-                    }
+            AccTabs { id: atb; cur: Math.min(S.accIdx, S.cfgAccs.length) }
+            Connections { target: atb; function onCurChanged() { S.accIdx = atb.cur } }
+            Loader {
+                id: avl
+                width: parent.width
+                active: atb.cur < S.cfgAccs.length
+                visible: active
+                transform: Translate { id: avt }
+                sourceComponent: AccView { a: S.cfgAccs[Math.min(atb.cur, S.cfgAccs.length - 1)] }
+                ParallelAnimation {
+                    id: avA
+                    NumberAnimation { target: avl; property: "opacity"; from: 0; to: 1; duration: Th.mM; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: avt; property: "x"; from: 14; to: 0; duration: Th.mM; easing.type: Easing.OutCubic }
                 }
+                Connections { target: S; function onAccIdxChanged() { avA.restart() } }
             }
+            AccAdd { visible: atb.cur >= S.cfgAccs.length; onDone: { U.flash("Account added"); S.accIdx = Math.max(0, S.cfgAccs.length - 1) } }
             Item { visible: S.cfgAccs.some(a => a.base === "demo"); width: 1; height: 4 }
             Btn {
                 visible: S.cfgAccs.some(a => a.base === "demo")
@@ -427,8 +391,6 @@ Rectangle {
                     }
                 }
             }
-            Sub { text: "Add account" }
-            AccAdd { onDone: U.flash("Account added") }
         }
     }
 

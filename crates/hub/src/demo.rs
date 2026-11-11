@@ -9,11 +9,12 @@ pub struct Demo {
     run: u64,
     tx: tokio::sync::OnceCell<Tx>,
     jh: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    acct: std::sync::Mutex<serde_json::Value>,
 }
 
 impl Demo {
     pub fn new(a: u32, sv: Svc) -> Self {
-        Self { a, sv, n: AtomicU64::new(1000), run: Self::now() as u64, tx: Default::default(), jh: Default::default() }
+        Self { a, sv, n: AtomicU64::new(1000), run: Self::now() as u64, tx: Default::default(), jh: Default::default(), acct: std::sync::Mutex::new(serde_json::json!({"name": "Ida", "bio": "Building cord in my free time."})) }
     }
     fn r(&self, s: impl Into<String>) -> Rid {
         Rid::new(self.sv, self.a, s.into())
@@ -141,7 +142,7 @@ impl Bk for Demo {
             tx.send(Ev::Chan(Chan { id: self.r("grp0"), gld: None, par: None, k: ChK::Grp, name: "Weekend squad".into(), topic: None, pos: 0, nsfw: false, hidden: false, last: None, rcp: vec![self.u(1), self.u(2), self.u(3)], icon: None, enc: false, mute: false }))?;
         }
         let c = self.r("g0c0");
-        let s = Self { a: self.a, sv: self.sv, n: AtomicU64::new(0), run: self.run, tx: Default::default(), jh: Default::default() };
+        let s = Self { a: self.a, sv: self.sv, n: AtomicU64::new(0), run: self.run, tx: Default::default(), jh: Default::default(), acct: std::sync::Mutex::new(self.acct.lock().unwrap().clone()) };
         let jh = tokio::spawn(async move {
             loop {
                 tokio::time::sleep(std::time::Duration::from_secs(9 + s.a as u64 * 4)).await;
@@ -166,6 +167,36 @@ impl Bk for Demo {
     async fn stop(&self) {
         if let Some(j) = self.jh.lock().ok().and_then(|mut g| g.take()) {
             j.abort();
+        }
+    }
+    async fn api(&self, op: &str, a: &serde_json::Value) -> Res<serde_json::Value> {
+        use serde_json::json;
+        let caps = match self.sv {
+            Svc::Dc => json!(["name", "bio", "end"]),
+            Svc::Mx => json!(["name", "rename"]),
+            Svc::St => json!(["name", "end", "rename"]),
+        };
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+        match op {
+            "acct" => {
+                let g = self.acct.lock().unwrap();
+                Ok(json!({"name": g["name"], "user": "ida", "email": "ida@example.org", "bio": g["bio"], "caps": caps}))
+            }
+            "sessions" => Ok(json!({"cur": "s1", "list": [
+                {"id": "s1", "name": "cord on macOS", "kind": "desktop", "last": now, "loc": "Bad Ragaz, CH"},
+                {"id": "s2", "name": "Phone", "kind": "mobile", "last": now - 3600, "loc": "Chur, CH"},
+                {"id": "s3", "name": "Browser", "kind": "web", "last": now - 864000, "loc": "Zurich, CH"}
+            ]})),
+            "set_name" => {
+                self.acct.lock().unwrap()["name"] = a["name"].clone();
+                Ok(json!({}))
+            }
+            "set_bio" => {
+                self.acct.lock().unwrap()["bio"] = a["bio"].clone();
+                Ok(json!({}))
+            }
+            "session_end" | "session_name" | "sessions_end_other" => Ok(json!({})),
+            _ => anyhow::bail!("{op} is not supported on this network"),
         }
     }
     async fn profile(&self, usr: &Rid, _gld: Option<&Rid>) -> Res<serde_json::Value> {

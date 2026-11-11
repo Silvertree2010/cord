@@ -162,4 +162,26 @@ impl Bk for St {
     async fn set_st(&self, st: cord_core::St, act: Option<String>) -> Res<()> {
         self.i.set_st(st, act).await
     }
+    async fn api(&self, op: &str, a: &Value) -> Res<Value> {
+        use reqwest::Method;
+        use serde_json::json;
+        let st = |k: &str| a[k].as_str().unwrap_or("").to_string();
+        let i = &self.i;
+        match op {
+            "acct" => {
+                let m = i.req(Method::GET, "/users/@me", None, &[]).await?;
+                Ok(json!({"name": m["display_name"].as_str().unwrap_or(m["username"].as_str().unwrap_or("")), "user": m["username"], "email": Value::Null, "bio": "", "caps": ["name", "end", "rename"]}))
+            }
+            "set_name" => i.req(Method::PATCH, "/users/@me", Some(json!({"display_name": st("name")})), &[]).await.map(|_| json!({})),
+            "sessions" => {
+                let v = i.req(Method::GET, "/auth/session/all", None, &[]).await?;
+                let list: Vec<Value> = v.as_array().map(|a| a.iter().map(|s| json!({"id": s["_id"], "name": s["name"], "kind": "desktop", "last": 0, "loc": Value::Null})).collect()).unwrap_or_default();
+                Ok(json!({"cur": "", "list": list}))
+            }
+            "session_end" => i.req(Method::DELETE, &format!("/auth/session/{}", st("id")), None, &[]).await.map(|_| json!({})),
+            "session_name" => i.req(Method::PATCH, &format!("/auth/session/{}", st("id")), Some(json!({"friendly_name": st("name")})), &[]).await.map(|_| json!({})),
+            "sessions_end_other" => i.req(Method::DELETE, "/auth/session/all?revoke_self=false", None, &[]).await.map(|_| json!({})),
+            _ => bail!("{op} is not supported on this network"),
+        }
+    }
 }

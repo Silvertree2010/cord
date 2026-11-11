@@ -602,6 +602,38 @@ impl Bk for Mx {
             })
             .collect())
     }
+    async fn api(&self, op: &str, a: &serde_json::Value) -> Res<serde_json::Value> {
+        use serde_json::json;
+        let st = |k: &str| a[k].as_str().unwrap_or("").to_string();
+        let cl = &self.i.cl;
+        match op {
+            "acct" => {
+                let name = cl.account().get_display_name().await?.unwrap_or_default();
+                let uid = cl.user_id().map(|u| u.to_string()).unwrap_or_default();
+                Ok(json!({"name": name, "user": uid, "email": null, "bio": "", "caps": ["name", "rename"]}))
+            }
+            "set_name" => {
+                cl.account().set_display_name(Some(&st("name"))).await?;
+                Ok(json!({}))
+            }
+            "sessions" => {
+                let cur = cl.device_id().map(|d| d.to_string()).unwrap_or_default();
+                let ds = cl.devices().await?;
+                let list: Vec<serde_json::Value> = ds
+                    .devices
+                    .iter()
+                    .map(|d| json!({"id": d.device_id.to_string(), "name": d.display_name.clone().unwrap_or_else(|| d.device_id.to_string()), "kind": "desktop", "last": d.last_seen_ts.map(|t| u64::from(t.0) / 1000).unwrap_or(0), "loc": d.last_seen_ip}))
+                    .collect();
+                Ok(json!({"cur": cur, "list": list}))
+            }
+            "session_name" => {
+                let id: matrix_sdk::ruma::OwnedDeviceId = st("id").into();
+                cl.rename_device(&id, &st("name")).await?;
+                Ok(json!({}))
+            }
+            _ => anyhow::bail!("{op} is not supported on this network"),
+        }
+    }
     async fn set_st(&self, st: St, act: Option<String>) -> Res<()> {
         use matrix_sdk::ruma::api::client::presence::set_presence::v3::Request;
         use matrix_sdk::ruma::presence::PresenceState;
