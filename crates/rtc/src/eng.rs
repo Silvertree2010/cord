@@ -37,6 +37,7 @@ struct Sh {
     ptt_mode: AtomicBool,
     ptt_down: AtomicBool,
     ns: AtomicBool,
+    agc: AtomicBool,
     thr: AtomicU32,
     lvl: AtomicU32,
     cb: Mutex<Option<Cb>>,
@@ -65,6 +66,7 @@ impl Eng {
             ptt_mode: AtomicBool::new(false),
             ptt_down: AtomicBool::new(false),
             ns: AtomicBool::new(true),
+            agc: AtomicBool::new(false),
             thr: AtomicU32::new((-45.0f32).to_bits()),
             lvl: AtomicU32::new((-120.0f32).to_bits()),
             cb: Mutex::new(None),
@@ -121,6 +123,10 @@ impl Eng {
 
     pub fn ns(&self, on: bool) {
         self.0.ns.store(on, Relaxed);
+    }
+
+    pub fn agc(&self, on: bool) {
+        self.0.agc.store(on, Relaxed);
     }
 
     pub fn vad(&self, db: Option<f32>) {
@@ -361,6 +367,7 @@ pub struct Cap {
     on: bool,
     skip: u32,
     sil: u32,
+    ag: f32,
 }
 
 impl Cap {
@@ -369,7 +376,7 @@ impl Cap {
         let _ = enc.set_bitrate(Bitrate::Bits(64000));
         let _ = enc.set_inband_fec(true);
         let _ = enc.set_packet_loss_perc(5);
-        Cap { sh, enc, ns: DenoiseState::new(), acc: Vec::new(), hang: 0, on: false, skip: 0, sil: 0 }
+        Cap { sh, enc, ns: DenoiseState::new(), acc: Vec::new(), hang: 0, on: false, skip: 0, sil: 0, ag: 1.0 }
     }
 
     pub fn push(&mut self, pcm: &[f32], ch: usize) {
@@ -399,6 +406,18 @@ impl Cap {
         }
         let rms = (m.iter().map(|x| x * x).sum::<f32>() / m.len() as f32).sqrt();
         let db = 20.0 * rms.max(1e-6).log10();
+        if sh.agc.load(Relaxed) {
+            if rms > 0.003 {
+                let want = (0.1 / rms).clamp(0.5, 8.0);
+                let k = if want < self.ag { 0.3 } else { 0.02 };
+                self.ag += (want - self.ag) * k;
+            }
+            for x in m.iter_mut() {
+                *x = (*x * self.ag).clamp(-0.98, 0.98);
+            }
+        } else {
+            self.ag = 1.0;
+        }
         sh.lvl.store(db.to_bits(), Relaxed);
         let talk = if sh.mute.load(Relaxed) {
             false

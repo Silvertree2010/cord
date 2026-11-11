@@ -234,6 +234,7 @@ QtObject {
         cfgAccs = pj(c.accs(), [])
         setup = !uiBad && (!u || !u.done)
         loadTheme()
+        loadLang()
         c.boot()
         if (ui.st && ui.st !== "On") c.set_st(ui.st.toLowerCase(), "")
         bootSnap()
@@ -266,12 +267,12 @@ QtObject {
         writeUi(u)
     }
     readonly property var keyDefs: [
-        { id: "quick", t: "Quick switcher", d: "Ctrl+K" },
-        { id: "settings", t: "Settings", d: "Ctrl+," },
-        { id: "edit", t: "Edit layout", d: "Ctrl+E" },
-        { id: "next", t: "Next channel", d: "Alt+Down" },
-        { id: "prev", t: "Previous channel", d: "Alt+Up" },
-        { id: "read", t: "Mark channel as read", d: "Shift+Escape" }
+        { id: "quick", t: s.t("Quick switcher"), d: s.t("Ctrl+K") },
+        { id: "settings", t: s.t("Settings"), d: s.t("Ctrl+,") },
+        { id: "edit", t: s.t("Edit layout"), d: s.t("Ctrl+E") },
+        { id: "next", t: s.t("Next channel"), d: s.t("Alt+Down") },
+        { id: "prev", t: s.t("Previous channel"), d: s.t("Alt+Up") },
+        { id: "read", t: s.t("Mark channel as read"), d: s.t("Shift+Escape") }
     ]
     function key(id) {
         const k = (ui.keys || {})[id]
@@ -284,6 +285,20 @@ QtObject {
         const d = keyDefs.find(x => x.id === id)
         if (!seq || (d && d.d === seq)) delete m[id]; else m[id] = seq
         setUi("keys", m)
+    }
+    property var i18n: ({})
+    readonly property string lang: ui.lang || "en"
+    onLangChanged: loadLang()
+    function loadLang() {
+        let l = lang
+        if (l === "auto") l = Qt.locale().name.slice(0, 2)
+        if (l === "en") { i18n = ({}); return }
+        const j = c.rdf(c.qml() + "/Cord/i18n/" + l + ".json")
+        i18n = j ? pj(j, {}) : ({})
+    }
+    function t(k) {
+        const v = i18n[k]
+        return v === undefined ? k : v
     }
     function notify(t, b) { if (!ui.streamer) c.notify(t, b) }
     property MediaPlayer ping: MediaPlayer {

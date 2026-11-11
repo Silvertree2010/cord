@@ -53,7 +53,7 @@ QtObject {
     readonly property real fsXL: fs + 6
 
     function svcCol(s) { return s === "Mx" || s === "mx" ? mx : s === "St" || s === "st" ? st : dc }
-    function svcName(s) { return s === "Mx" || s === "mx" ? "Matrix" : s === "St" || s === "st" ? "Stoat" : "Discord" }
+    function svcName(s) { return s === "Mx" || s === "mx" ? "Matrix" : s === "St" || s === "st" ? S.t("Stoat") : S.t("Discord") }
     function stCol(s) { return s === "On" ? ok : s === "Idle" ? warn : s === "Dnd" ? err : tx3 }
     function lum(c) {
         const q = Qt.color(c)

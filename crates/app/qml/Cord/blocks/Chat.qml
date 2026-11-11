@@ -310,15 +310,15 @@ Rectangle {
                     font.pixelSize: Th.fsS
                 }
                 Item { Layout.fillWidth: !(r.ch && r.ch.topic) }
-                IBtn { visible: !!r.ch && (r.ch.k === "Dm" || r.ch.k === "Grp"); n: "phone"; tip: "Start call"; onClicked: S.c.join(r.cid) }
-                IBtn { n: "pin"; tip: "Pinned messages"; onClicked: pins.open() }
+                IBtn { visible: !!r.ch && (r.ch.k === "Dm" || r.ch.k === "Grp"); n: "phone"; tip: S.t("Start call"); onClicked: S.c.join(r.cid) }
+                IBtn { n: "pin"; tip: S.t("Pinned messages"); onClicked: pins.open() }
                 IBtn {
                     n: "users"
-                    tip: "Member list"
+                    tip: S.t("Member list")
                     act: S.hasBlk("mems")
                     onClicked: S.toggleBlk("mems", !S.hasBlk("mems"))
                 }
-                IBtn { n: "search"; tip: "Search  (" + Th.mod + "K)"; onClicked: S.quick() }
+                IBtn { n: "search"; tip: S.t("Search  (") + Th.mod + "K)"; onClicked: S.quick() }
             }
         }
 
@@ -358,7 +358,7 @@ Rectangle {
                     height: 18
                     radius: 9
                     color: Th.err
-                    Lbl { id: nl; anchors.centerIn: parent; text: "New messages"; color: Th.wh; font.pixelSize: Th.fsS; font.weight: Font.DemiBold }
+                    Lbl { id: nl; anchors.centerIn: parent; text: S.t("New messages"); color: Th.wh; font.pixelSize: Th.fsS; font.weight: Font.DemiBold }
                 }
             }
             header: Item {
@@ -372,7 +372,7 @@ Rectangle {
                     spacing: 8
                     Ico { anchors.horizontalCenter: parent.horizontalCenter; n: "lock"; sz: 36; col: Th.tx3 }
                     Lbl { anchors.horizontalCenter: parent.horizontalCenter; text: "#" + S.chName(r.cid) + " is hidden"; font.pixelSize: Th.fsL; font.weight: Font.Bold }
-                    Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "You do not have access to read messages in this channel."; color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone }
+                    Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: S.t("You do not have access to read messages in this channel."); color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone }
                     Lbl { visible: !!(r.ch && r.ch.topic); width: parent.width; horizontalAlignment: Text.AlignHCenter; text: r.ch && r.ch.topic ? S.plain(r.ch.topic) : ""; color: Th.tx3; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone; maximumLineCount: 4 }
                 }
                 Row {
@@ -380,7 +380,7 @@ Rectangle {
                     anchors.centerIn: parent
                     spacing: 12
                     Lbl { text: r.failMsg; color: Th.err; anchors.verticalCenter: parent.verticalCenter; width: Math.min(implicitWidth, lv.width - 140); elide: Text.ElideRight }
-                    Btn { text: "Retry"; onClicked: r.retry() }
+                    Btn { text: S.t("Retry"); onClicked: r.retry() }
                 }
                 Column {
                     id: wl
@@ -482,7 +482,7 @@ Rectangle {
     Item {
         anchors.fill: parent
         visible: !r.cid && r.slot === 1
-        Lbl { anchors.centerIn: parent; text: "Middle click or Ctrl+click a channel to open it here"; color: Th.tx3 }
+        Lbl { anchors.centerIn: parent; text: S.t("Middle click or Ctrl+click a channel to open it here"); color: Th.tx3 }
     }
 
     Connections {
@@ -512,7 +512,7 @@ Rectangle {
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
-            Lbl { text: "Pinned messages"; font.weight: Font.DemiBold; Layout.margins: 14 }
+            Lbl { text: S.t("Pinned messages"); font.weight: Font.DemiBold; Layout.margins: 14 }
             Sep { Layout.fillWidth: true }
             ListView {
                 Layout.fillWidth: true
@@ -520,7 +520,7 @@ Rectangle {
                 clip: true
                 model: pins.ms
                 delegate: Msg { m: modelData; cid: r.cid; width: 420 }
-                Lbl { anchors.centerIn: parent; visible: pins.ms.length === 0; text: "No pinned messages in the loaded history"; color: Th.tx3 }
+                Lbl { anchors.centerIn: parent; visible: pins.ms.length === 0; text: S.t("No pinned messages in the loaded history"); color: Th.tx3 }
             }
         }
     }

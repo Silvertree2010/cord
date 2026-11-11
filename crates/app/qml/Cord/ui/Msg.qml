@@ -89,7 +89,7 @@ Item {
     function askDel(skip) {
         const go = () => S.c.del(r.cid, S.ridOf(r.m.id))
         if (skip) { go(); return }
-        U.ask({ title: "Delete message", body: "This message will be deleted for everyone in the conversation.", ok: "Delete", danger: true, run: go })
+        U.ask({ title: S.t("Delete message"), body: S.t("This message will be deleted for everyone in the conversation."), ok: S.t("Delete"), danger: true, run: go })
     }
     readonly property bool ment: {
         const me = S.me(S.acc(cid))
@@ -129,7 +129,7 @@ Item {
                 radius: 8
                 color: Th.err
                 anchors.verticalCenter: parent.verticalCenter
-                Lbl { id: nwl; anchors.centerIn: parent; text: "NEW"; color: Th.wh; font.pixelSize: Th.fsP; font.weight: Font.Bold }
+                Lbl { id: nwl; anchors.centerIn: parent; text: S.t("NEW"); color: Th.wh; font.pixelSize: Th.fsP; font.weight: Font.Bold }
             }
         }
 
@@ -218,7 +218,7 @@ Item {
                     radius: Th.rc
                     color: Th.ac
                     anchors.verticalCenter: parent.verticalCenter
-                    Lbl { id: bt; anchors.centerIn: parent; text: "BOT"; color: Th.acTx; font.pixelSize: Th.fsP - 1; font.weight: Font.Bold }
+                    Lbl { id: bt; anchors.centerIn: parent; text: S.t("BOT"); color: Th.acTx; font.pixelSize: Th.fsP - 1; font.weight: Font.Bold }
                 }
                 Lbl {
                     id: tm
@@ -254,7 +254,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         transform: Scale { xScale: -1; origin.x: 6.5 }
                     }
-                    Lbl { text: "Forwarded"; color: Th.tx3; font.pixelSize: Th.fsS; font.italic: true; anchors.verticalCenter: parent.verticalCenter }
+                    Lbl { text: S.t("Forwarded"); color: Th.tx3; font.pixelSize: Th.fsS; font.italic: true; anchors.verticalCenter: parent.verticalCenter }
                 }
                 TextEdit {
                     id: tx
@@ -400,7 +400,7 @@ Item {
                 radius: 13
                 color: Th.shade
                 z: 2
-                Lbl { id: spl; anchors.centerIn: parent; text: "SPOILER"; color: Th.wh; font.pixelSize: Th.fsXS; font.weight: Font.Bold }
+                Lbl { id: spl; anchors.centerIn: parent; text: S.t("SPOILER"); color: Th.wh; font.pixelSize: Th.fsXS; font.weight: Font.Bold }
             }
             MouseArea { anchors.fill: parent; z: 3; cursorShape: Qt.PointingHandCursor; onClicked: ia.sp ? ia.sp = false : S.view(a.url) }
         }
@@ -502,11 +502,11 @@ Item {
                     MouseArea { id: qm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.c.react(r.cid, S.ridOf(r.m.id), JSON.stringify(modelData), true) }
                 }
             }
-            IBtn { n: "smile"; sz: 28; isz: 16; tip: "Add reaction"; onClicked: S.emoji(bar, e => S.c.react(r.cid, S.ridOf(r.m.id), JSON.stringify(e), true)) }
-            IBtn { n: "reply"; sz: 28; isz: 16; tip: "Reply"; onClicked: S.reply = S.ridOf(r.m.id) }
-            IBtn { visible: r.mine; n: "edit"; sz: 28; isz: 16; tip: "Edit"; onClicked: S.editing = S.ridOf(r.m.id) }
-            IBtn { visible: r.mine; n: "trash"; sz: 28; isz: 16; tip: "Delete  (Shift+click skips confirm)"; onClicked: r.askDel(!!(mods & Qt.ShiftModifier)) }
-            IBtn { id: dotB; n: "dots"; sz: 28; isz: 16; tip: "More"; onClicked: menu.show(dotB, 0, dotB.height + 4) }
+            IBtn { n: "smile"; sz: 28; isz: 16; tip: S.t("Add reaction"); onClicked: S.emoji(bar, e => S.c.react(r.cid, S.ridOf(r.m.id), JSON.stringify(e), true)) }
+            IBtn { n: "reply"; sz: 28; isz: 16; tip: S.t("Reply"); onClicked: S.reply = S.ridOf(r.m.id) }
+            IBtn { visible: r.mine; n: "edit"; sz: 28; isz: 16; tip: S.t("Edit"); onClicked: S.editing = S.ridOf(r.m.id) }
+            IBtn { visible: r.mine; n: "trash"; sz: 28; isz: 16; tip: S.t("Delete  (Shift+click skips confirm)"); onClicked: r.askDel(!!(mods & Qt.ShiftModifier)) }
+            IBtn { id: dotB; n: "dots"; sz: 28; isz: 16; tip: S.t("More"); onClicked: menu.show(dotB, 0, dotB.height + 4) }
         }
     }
 
@@ -524,23 +524,23 @@ Item {
     Ctx {
         id: menu
         model: [
-            { text: "Add Reaction", when: !r.m.del, run: () => S.emoji(r, e => S.c.react(r.cid, S.ridOf(r.m.id), JSON.stringify(e), true)) },
-            { text: "Reply", when: !r.m.del, run: () => S.reply = S.ridOf(r.m.id) },
-            { text: "Mention", when: !!(r.m.auth && r.m.auth.id) && !r.mine, run: () => S.insReq = "<@" + r.m.auth.id.raw + "> " },
-            { text: "Copy Text", when: (r.m.body || "") !== "", run: () => S.copy(tx.getText(0, tx.length)) },
-            { text: "Edit", when: r.mine && !r.m.del, run: () => S.editing = S.ridOf(r.m.id) },
-            { text: "Copy", items: [
-                { text: "Text", run: () => S.copy(tx.getText(0, tx.length)) },
-                { text: "Raw text", when: S.f("copyraw"), run: () => S.copy(r.m.body) },
-                { text: "Message ID", run: () => S.copy(r.m.id.raw) },
-                { text: "Link", when: !!r.m.permalink, run: () => S.copy(r.m.permalink) }
+            { text: S.t("Add Reaction"), when: !r.m.del, run: () => S.emoji(r, e => S.c.react(r.cid, S.ridOf(r.m.id), JSON.stringify(e), true)) },
+            { text: S.t("Reply"), when: !r.m.del, run: () => S.reply = S.ridOf(r.m.id) },
+            { text: S.t("Mention"), when: !!(r.m.auth && r.m.auth.id) && !r.mine, run: () => S.insReq = "<@" + r.m.auth.id.raw + "> " },
+            { text: S.t("Copy Text"), when: (r.m.body || "") !== "", run: () => S.copy(tx.getText(0, tx.length)) },
+            { text: S.t("Edit"), when: r.mine && !r.m.del, run: () => S.editing = S.ridOf(r.m.id) },
+            { text: S.t("Copy"), items: [
+                { text: S.t("Text"), run: () => S.copy(tx.getText(0, tx.length)) },
+                { text: S.t("Raw text"), when: S.f("copyraw"), run: () => S.copy(r.m.body) },
+                { text: S.t("Message ID"), run: () => S.copy(r.m.id.raw) },
+                { text: S.t("Link"), when: !!r.m.permalink, run: () => S.copy(r.m.permalink) }
             ] },
-            { text: "Translate", when: S.f("translate"), run: () => Qt.openUrlExternally("https://translate.google.com/?sl=auto&tl=" + Qt.locale().name.split("_")[0] + "&text=" + encodeURIComponent(r.m.body)) },
-            { text: r.m.pin ? "Unpin Message" : "Pin Message", when: S.svc(r.cid) === "dc" && !r.m.del, run: () => S.api(S.acc(r.cid), r.m.pin ? "unpin" : "pin", { chan: S.raw(r.cid), msg: r.m.id.raw }, (ok, v, e) => { if (!ok) S.pushErr("pin", e, S.acc(r.cid)) }) },
-            { text: "Mark Unread", when: S.svc(r.cid) === "dc", run: () => S.api(S.acc(r.cid), "unread", { chan: S.raw(r.cid), msg: S.decId(r.m.id.raw) }) },
-            { text: "View Profile", when: !!r.m.auth && !r.m.sys, run: () => S.prof(r.m.auth, r) },
+            { text: S.t("Translate"), when: S.f("translate"), run: () => Qt.openUrlExternally("https://translate.google.com/?sl=auto&tl=" + Qt.locale().name.split("_")[0] + "&text=" + encodeURIComponent(r.m.body)) },
+            { text: r.m.pin ? S.t("Unpin Message") : S.t("Pin Message"), when: S.svc(r.cid) === "dc" && !r.m.del, run: () => S.api(S.acc(r.cid), r.m.pin ? "unpin" : "pin", { chan: S.raw(r.cid), msg: r.m.id.raw }, (ok, v, e) => { if (!ok) S.pushErr("pin", e, S.acc(r.cid)) }) },
+            { text: S.t("Mark Unread"), when: S.svc(r.cid) === "dc", run: () => S.api(S.acc(r.cid), "unread", { chan: S.raw(r.cid), msg: S.decId(r.m.id.raw) }) },
+            { text: S.t("View Profile"), when: !!r.m.auth && !r.m.sys, run: () => S.prof(r.m.auth, r) },
             { sep: true, when: r.mine && !r.m.del },
-            { text: "Delete", danger: true, when: r.mine && !r.m.del, run: () => r.askDel(!!(menu.mods & Qt.ShiftModifier)) }
+            { text: S.t("Delete"), danger: true, when: r.mine && !r.m.del, run: () => r.askDel(!!(menu.mods & Qt.ShiftModifier)) }
         ]
     }
 }

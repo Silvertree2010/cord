@@ -8,7 +8,7 @@ Popup {
     exit: PopOut {}
     property string title: ""
     property string body: ""
-    property string ok: "Confirm"
+    property string ok: S.t("Confirm")
     property bool danger: false
     property var run: null
     parent: Overlay.overlay
@@ -43,7 +43,7 @@ Popup {
         Row {
             anchors.right: parent.right
             spacing: 8
-            Btn { id: cb; text: "Cancel"; out: true; onClicked: r.close() }
+            Btn { id: cb; text: S.t("Cancel"); out: true; onClicked: r.close() }
             Btn { id: okb; text: r.ok; pri: !r.danger; dng: r.danger; onClicked: r.go() }
         }
     }

@@ -78,7 +78,7 @@ Item {
                         Column {
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 1
-                            Lbl { id: lb; text: tb.live ? (tb.live.me.disp || tb.live.me.name) : tb.a.base === "demo" ? "Demo" : "Offline"; color: tb.on ? Th.tx : Th.tx2; font.weight: Font.DemiBold; font.pixelSize: Th.fsS + 1; Behavior on color { ColorAnimation { duration: Th.mF } } }
+                            Lbl { id: lb; text: tb.live ? (tb.live.me.disp || tb.live.me.name) : tb.a.base === "demo" ? S.t("Demo") : S.t("Offline"); color: tb.on ? Th.tx : Th.tx2; font.weight: Font.DemiBold; font.pixelSize: Th.fsS + 1; Behavior on color { ColorAnimation { duration: Th.mF } } }
                             Lbl { text: Th.svcName(S.tag(tb.a.svc)); color: Th.tx3; font.pixelSize: Th.fsP }
                         }
                     }
@@ -102,7 +102,7 @@ Item {
                     anchors.centerIn: parent
                     spacing: 8
                     Ico { n: "plus"; sz: 18; col: ad.on ? Th.tx : Th.tx2; anchors.verticalCenter: parent.verticalCenter }
-                    Lbl { text: "Add account"; color: ad.on ? Th.tx : Th.tx2; font.weight: Font.DemiBold; font.pixelSize: Th.fsS + 1; anchors.verticalCenter: parent.verticalCenter }
+                    Lbl { text: S.t("Add account"); color: ad.on ? Th.tx : Th.tx2; font.weight: Font.DemiBold; font.pixelSize: Th.fsS + 1; anchors.verticalCenter: parent.verticalCenter }
                 }
             }
         }

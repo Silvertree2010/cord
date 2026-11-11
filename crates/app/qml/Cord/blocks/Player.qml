@@ -35,7 +35,7 @@ Rectangle {
             IBtn { sz: 26; isz: 14; n: "prev"; onClicked: S.c.media("prev") }
             IBtn { sz: 26; isz: 14; n: r.p && r.p.playing ? "pause" : "play"; onClicked: S.c.media("toggle") }
             IBtn { sz: 26; isz: 14; n: "next"; onClicked: S.c.media("next") }
-            IBtn { sz: 26; isz: 14; n: "link"; tip: "Share in chat"; visible: !!S.selC && r.p && !!r.p.url; onClicked: S.send(S.selC, r.p.url) }
+            IBtn { sz: 26; isz: 14; n: "link"; tip: S.t("Share in chat"); visible: !!S.selC && r.p && !!r.p.url; onClicked: S.send(S.selC, r.p.url) }
         }
     }
     Rectangle {

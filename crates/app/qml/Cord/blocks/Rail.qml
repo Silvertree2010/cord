@@ -227,8 +227,8 @@ Rectangle {
     Ctx {
         id: addM
         model: [
-            { text: "Add account", run: () => { S.setPage = "accounts"; S.showSet = true } },
-            { text: "Join server", when: r.canJoin, run: () => joinP.show() }
+            { text: S.t("Add account"), run: () => { S.setPage = "accounts"; S.showSet = true } },
+            { text: S.t("Join server"), when: r.canJoin, run: () => joinP.show() }
         ]
     }
     Popup {
@@ -254,13 +254,13 @@ Rectangle {
         background: Pane {}
         contentItem: Column {
             spacing: 12
-            Lbl { width: parent.width; text: "Join a Discord server"; font.pixelSize: Th.fsL; font.weight: Font.DemiBold }
-            Fld { id: jf; width: parent.width; placeholderText: "Invite link or code"; onAccepted: joinP.go() }
+            Lbl { width: parent.width; text: S.t("Join a Discord server"); font.pixelSize: Th.fsL; font.weight: Font.DemiBold }
+            Fld { id: jf; width: parent.width; placeholderText: S.t("Invite link or code"); onAccepted: joinP.go() }
             Row {
                 anchors.right: parent.right
                 spacing: 8
-                Btn { text: "Cancel"; out: true; onClicked: joinP.close() }
-                Btn { text: "Join"; pri: true; on: jf.text.trim() !== ""; onClicked: joinP.go() }
+                Btn { text: S.t("Cancel"); out: true; onClicked: joinP.close() }
+                Btn { text: S.t("Join"); pri: true; on: jf.text.trim() !== ""; onClicked: joinP.go() }
             }
         }
     }
@@ -403,11 +403,11 @@ Rectangle {
         Ctx {
             id: cm
             model: [
-                { text: "Mark as read", run: () => { for (const c of S.chList(ic.gid)) if (S.unr[c.rid]) S.c.ack(c.rid) } },
-                { text: "Move up", run: () => ic.mv(-1) },
-                { text: "Move down", run: () => ic.mv(1) },
+                { text: S.t("Mark as read"), run: () => { for (const c of S.chList(ic.gid)) if (S.unr[c.rid]) S.c.ack(c.rid) } },
+                { text: S.t("Move up"), run: () => ic.mv(-1) },
+                { text: S.t("Move down"), run: () => ic.mv(1) },
                 { sep: true },
-                { text: "Copy server ID", run: () => S.copy(S.raw(ic.gid)) }
+                { text: S.t("Copy server ID"), run: () => S.copy(S.raw(ic.gid)) }
             ]
         }
         function mv(d) {

@@ -11,7 +11,7 @@ Rectangle {
     visible: url !== ""
     function close() { mp.stop(); r.url = "" }
     MouseArea { anchors.fill: parent; onClicked: r.close() }
-    IBtn { anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 16; z: 2; n: "x"; sz: 36; tip: "Close"; onClicked: r.close() }
+    IBtn { anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 16; z: 2; n: "x"; sz: 36; tip: S.t("Close"); onClicked: r.close() }
     Image {
         visible: !r.vid
         anchors.centerIn: parent
@@ -39,8 +39,8 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 20
         spacing: 8
-        Btn { text: "Open in browser"; onClicked: Qt.openUrlExternally(r.url) }
-        Btn { text: "Copy link"; onClicked: S.copy(r.url) }
-        Btn { visible: r.vid; text: mp.playbackState === MediaPlayer.PlayingState ? "Pause" : "Play"; onClicked: mp.playbackState === MediaPlayer.PlayingState ? mp.pause() : mp.play() }
+        Btn { text: S.t("Open in browser"); onClicked: Qt.openUrlExternally(r.url) }
+        Btn { text: S.t("Copy link"); onClicked: S.copy(r.url) }
+        Btn { visible: r.vid; text: mp.playbackState === MediaPlayer.PlayingState ? S.t("Pause") : S.t("Play"); onClicked: mp.playbackState === MediaPlayer.PlayingState ? mp.pause() : mp.play() }
     }
 }

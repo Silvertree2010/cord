@@ -75,7 +75,7 @@ Rectangle {
                 Lbl {
                     anchors.centerIn: parent
                     width: Math.min(implicitWidth, parent.width - 16)
-                    text: "Find or start a conversation"
+                    text: S.t("Find or start a conversation")
                     color: Th.tx
                     font.pixelSize: Th.fsS + 1
                     font.weight: Font.Medium
@@ -117,7 +117,7 @@ Rectangle {
                 height: 16
                 radius: Th.rc
                 color: Th.bg4
-                Lbl { id: dc; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }
+                Lbl { id: dc; anchors.centerIn: parent; text: S.t("Demo"); color: Th.tx2; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }
             }
             MouseArea {
                 anchors.fill: parent
@@ -127,9 +127,9 @@ Rectangle {
             Ctx {
                 id: gm
                 model: [
-                    { text: "Mark server as read", run: () => { for (const c of S.chList(S.sel)) if (S.unr[c.rid]) S.c.ack(c.rid) } },
-                    { text: "Copy server ID", run: () => S.copy(S.raw(S.sel)) },
-                    { text: "Leave server", danger: true, when: typeof S.c.leave_gld === "function", run: () => { const g = S.sel; U.ask({ title: "Leave server", body: "Leave " + (r.g ? r.g.name : "this server") + "? You need a new invite to join again.", ok: "Leave", danger: true, run: () => S.c.leave_gld(g) }) } }
+                    { text: S.t("Mark server as read"), run: () => { for (const c of S.chList(S.sel)) if (S.unr[c.rid]) S.c.ack(c.rid) } },
+                    { text: S.t("Copy server ID"), run: () => S.copy(S.raw(S.sel)) },
+                    { text: S.t("Leave server"), danger: true, when: typeof S.c.leave_gld === "function", run: () => { const g = S.sel; U.ask({ title: S.t("Leave server"), body: S.t("Leave ") + (r.g ? r.g.name : "this server") + "? You need a new invite to join again.", ok: S.t("Leave"), danger: true, run: () => S.c.leave_gld(g) }) } }
                 ]
             }
         }
@@ -139,8 +139,8 @@ Rectangle {
         Column {
             width: lv.width
             spacing: 0
-            Row_ { ico: "users"; text: "Friends"; cur: S.selC === ""; onPick: S.open("") }
-            Row_ { ico: "inbox"; text: "Inbox"; cur: S.selC === "inbox"; onPick: S.open("inbox"); visible: !S.hasBlk("inbox") }
+            Row_ { ico: "users"; text: S.t("Friends"); cur: S.selC === ""; onPick: S.open("") }
+            Row_ { ico: "inbox"; text: S.t("Inbox"); cur: S.selC === "inbox"; onPick: S.open("inbox"); visible: !S.hasBlk("inbox") }
             Item { width: 1; height: 10 }
             Rectangle { x: 8; width: lv.width - 16; height: 1; color: Th.ln }
             Item {
@@ -149,7 +149,7 @@ Rectangle {
                 Lbl {
                     x: 16
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "DIRECT MESSAGES"
+                    text: S.t("DIRECT MESSAGES")
                     color: dh.hovered ? Th.tx : Th.tx2
                     font.pixelSize: Th.fsS - 1
                     font.weight: Font.Bold
@@ -291,7 +291,7 @@ Rectangle {
                     spacing: 4
                     Lbl {
                         visible: vc && S.call.chan && S.ridOf(S.call.chan) === ch.rid && !S.call.up
-                        text: "Connecting"
+                        text: S.t("Connecting")
                         color: Th.tx2
                         font.pixelSize: Th.fsS
                         anchors.verticalCenter: parent.verticalCenter
@@ -332,11 +332,11 @@ Rectangle {
                 Ctx {
                     id: chm
                     model: [
-                        { text: "Mark as read", run: () => S.c.ack(ch.rid) },
-                        { text: "Open in second chat", run: () => S.open(ch.rid, 1) },
-                        { text: "Copy", items: [
-                            { text: "Channel ID", run: () => S.copy(S.raw(ch.rid)) },
-                            { text: "Link", when: !!ch.permalink, run: () => S.copy(ch.permalink) }
+                        { text: S.t("Mark as read"), run: () => S.c.ack(ch.rid) },
+                        { text: S.t("Open in second chat"), run: () => S.open(ch.rid, 1) },
+                        { text: S.t("Copy"), items: [
+                            { text: S.t("Channel ID"), run: () => S.copy(S.raw(ch.rid)) },
+                            { text: S.t("Link"), when: !!ch.permalink, run: () => S.copy(ch.permalink) }
                         ] }
                     ]
                 }
@@ -370,7 +370,7 @@ Rectangle {
                         radius: Th.rc
                         color: Th.err
                         anchors.verticalCenter: parent.verticalCenter
-                        Lbl { id: lt; anchors.centerIn: parent; text: "LIVE"; color: Th.wh; font.pixelSize: Th.fsP; font.weight: Font.Bold }
+                        Lbl { id: lt; anchors.centerIn: parent; text: S.t("LIVE"); color: Th.wh; font.pixelSize: Th.fsP; font.weight: Font.Bold }
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { S.c.watch(parent.parent.uid, true); S.open(ch.rid) } }
                     }
                 }
@@ -490,16 +490,16 @@ Rectangle {
             Ctx {
                 id: dm
                 model: [
-                    { text: (S.ui.pins || []).indexOf(ch.rid) >= 0 ? "Unpin" : "Pin to top", when: S.f("pinDms"), run: () => {
+                    { text: (S.ui.pins || []).indexOf(ch.rid) >= 0 ? S.t("Unpin") : S.t("Pin to top"), when: S.f("pinDms"), run: () => {
                         const p = (S.ui.pins || []).slice()
                         const i = p.indexOf(ch.rid)
                         if (i >= 0) p.splice(i, 1); else p.unshift(ch.rid)
                         S.setUi("pins", p)
                         S.ver++
                     } },
-                    { text: "Mark as read", run: () => S.c.ack(ch.rid) },
-                    { text: "Call", when: S.caps(ch.rid).call, run: () => S.c.join(ch.rid) },
-                    { text: "Copy user ID", run: () => S.copy(usr && usr.id ? usr.id.raw : "") }
+                    { text: S.t("Mark as read"), run: () => S.c.ack(ch.rid) },
+                    { text: S.t("Call"), when: S.caps(ch.rid).call, run: () => S.c.join(ch.rid) },
+                    { text: S.t("Copy user ID"), run: () => S.copy(usr && usr.id ? usr.id.raw : "") }
                 ]
             }
         }

@@ -60,12 +60,12 @@ Column {
             anchors.right: parent.right
             anchors.rightMargin: 16
             anchors.verticalCenter: parent.verticalCenter
-            text: r.a.base === "demo" ? "Remove" : "Log out"
+            text: r.a.base === "demo" ? S.t("Remove") : S.t("Log out")
             gh: true
             onClicked: U.ask({
-                title: r.a.base === "demo" ? "Remove demo account" : "Log out",
-                body: (r.a.base === "demo" ? "Remove this account on " : "Log out of this account on ") + Th.svcName(S.tag(r.a.svc)) + "?",
-                ok: r.a.base === "demo" ? "Remove" : "Log out",
+                title: r.a.base === "demo" ? S.t("Remove demo account") : S.t("Log out"),
+                body: (r.a.base === "demo" ? S.t("Remove this account on ") : S.t("Log out of this account on ")) + Th.svcName(S.tag(r.a.svc)) + "?",
+                ok: r.a.base === "demo" ? S.t("Remove") : S.t("Log out"),
                 danger: true,
                 run: () => S.c.rm_acc(r.a.id)
             })
@@ -100,14 +100,14 @@ Column {
                 Item {
                     width: parent.width
                     height: 64
-                    Column { x: 16; anchors.verticalCenter: parent.verticalCenter; spacing: 2; Lbl { text: "Display name"; font.weight: Font.Medium } Lbl { text: "Shown instead of your username"; color: Th.tx2; font.pixelSize: Th.fsS } }
+                    Column { x: 16; anchors.verticalCenter: parent.verticalCenter; spacing: 2; Lbl { text: S.t("Display name"); font.weight: Font.Medium } Lbl { text: S.t("Shown instead of your username"); color: Th.tx2; font.pixelSize: Th.fsS } }
                     Row {
                         anchors.right: parent.right
                         anchors.rightMargin: 12
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 8
                         Fld { id: nm; width: 220; height: 34; text: r.info ? r.info.name : ""; enabled: r.caps.includes("name"); onAccepted: sv.clicked() }
-                        Btn { id: sv; text: "Save"; pri: true; height: 34; on: r.caps.includes("name") && !r.busy && nm.text.trim() !== "" && nm.text !== (r.info ? r.info.name : ""); onClicked: r.save("set_name", { name: nm.text.trim() }, "Name saved") }
+                        Btn { id: sv; text: S.t("Save"); pri: true; height: 34; on: r.caps.includes("name") && !r.busy && nm.text.trim() !== "" && nm.text !== (r.info ? r.info.name : ""); onClicked: r.save("set_name", { name: nm.text.trim() }, "Name saved") }
                     }
                 }
                 Item {
@@ -115,21 +115,21 @@ Column {
                     width: parent.width
                     height: 56
                     Rectangle { visible: true; anchors.top: parent.top; x: 16; width: parent.width - 32; height: 1; color: Th.ln }
-                    Column { x: 16; anchors.verticalCenter: parent.verticalCenter; spacing: 2; Lbl { text: "Username"; font.weight: Font.Medium } Lbl { text: r.info ? r.info.user : ""; color: Th.tx2; font.pixelSize: Th.fsS } }
+                    Column { x: 16; anchors.verticalCenter: parent.verticalCenter; spacing: 2; Lbl { text: S.t("Username"); font.weight: Font.Medium } Lbl { text: r.info ? r.info.user : ""; color: Th.tx2; font.pixelSize: Th.fsS } }
                 }
                 Item {
                     visible: !!(r.info && r.info.email)
                     width: parent.width
                     height: 56
                     Rectangle { anchors.top: parent.top; x: 16; width: parent.width - 32; height: 1; color: Th.ln }
-                    Column { x: 16; anchors.verticalCenter: parent.verticalCenter; spacing: 2; Lbl { text: "Email"; font.weight: Font.Medium } Lbl { text: r.info ? (S.ui.streamer ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022@\u2022\u2022\u2022\u2022" : r.info.email) : ""; color: Th.tx2; font.pixelSize: Th.fsS } }
+                    Column { x: 16; anchors.verticalCenter: parent.verticalCenter; spacing: 2; Lbl { text: S.t("Email"); font.weight: Font.Medium } Lbl { text: r.info ? (S.ui.streamer ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022@\u2022\u2022\u2022\u2022" : r.info.email) : ""; color: Th.tx2; font.pixelSize: Th.fsS } }
                 }
                 Item {
                     visible: r.caps.includes("bio")
                     width: parent.width
                     height: 132
                     Rectangle { anchors.top: parent.top; x: 16; width: parent.width - 32; height: 1; color: Th.ln }
-                    Lbl { x: 16; y: 14; text: "About me"; font.weight: Font.Medium }
+                    Lbl { x: 16; y: 14; text: S.t("About me"); font.weight: Font.Medium }
                     Rectangle {
                         x: 16
                         y: 40
@@ -145,7 +145,7 @@ Column {
                             TextArea { id: bio; text: r.info ? r.info.bio : ""; wrapMode: TextEdit.Wrap; color: Th.tx; font.family: Th.font; font.pixelSize: Th.fs; background: null; leftPadding: 10; topPadding: 8; selectByMouse: true; selectionColor: Th.ac; selectedTextColor: Th.acTx }
                         }
                     }
-                    Btn { x: parent.width - 16 - 60; y: 40; width: 60; text: "Save"; pri: true; height: 34; on: !r.busy && bio.text !== (r.info ? r.info.bio : ""); onClicked: r.save("set_bio", { bio: bio.text }, "About me saved") }
+                    Btn { x: parent.width - 16 - 60; y: 40; width: 60; text: S.t("Save"); pri: true; height: 34; on: !r.busy && bio.text !== (r.info ? r.info.bio : ""); onClicked: r.save("set_bio", { bio: bio.text }, "About me saved") }
                 }
             }
         }
@@ -159,7 +159,7 @@ Column {
             Behavior on opacity { NumberAnimation { duration: Th.mM; easing.type: Easing.OutCubic } }
             Behavior on x { NumberAnimation { duration: Th.mM; easing.type: Easing.OutCubic } }
             spacing: 8
-            Lbl { visible: !!r.ses && r.ses.list.length === 0; text: "No sessions found"; color: Th.tx2 }
+            Lbl { visible: !!r.ses && r.ses.list.length === 0; text: S.t("No sessions found"); color: Th.tx2 }
             Grp {
                 visible: !!r.ses && r.ses.list.length > 0
                 Repeater {
@@ -192,7 +192,7 @@ Column {
                                 spacing: 8
                                 visible: !sr.ren
                                 Lbl { text: modelData.name || "Unknown device"; font.weight: Font.Medium; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight; width: Math.min(implicitWidth, 300) }
-                                Rectangle { visible: sr.cur; width: ct.implicitWidth + 12; height: 16; radius: Th.rc; color: Th.a(Th.ok, 0.18); anchors.verticalCenter: parent.verticalCenter; Lbl { id: ct; anchors.centerIn: parent; text: "This device"; color: Th.ok; font.pixelSize: Th.fsP; font.weight: Font.DemiBold } }
+                                Rectangle { visible: sr.cur; width: ct.implicitWidth + 12; height: 16; radius: Th.rc; color: Th.a(Th.ok, 0.18); anchors.verticalCenter: parent.verticalCenter; Lbl { id: ct; anchors.centerIn: parent; text: S.t("This device"); color: Th.ok; font.pixelSize: Th.fsP; font.weight: Font.DemiBold } }
                             }
                             Lbl { visible: !sr.ren; text: [modelData.loc, modelData.last ? (Date.now() / 1000 - modelData.last < 120 ? "Active now" : F.rel(modelData.last * 1000, Date.now())) : ""].filter(x => x).join("  ·  "); color: Th.tx2; font.pixelSize: Th.fsS }
                             Fld { id: rn; visible: sr.ren; width: parent.width; height: 32; text: modelData.name || ""; onAccepted: { r.save("session_name", { id: modelData.id, name: text.trim() }, "Renamed"); sr.ren = false } Keys.onEscapePressed: sr.ren = false; onVisibleChanged: if (visible) forceActiveFocus() }
@@ -203,14 +203,14 @@ Column {
                             anchors.rightMargin: 12
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 6
-                            Btn { visible: r.caps.includes("rename") && !sr.ren; text: "Rename"; gh: true; height: 30; onClicked: sr.ren = true }
-                            Btn { visible: sr.ren; text: "Save"; pri: true; height: 30; onClicked: { r.save("session_name", { id: modelData.id, name: rn.text.trim() }, "Renamed"); sr.ren = false } }
-                            Btn { visible: r.caps.includes("end") && !sr.cur; text: "Log out"; gh: true; height: 30; onClicked: U.ask({ title: "Log out session", body: "Log out " + (modelData.name || "this device") + "?", ok: "Log out", danger: true, run: () => r.save("session_end", { id: modelData.id }, "Session ended") }) }
+                            Btn { visible: r.caps.includes("rename") && !sr.ren; text: S.t("Rename"); gh: true; height: 30; onClicked: sr.ren = true }
+                            Btn { visible: sr.ren; text: S.t("Save"); pri: true; height: 30; onClicked: { r.save("session_name", { id: modelData.id, name: rn.text.trim() }, "Renamed"); sr.ren = false } }
+                            Btn { visible: r.caps.includes("end") && !sr.cur; text: S.t("Log out"); gh: true; height: 30; onClicked: U.ask({ title: S.t("Log out session"), body: S.t("Log out ") + (modelData.name || "this device") + "?", ok: S.t("Log out"), danger: true, run: () => r.save("session_end", { id: modelData.id }, "Session ended") }) }
                         }
                     }
                 }
             }
-            Lbl { visible: !!r.ses && !r.caps.includes("end"); width: parent.width; text: "This network needs your password to end other sessions. Do that in its own app."; color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone }
+            Lbl { visible: !!r.ses && !r.caps.includes("end"); width: parent.width; text: S.t("This network needs your password to end other sessions. Do that in its own app."); color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone }
         }
     }
 }

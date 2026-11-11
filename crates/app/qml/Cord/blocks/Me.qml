@@ -49,12 +49,12 @@ Rectangle {
                     radius: Th.rc
                     color: Th.bg4
                     anchors.verticalCenter: parent.verticalCenter
-                    Lbl { id: dc; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }
+                    Lbl { id: dc; anchors.centerIn: parent; text: S.t("Demo"); color: Th.tx2; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }
                 }
             }
             Lbl {
                 width: parent.width
-                text: r.mu || r.de ? (r.de ? "Deafened" : "Muted") : r.cst ? ((S.ui.cst.emoji ? S.ui.cst.emoji + " " : "") + (S.ui.cst.text || "")) : ({ On: "Online", Idle: "Idle", Dnd: "Do Not Disturb", Off: "Invisible" })[S.ui.st || "On"]
+                text: r.mu || r.de ? (r.de ? S.t("Deafened") : S.t("Muted")) : r.cst ? ((S.ui.cst.emoji ? S.ui.cst.emoji + " " : "") + (S.ui.cst.text || "")) : ({ On: "Online", Idle: "Idle", Dnd: "Do Not Disturb", Off: "Invisible" })[S.ui.st || "On"]
                 color: r.mu || r.de ? Th.err : Th.tx2
                 font.pixelSize: Th.fsS
             }
@@ -66,18 +66,18 @@ Rectangle {
         anchors.rightMargin: 10
         anchors.verticalCenter: parent.verticalCenter
         spacing: 4
-        IBtn { n: r.mu ? "micoff" : "mic"; red: r.mu; tip: r.mu ? "Unmute" : "Mute"; isz: 20; onClicked: S.c.vset(!r.mu, r.de) }
-        IBtn { visible: r.width >= 300; n: "chev"; sz: 18; isz: 14; tip: "Voice settings"; anchors.verticalCenter: parent.verticalCenter; onClicked: { S.setPage = "voice"; S.showSet = true } }
-        IBtn { n: r.de ? "headoff" : "head"; red: r.de; tip: r.de ? "Undeafen" : "Deafen"; isz: 20; onClicked: S.c.vset(r.mu, !r.de) }
-        IBtn { visible: r.width >= 300; n: "chev"; sz: 18; isz: 14; tip: "Output settings"; anchors.verticalCenter: parent.verticalCenter; onClicked: { S.setPage = "voice"; S.showSet = true } }
-        IBtn { n: "cog"; tip: "Settings  (Ctrl+,)"; isz: 20; onClicked: S.showSet = true }
+        IBtn { n: r.mu ? "micoff" : "mic"; red: r.mu; tip: r.mu ? S.t("Unmute") : S.t("Mute"); isz: 20; onClicked: S.c.vset(!r.mu, r.de) }
+        IBtn { visible: r.width >= 300; n: "chev"; sz: 18; isz: 14; tip: S.t("Voice settings"); anchors.verticalCenter: parent.verticalCenter; onClicked: { S.setPage = "voice"; S.showSet = true } }
+        IBtn { n: r.de ? "headoff" : "head"; red: r.de; tip: r.de ? S.t("Undeafen") : S.t("Deafen"); isz: 20; onClicked: S.c.vset(r.mu, !r.de) }
+        IBtn { visible: r.width >= 300; n: "chev"; sz: 18; isz: 14; tip: S.t("Output settings"); anchors.verticalCenter: parent.verticalCenter; onClicked: { S.setPage = "voice"; S.showSet = true } }
+        IBtn { n: "cog"; tip: S.t("Settings  (Ctrl+,)"); isz: 20; onClicked: S.showSet = true }
     }
     Ctx {
         id: sm
         w: 230
         model: {
             const st = [["On", "Online"], ["Idle", "Idle"], ["Dnd", "Do not disturb"], ["Off", "Invisible"]].map(x => ({
-                text: x[1],
+                text: S.t(x[1]),
                 checked: (S.ui.st || "On") === x[0],
                 run: () => { S.setUi("st", x[0]); S.c.set_st(x[0].toLowerCase(), "") }
             }))
@@ -86,8 +86,8 @@ Rectangle {
                 checked: x.id === r.cur,
                 run: () => S.setUi("meAcc", x.id)
             }))
-            const cs = [{ text: r.cst ? "Edit Custom Status" : "Set Custom Status", run: () => csP.show() }, { text: "Clear Custom Status", when: r.cst, run: () => r.setCst("", "") }]
-            return st.concat([{ sep: true }], cs, [{ sep: true }], ac, [{ text: "Add account", run: () => { S.setPage = "accounts"; S.showSet = true } }])
+            const cs = [{ text: r.cst ? S.t("Edit Custom Status") : S.t("Set Custom Status"), run: () => csP.show() }, { text: S.t("Clear Custom Status"), when: r.cst, run: () => r.setCst("", "") }]
+            return st.concat([{ sep: true }], cs, [{ sep: true }], ac, [{ text: S.t("Add account"), run: () => { S.setPage = "accounts"; S.showSet = true } }])
         }
     }
     Popup {
@@ -107,7 +107,7 @@ Rectangle {
         background: Pane {}
         contentItem: Column {
             spacing: 14
-            Lbl { text: "Set a custom status"; font.pixelSize: Th.fsL; font.weight: Font.Bold }
+            Lbl { text: S.t("Set a custom status"); font.pixelSize: Th.fsL; font.weight: Font.Bold }
             Rectangle {
                 width: parent.width
                 height: 44
@@ -140,14 +140,14 @@ Rectangle {
                     clip: true
                     selectByMouse: true
                     onAccepted: csP.save()
-                    Lbl { visible: !cf.text; text: "Support has arrived!"; color: Th.tx2; anchors.verticalCenter: parent.verticalCenter }
+                    Lbl { visible: !cf.text; text: S.t("Support has arrived!"); color: Th.tx2; anchors.verticalCenter: parent.verticalCenter }
                 }
             }
             Row {
                 anchors.right: parent.right
                 spacing: 8
-                Btn { text: "Cancel"; out: true; onClicked: csP.close() }
-                Btn { text: "Save"; pri: true; onClicked: csP.save() }
+                Btn { text: S.t("Cancel"); out: true; onClicked: csP.close() }
+                Btn { text: S.t("Save"); pri: true; onClicked: csP.save() }
             }
         }
     }

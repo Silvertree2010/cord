@@ -13,7 +13,7 @@ Item {
     Timer {
         id: t
         interval: 400
-        onTriggered: if (r.hov) U.showTip(r.tgt, r.text, r.side, r.edge)
+        onTriggered: if (r.hov) U.showTip(r.tgt, S.t(r.text), r.side, r.edge)
     }
     onHovChanged: {
         if (hov) t.restart()

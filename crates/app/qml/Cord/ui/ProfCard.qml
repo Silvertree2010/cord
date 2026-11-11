@@ -191,13 +191,13 @@ Item {
 
         Sec {
             visible: !!(r.pr && r.pr.act)
-            t: "Activity"
+            t: S.t("Activity")
             Lbl { width: parent.width; text: r.pr && r.pr.act ? r.pr.act : ""; wrapMode: Text.Wrap; elide: Text.ElideNone; font.pixelSize: Th.fsS + 1 }
         }
 
         Sec {
             visible: !r.popup && (r.created !== "" || !!(r.p && r.p.joined))
-            t: "Member Since"
+            t: S.t("Member Since")
             Row {
                 spacing: 10
                 Lbl { visible: r.created !== ""; text: r.created; font.pixelSize: Th.fsS + 1 }
@@ -208,7 +208,7 @@ Item {
 
         Sec {
             visible: r.roles.length > 0
-            t: "Roles"
+            t: S.t("Roles")
             Flow {
                 width: parent.width
                 spacing: 4
@@ -236,7 +236,7 @@ Item {
 
         Sec {
             visible: !r.popup && !!(r.p && r.p.conns && r.p.conns.length)
-            t: "Connections"
+            t: S.t("Connections")
             Repeater {
                 model: r.p && r.p.conns ? r.p.conns : []
                 Rectangle {
@@ -322,7 +322,7 @@ Item {
                 clip: true
                 selectByMouse: true
                 onAccepted: { if (r.u && text.trim()) { S.dmSend(r.u, text); text = ""; r.closed() } }
-                Lbl { visible: !qf.text; text: "Message @" + (r.u ? (r.u.disp || r.u.name) : ""); color: Th.tx2; anchors.verticalCenter: parent.verticalCenter }
+                Lbl { visible: !qf.text; text: S.t("Message @") + (r.u ? (r.u.disp || r.u.name) : ""); color: Th.tx2; anchors.verticalCenter: parent.verticalCenter }
             }
             Ico { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; n: "smile"; sz: 18; col: Th.tx2 }
         }
@@ -347,9 +347,9 @@ Item {
             Ctx {
                 id: pmenu
                 model: [
-                    { text: "Send Message", run: () => { if (r.u) S.openDm(r.u); r.closed() } },
-                    { text: "Copy Username", run: () => S.copy(r.u ? r.u.name : "") },
-                    { text: "Copy User ID", run: () => S.copy(r.u && r.u.id ? r.u.id.raw : "") }
+                    { text: S.t("Send Message"), run: () => { if (r.u) S.openDm(r.u); r.closed() } },
+                    { text: S.t("Copy Username"), run: () => S.copy(r.u ? r.u.name : "") },
+                    { text: S.t("Copy User ID"), run: () => S.copy(r.u && r.u.id ? r.u.id.raw : "") }
                 ]
             }
         }

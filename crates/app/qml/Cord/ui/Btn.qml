@@ -43,7 +43,7 @@ Rectangle {
         }
         Lbl {
             id: lb
-            text: r.text
+            text: S.t(r.text)
             visible: text !== ""
             color: r.tc
             font.weight: Font.Medium

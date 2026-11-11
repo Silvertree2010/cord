@@ -42,7 +42,7 @@ Popup {
         Fld {
             id: gf
             width: parent.width
-            placeholderText: "Search Tenor"
+            placeholderText: S.t("Search Tenor")
             onTextChanged: deb.restart()
         }
         Flow {
@@ -110,7 +110,7 @@ Popup {
             }
             BusyIndicator { anchors.centerIn: parent; running: r.busy && r.gifs.length === 0; visible: running; width: 32; height: 32 }
             Lbl { anchors.centerIn: parent; width: parent.width - 32; visible: r.err !== ""; text: r.err; color: Th.err; wrapMode: Text.Wrap; elide: Text.ElideNone; horizontalAlignment: Text.AlignHCenter }
-            Lbl { anchors.centerIn: parent; visible: !r.busy && r.err === "" && r.gifs.length === 0 && gf.text !== ""; text: "No GIFs found"; color: Th.tx2 }
+            Lbl { anchors.centerIn: parent; visible: !r.busy && r.err === "" && r.gifs.length === 0 && gf.text !== ""; text: S.t("No GIFs found"); color: Th.tx2 }
         }
     }
 }

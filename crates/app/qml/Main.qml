@@ -124,7 +124,7 @@ ApplicationWindow {
             spacing: 10
             Ico { n: "voice"; sz: 16; col: S.call.err ? Th.err : S.call.up ? Th.ok : Th.tx2; anchors.verticalCenter: parent.verticalCenter }
             Lbl {
-                text: S.call.err ? "Call failed" : S.call.up ? "Connected" : "Connecting"
+                text: S.call.err ? "Call failed" : S.call.up ? S.t("Connected") : S.t("Connecting")
                 color: S.call.err ? Th.err : S.call.up ? Th.ok : Th.tx2
                 font.weight: Font.DemiBold
                 anchors.verticalCenter: parent.verticalCenter
@@ -142,10 +142,10 @@ ApplicationWindow {
             anchors.rightMargin: 8
             anchors.verticalCenter: parent.verticalCenter
             spacing: 2
-            IBtn { n: S.call.mute ? "micoff" : "mic"; red: !!S.call.mute; tip: S.call.mute ? "Unmute" : "Mute"; onClicked: S.c.vset(!S.call.mute, !!S.call.deaf) }
-            IBtn { n: S.call.deaf ? "headoff" : "head"; red: !!S.call.deaf; tip: S.call.deaf ? "Undeafen" : "Deafen"; onClicked: S.c.vset(!!S.call.mute, !S.call.deaf) }
-            IBtn { n: "screen"; act: !!S.call.live; tip: S.call.live ? "Stop sharing" : "Share screen"; onClicked: S.call.live ? S.c.golive(false, "{}") : S.goLive() }
-            IBtn { n: "hang"; red: true; tip: "Leave call"; onClicked: S.c.leave() }
+            IBtn { n: S.call.mute ? "micoff" : "mic"; red: !!S.call.mute; tip: S.call.mute ? S.t("Unmute") : S.t("Mute"); onClicked: S.c.vset(!S.call.mute, !!S.call.deaf) }
+            IBtn { n: S.call.deaf ? "headoff" : "head"; red: !!S.call.deaf; tip: S.call.deaf ? S.t("Undeafen") : S.t("Deafen"); onClicked: S.c.vset(!!S.call.mute, !S.call.deaf) }
+            IBtn { n: "screen"; act: !!S.call.live; tip: S.call.live ? S.t("Stop sharing") : S.t("Share screen"); onClicked: S.call.live ? S.c.golive(false, "{}") : S.goLive() }
+            IBtn { n: "hang"; red: true; tip: S.t("Leave call"); onClicked: S.c.leave() }
         }
     }
 
@@ -166,16 +166,16 @@ ApplicationWindow {
         height: 48
         color: Th.bg2
         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Th.ln }
-        Lbl { x: 16; anchors.verticalCenter: parent.verticalCenter; text: "Editing layout"; color: Th.tx2 }
+        Lbl { x: 16; anchors.verticalCenter: parent.verticalCenter; text: S.t("Editing layout"); color: Th.tx2 }
         Row {
             id: er
             anchors.centerIn: parent
             spacing: 8
-            Btn { id: ab; text: "Add block"; ico: "plus"; height: 28; onClicked: addM.show(ab, 0, ab.height + 4) }
-            Btn { text: "Undo"; ico: "undo"; height: 28; on: U.undo.length > 0; onClicked: U.undoLay() }
-            Btn { text: "Reset layout"; out: true; height: 28; onClicked: U.resetLay() }
-            Btn { text: "Cancel"; out: true; height: 28; onClicked: U.cancelEdit() }
-            Btn { text: "Done"; pri: true; height: 28; onClicked: S.edit = false }
+            Btn { id: ab; text: S.t("Add block"); ico: "plus"; height: 28; onClicked: addM.show(ab, 0, ab.height + 4) }
+            Btn { text: S.t("Undo"); ico: "undo"; height: 28; on: U.undo.length > 0; onClicked: U.undoLay() }
+            Btn { text: S.t("Reset layout"); out: true; height: 28; onClicked: U.resetLay() }
+            Btn { text: S.t("Cancel"); out: true; height: 28; onClicked: U.cancelEdit() }
+            Btn { text: S.t("Done"); pri: true; height: 28; onClicked: S.edit = false }
         }
     }
 
@@ -189,14 +189,14 @@ ApplicationWindow {
             anchors.centerIn: parent
             spacing: 12
             width: Math.min(360, parent.width - 32)
-            Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "No accounts yet"; font.pixelSize: Th.fsXL; font.weight: Font.Bold }
-            Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "Add an account to see your servers and messages, or look around with demo data."; color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone }
+            Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: S.t("No accounts yet"); font.pixelSize: Th.fsXL; font.weight: Font.Bold }
+            Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: S.t("Add an account to see your servers and messages, or look around with demo data."); color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone }
             Item { width: 1; height: 4 }
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: 8
-                Btn { text: "Add account"; pri: true; height: 36; onClicked: { S.setPage = "accounts"; S.showSet = true } }
-                Btn { text: "Try demo"; height: 36; onClicked: { S.c.add("dc", '{"demo":true}'); S.c.add("mx", '{"demo":true}'); S.c.add("st", '{"demo":true}') } }
+                Btn { text: S.t("Add account"); pri: true; height: 36; onClicked: { S.setPage = "accounts"; S.showSet = true } }
+                Btn { text: S.t("Try demo"); height: 36; onClicked: { S.c.add("dc", '{"demo":true}'); S.c.add("mx", '{"demo":true}'); S.c.add("st", '{"demo":true}') } }
             }
         }
     }
@@ -266,7 +266,7 @@ ApplicationWindow {
                     anchors.rightMargin: 40
                     anchors.verticalCenter: parent.verticalCenter
                     height: 28
-                    text: "Retry"
+                    text: S.t("Retry")
                     onClicked: { const f = modelData.retry; U.dismiss(modelData.id); f() }
                 }
                 IBtn {
@@ -276,7 +276,7 @@ ApplicationWindow {
                     n: "x"
                     sz: 26
                     isz: 14
-                    tip: "Dismiss"
+                    tip: S.t("Dismiss")
                     onClicked: U.dismiss(modelData.id)
                 }
             }

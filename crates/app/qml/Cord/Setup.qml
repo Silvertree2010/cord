@@ -27,9 +27,9 @@ Rectangle {
             Column {
                 Layout.fillWidth: true
                 spacing: 6
-                Lbl { text: r.step === 0 ? "Choose a layout" : "Connect accounts"; font.pixelSize: Th.fsXL + 2; font.weight: Font.Bold }
+                Lbl { text: r.step === 0 ? S.t("Choose a layout") : S.t("Connect accounts"); font.pixelSize: Th.fsXL + 2; font.weight: Font.Bold }
                 Lbl {
-                    text: r.step === 0 ? "Every panel is a block. You can change sides, hide blocks or rearrange everything later in Settings, Layout." : "Discord, Matrix and Stoat share one server bar and one friends list. Add as many accounts as you like."
+                    text: r.step === 0 ? S.t("Every panel is a block. You can change sides, hide blocks or rearrange everything later in Settings, Layout.") : S.t("Discord, Matrix and Stoat share one server bar and one friends list. Add as many accounts as you like.")
                     color: Th.tx2
                     wrapMode: Text.Wrap
                     elide: Text.ElideNone
@@ -70,7 +70,7 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: 6
                     visible: S.cfgAccs.length > 0
-                    Lbl { text: "Connected"; color: Th.tx2; font.pixelSize: Th.fsS; font.weight: Font.DemiBold }
+                    Lbl { text: S.t("Connected"); color: Th.tx2; font.pixelSize: Th.fsS; font.weight: Font.DemiBold }
                     Repeater {
                         model: S.cfgAccs
                         Row {
@@ -78,7 +78,7 @@ Rectangle {
                             Badge { sv: modelData.svc; txt: true; anchors.verticalCenter: parent.verticalCenter }
                             Lbl {
                                 property var a: S.accs[modelData.id]
-                                text: a ? (a.me.disp || a.me.name) : modelData.base === "demo" ? "Demo account" : "Connecting"
+                                text: a ? (a.me.disp || a.me.name) : modelData.base === "demo" ? S.t("Demo account") : S.t("Connecting")
                                 anchors.verticalCenter: parent.verticalCenter
                             }
                             Rectangle {
@@ -88,7 +88,7 @@ Rectangle {
                                 radius: Th.rc
                                 color: Th.bg4
                                 anchors.verticalCenter: parent.verticalCenter
-                                Lbl { id: dl; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }
+                                Lbl { id: dl; anchors.centerIn: parent; text: S.t("Demo"); color: Th.tx2; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }
                             }
                         }
                     }
@@ -98,13 +98,13 @@ Rectangle {
                     spacing: 8
                     Btn {
                         visible: !r.hasDemo
-                        text: "Try with demo data"
+                        text: S.t("Try with demo data")
                         height: 36
                         onClicked: { S.c.add("dc", '{"demo":true}'); S.c.add("mx", '{"demo":true}'); S.c.add("st", '{"demo":true}') }
                     }
                     Btn {
                         visible: r.hasDemo
-                        text: "Exit demo"
+                        text: S.t("Exit demo")
                         height: 36
                         onClicked: U.exitDemo()
                     }
@@ -112,10 +112,10 @@ Rectangle {
             }
             RowLayout {
                 Layout.fillWidth: true
-                Btn { visible: r.step === 1; text: "Back"; height: 36; onClicked: r.step = 0 }
+                Btn { visible: r.step === 1; text: S.t("Back"); height: 36; onClicked: r.step = 0 }
                 Item { Layout.fillWidth: true }
                 Btn {
-                    text: r.step === 0 ? "Continue" : S.cfgAccs.length === 0 ? "Skip for now" : "Finish"
+                    text: r.step === 0 ? "Continue" : S.cfgAccs.length === 0 ? S.t("Skip for now") : S.t("Finish")
                     pri: r.step === 0 || S.cfgAccs.length > 0
                     height: 36
                     onClicked: {

@@ -11,10 +11,10 @@ Rectangle {
     NumberAnimation on scale { from: 1.02; to: 1; duration: Th.mS; easing.type: Easing.OutCubic }
     MouseArea { anchors.fill: parent }
     readonly property var pages: [
-        ["accounts", "My accounts", "users"], ["privacy", "Privacy", "lock"],
-        ["look", "Appearance", "eye"], ["layout", "Layout", "layout"], ["notif", "Notifications", "bell"], ["voice", "Voice and video", "mic"],
-        ["feat", "Client mods", "grid"],
-        ["mods", "Mods and themes", "package"], ["keys", "Shortcuts", "keyboard"], ["about", "About", "info"]
+        ["accounts", S.t("My accounts"), "users"], ["privacy", S.t("Privacy"), "lock"],
+        ["look", S.t("Appearance"), "eye"], ["layout", S.t("Layout"), "layout"], ["notif", S.t("Notifications"), "bell"], ["voice", S.t("Voice and video"), "mic"],
+        ["feat", S.t("Client mods"), "grid"],
+        ["mods", S.t("Mods and themes"), "package"], ["keys", S.t("Shortcuts"), "keyboard"], ["about", S.t("About"), "info"]
     ]
     readonly property var fcat: ({
         privacy: ["silenttyping", "noread", "notrack", "noreplyping"],
@@ -45,22 +45,22 @@ Rectangle {
 
     property string q: ""
     readonly property var groups: [
-        ["User settings", ["accounts", "privacy"]],
-        ["App settings", ["look", "layout", "notif", "voice"]],
-        ["Client mods", ["feat"]],
-        ["Advanced", ["mods", "keys", "about"]]
+        [S.t("User settings"), ["accounts", "privacy"]],
+        [S.t("App settings"), ["look", "layout", "notif", "voice"]],
+        [S.t("Client mods"), ["feat"]],
+        [S.t("Advanced"), ["mods", "keys", "about"]]
     ]
     readonly property var desc: ({
-        accounts: "Your Discord, Matrix and Stoat accounts and your status",
-        privacy: "What other people and Discord can see from you",
-        layout: "Presets, blocks and the layout editor",
-        look: "Theme, accent, text size, density and motion",
-        notif: "Desktop alerts and relationship changes",
-        feat: "Built-in tweaks for chat and media",
-        voice: "Microphone, push to talk, calls and screen share",
-        mods: "Your own QML mods, blocks and themes",
-        keys: "Keyboard and mouse shortcuts",
-        about: "Version, license and source"
+        accounts: S.t("Your Discord, Matrix and Stoat accounts and your status"),
+        privacy: S.t("What other people and Discord can see from you"),
+        layout: S.t("Presets, blocks and the layout editor"),
+        look: S.t("Theme, accent, text size, density and motion"),
+        notif: S.t("Desktop alerts and relationship changes"),
+        feat: S.t("Built-in tweaks for chat and media"),
+        voice: S.t("Microphone, push to talk, calls and screen share"),
+        mods: S.t("Your own QML mods, blocks and themes"),
+        keys: S.t("Keyboard and mouse shortcuts"),
+        about: S.t("Version, license and source")
     })
     function pgOf(id) { return r.pages.find(p => p[0] === id) }
     function hit(id) {
@@ -122,7 +122,7 @@ Rectangle {
                         selectByMouse: true
                         onTextChanged: r.q = text
                         Keys.onReturnPressed: { const f = r.pages.find(p => r.hit(p[0])); if (f) S.setPage = f[0] }
-                        Lbl { visible: !sq.text; text: "Search settings"; color: Th.tx2; font.pixelSize: Th.fsS + 1; anchors.verticalCenter: parent.verticalCenter }
+                        Lbl { visible: !sq.text; text: S.t("Search settings"); color: Th.tx2; font.pixelSize: Th.fsS + 1; anchors.verticalCenter: parent.verticalCenter }
                     }
                 }
                 Item { width: 1; height: 6 }
@@ -176,7 +176,7 @@ Rectangle {
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 14
                 x: 22
-                text: "cord 0.1.0"
+                text: S.t("cord 0.1.0")
                 color: Th.tx2
                 font.pixelSize: Th.fsS
             }
@@ -223,7 +223,7 @@ Rectangle {
                         Ico { anchors.centerIn: parent; n: "x"; sz: 16; col: xm.containsMouse ? Th.tx : Th.tx2 }
                         MouseArea { id: xm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.showSet = false }
                     }
-                    Lbl { anchors.horizontalCenter: parent.horizontalCenter; text: "ESC"; color: Th.tx2; font.pixelSize: Th.fsT; font.weight: Font.DemiBold }
+                    Lbl { anchors.horizontalCenter: parent.horizontalCenter; text: S.t("ESC"); color: Th.tx2; font.pixelSize: Th.fsT; font.weight: Font.DemiBold }
                 }
             }
             Rectangle { x: pane.cx; y: hd.height; width: pane.cw; height: 1; color: Th.ln }
@@ -257,7 +257,7 @@ Rectangle {
     }
 
     function vsave() {
-        S.c.cset("voice.json", JSON.stringify({ ns: S.ui.ns !== false, vad: S.ui.vad || -50, ptt: !!S.ui.ptt, "in": S.ui.vin || "", out: S.ui.vout || "" }))
+        S.c.cset("voice.json", JSON.stringify({ ns: S.ui.ns !== false, vad: S.ui.vad || -50, ptt: !!S.ui.ptt, "in": S.ui.vin || "", out: S.ui.vout || "", agc: !!S.ui.agc }))
     }
     property var adev: ({ "in": [], out: [] })
     function adevs() {
@@ -351,7 +351,7 @@ Rectangle {
                 radius: Th.r
                 color: Th.bg3
                 border.color: Th.err
-                Lbl { id: sw; x: 12; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 24; wrapMode: Text.Wrap; elide: Text.ElideNone; text: "No system keyring was found. Account tokens are stored in a file in " + S.c.home() + " without encryption." }
+                Lbl { id: sw; x: 12; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 24; wrapMode: Text.Wrap; elide: Text.ElideNone; text: S.t("No system keyring was found. Account tokens are stored in a file in ") + S.c.home() + " without encryption." }
             }
             AccTabs { id: atb; cur: Math.min(S.accIdx, S.cfgAccs.length) }
             Connections { target: atb; function onCurChanged() { S.accIdx = atb.cur } }
@@ -373,14 +373,14 @@ Rectangle {
             Item { visible: S.cfgAccs.some(a => a.base === "demo"); width: 1; height: 4 }
             Btn {
                 visible: S.cfgAccs.some(a => a.base === "demo")
-                text: "Exit demo"
+                text: S.t("Exit demo")
                 onClicked: U.exitDemo()
             }
-            Sub { text: "Status" }
+            Sub { text: S.t("Status") }
             Group {
                 Row_ {
-                    t: "Online status"
-                    d: "Shown to friends on every account"
+                    t: S.t("Online status")
+                    d: S.t("Shown to friends on every account")
                     Seg {
                         anchors.right: parent.right
                         anchors.rightMargin: 12
@@ -398,8 +398,8 @@ Rectangle {
         id: layP
         Column {
             spacing: 8
-            Lbl { text: "Pick a preset, flip blocks left or right, or drag them around in edit mode."; color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone; width: parent.width }
-            Sub { text: "Presets"; topPadding: 4 }
+            Lbl { text: S.t("Pick a preset, flip blocks left or right, or drag them around in edit mode."); color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone; width: parent.width }
+            Sub { text: S.t("Presets"); topPadding: 4 }
             Grid {
                 id: pgr
                 width: parent.width
@@ -425,7 +425,7 @@ Rectangle {
                     }
                 }
             }
-            Sub { text: "Blocks" }
+            Sub { text: S.t("Blocks") }
             Group {
             Repeater {
                 model: S.allBlks().filter(b => b.id !== "chat")
@@ -451,12 +451,12 @@ Rectangle {
                 }
             }
             }
-            Sub { text: "Advanced" }
+            Sub { text: S.t("Advanced") }
             Row {
                 spacing: 8
-                Btn { text: "Edit layout"; ico: "layout"; pri: true; onClicked: { S.showSet = false; S.edit = true } }
-                Btn { text: "Copy layout"; ico: "copy"; onClicked: S.copy(JSON.stringify(S.lay)) }
-                Btn { text: "Paste layout"; onClicked: { pst.visible = !pst.visible; r.pasteErr = "" } }
+                Btn { text: S.t("Edit layout"); ico: "layout"; pri: true; onClicked: { S.showSet = false; S.edit = true } }
+                Btn { text: S.t("Copy layout"); ico: "copy"; onClicked: S.copy(JSON.stringify(S.lay)) }
+                Btn { text: S.t("Paste layout"); onClicked: { pst.visible = !pst.visible; r.pasteErr = "" } }
             }
             Column {
                 id: pst
@@ -470,8 +470,8 @@ Rectangle {
                 }
                 Row {
                     spacing: 8
-                    Fld { id: pf; width: 480; placeholderText: "Paste a shared layout"; onTextChanged: r.pasteErr = ""; onAccepted: pst.apply() }
-                    Btn { text: "Apply"; pri: true; onClicked: pst.apply() }
+                    Fld { id: pf; width: 480; placeholderText: S.t("Paste a shared layout"); onTextChanged: r.pasteErr = ""; onAccepted: pst.apply() }
+                    Btn { text: S.t("Apply"); pri: true; onClicked: pst.apply() }
                 }
                 Lbl { visible: r.pasteErr !== ""; text: r.pasteErr; color: Th.err; font.pixelSize: Th.fsS }
             }
@@ -482,8 +482,8 @@ Rectangle {
         id: lookP
         Column {
             spacing: 8
-            Sub { text: "Theme"; topPadding: 4 }
-            Group { Opt { t: "Follow system appearance"; d: "Switch between light and dark with macOS or your desktop"; on: !!S.ui.sys; onTog: v => { S.setUi("sys", v); S.loadTheme() } } }
+            Sub { text: S.t("Theme"); topPadding: 4 }
+            Group { Opt { t: S.t("Follow system appearance"); d: S.t("Switch between light and dark with macOS or your desktop"); on: !!S.ui.sys; onTog: v => { S.setUi("sys", v); S.loadTheme() } } }
             Flow {
                 width: parent.width
                 spacing: 10
@@ -555,8 +555,8 @@ Rectangle {
                     }
                 }
             }
-            Lbl { text: "More themes: Advanced, Mods and themes."; color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone; width: parent.width }
-            Sub { text: "Accent" }
+            Lbl { text: S.t("More themes: Advanced, Mods and themes."); color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone; width: parent.width }
+            Sub { text: S.t("Accent") }
             Row {
                 spacing: 6
                 Repeater {
@@ -579,20 +579,21 @@ Rectangle {
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { S.setUi("ac", modelData); S.loadTheme() } }
                     }
                 }
-                Btn { visible: !!S.ui.ac; text: "Reset"; height: 28; flat: true; onClicked: { S.setUi("ac", ""); S.loadTheme() } }
+                Btn { visible: !!S.ui.ac; text: S.t("Reset"); height: 28; flat: true; onClicked: { S.setUi("ac", ""); S.loadTheme() } }
             }
-            Sub { text: "Display" }
+            Sub { text: S.t("Display") }
             Group {
-                Row_ { t: "Text size"; d: "Size of messages and the interface"; Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["12", "12"], ["13", "13"], ["14", "14"], ["15", "15"], ["16", "16"], ["18", "18"]]; cur: String(S.ui.fs || Th.fs); onPick: v => { S.setUi("fs", parseInt(v)); S.loadTheme() } } }
-                Row_ { t: "Density"; d: "Space between rows and messages"; Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["0.85", "Compact"], ["1", "Default"], ["1.15", "Spacious"]]; cur: String(S.ui.dens || 1); onPick: v => { S.setUi("dens", parseFloat(v)); S.loadTheme() } } }
+                Row_ { t: S.t("Language"); d: S.t("Language of the cord interface"); Sel { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; mw: 200; opts: [["auto", S.t("System default")], ["en", "English"], ["de", "Deutsch"]]; cur: S.ui.lang || "en"; onPick: v => S.setUi("lang", v) } }
+                Row_ { t: S.t("Text size"); d: S.t("Size of messages and the interface"); Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["12", "12"], ["13", "13"], ["14", "14"], ["15", "15"], ["16", "16"], ["18", "18"]]; cur: String(S.ui.fs || Th.fs); onPick: v => { S.setUi("fs", parseInt(v)); S.loadTheme() } } }
+                Row_ { t: S.t("Density"); d: S.t("Space between rows and messages"); Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["0.85", "Compact"], ["1", "Default"], ["1.15", "Spacious"]]; cur: String(S.ui.dens || 1); onPick: v => { S.setUi("dens", parseFloat(v)); S.loadTheme() } } }
             }
-            Sub { text: "Details" }
+            Sub { text: S.t("Details") }
             Group {
-                Opt { t: "Show network badges"; d: "Marks for Discord, Matrix and Stoat on servers, avatars and DMs"; on: S.ui.badges !== false; onTog: v => S.setUi("badges", v) }
-                Opt { t: "Avatar decorations"; d: "Show Discord avatar decorations around profile pictures"; on: S.ui.decos !== false; onTog: v => S.setUi("decos", v) }
-                Opt { t: "Nameplates"; d: "Show Discord nameplates behind names in the member and DM lists"; on: S.ui.plates !== false; onTog: v => S.setUi("plates", v) }
-                Opt { t: "Display name styles"; d: "Show colors and gradients people picked for their display name"; on: S.ui.nstyle !== false; onTog: v => S.setUi("nstyle", v) }
-                Opt { t: "Profile effects"; d: "Play Discord profile effects when you open a profile"; on: S.ui.peff !== false; onTog: v => S.setUi("peff", v) }
+                Opt { t: S.t("Show network badges"); d: S.t("Marks for Discord, Matrix and Stoat on servers, avatars and DMs"); on: S.ui.badges !== false; onTog: v => S.setUi("badges", v) }
+                Opt { t: S.t("Avatar decorations"); d: S.t("Show Discord avatar decorations around profile pictures"); on: S.ui.decos !== false; onTog: v => S.setUi("decos", v) }
+                Opt { t: S.t("Nameplates"); d: S.t("Show Discord nameplates behind names in the member and DM lists"); on: S.ui.plates !== false; onTog: v => S.setUi("plates", v) }
+                Opt { t: S.t("Display name styles"); d: S.t("Show colors and gradients people picked for their display name"); on: S.ui.nstyle !== false; onTog: v => S.setUi("nstyle", v) }
+                Opt { t: S.t("Profile effects"); d: S.t("Play Discord profile effects when you open a profile"); on: S.ui.peff !== false; onTog: v => S.setUi("peff", v) }
                 Repeater { model: r.fcat.look; FOpt { k: modelData } }
             }
         }
@@ -602,14 +603,14 @@ Rectangle {
         id: featP
         Column {
             spacing: 0
-            Lbl { width: parent.width; text: "Client mods on Discord can get an account banned, see the Ban risk tags."; color: Th.tx2; font.pixelSize: Th.fsS; bottomPadding: 4 }
-            Sub { text: "Chat"; topPadding: 4 }
+            Lbl { width: parent.width; text: S.t("Client mods on Discord can get an account banned, see the Ban risk tags."); color: Th.tx2; font.pixelSize: Th.fsS; bottomPadding: 4 }
+            Sub { text: S.t("Chat"); topPadding: 4 }
             Group { Repeater { model: r.fcat.chat; FOpt { k: modelData } } }
-            Sub { text: "Media" }
+            Sub { text: S.t("Media") }
             Group { Repeater { model: r.fcat.media; FOpt { k: modelData } } }
-            Sub { text: "Other"; visible: r.fother().length > 0 }
+            Sub { text: S.t("Other"); visible: r.fother().length > 0 }
             Group { visible: r.fother().length > 0; Repeater { model: r.fother(); FOpt { k: modelData } } }
-            Lbl { width: parent.width; topPadding: 16; text: "Privacy, notification, call and appearance tweaks live on their own pages."; color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone }
+            Lbl { width: parent.width; topPadding: 16; text: S.t("Privacy, notification, call and appearance tweaks live on their own pages."); color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone }
         }
     }
 
@@ -617,15 +618,15 @@ Rectangle {
         id: privP
         Column {
             spacing: 0
-            Sub { text: "Streaming"; topPadding: 4 }
-            Group { Opt { t: "Streamer mode"; d: "Hide emails and silence desktop notifications while you stream or share your screen"; on: !!S.ui.streamer; onTog: v => S.setUi("streamer", v) } }
-            Sub { text: "Activity" }
+            Sub { text: S.t("Streaming"); topPadding: 4 }
+            Group { Opt { t: S.t("Streamer mode"); d: S.t("Hide emails and silence desktop notifications while you stream or share your screen"); on: !!S.ui.streamer; onTog: v => S.setUi("streamer", v) } }
+            Sub { text: S.t("Activity") }
             Group { Repeater { model: r.fcat.privacy; FOpt { k: modelData } } }
-            Sub { text: "Account storage" }
+            Sub { text: S.t("Account storage") }
             Group {
                 Row_ {
-                    t: "Token storage"
-                    d: S.secretBackend === "file" ? "No system keyring found, tokens are stored unencrypted in a file" : "Tokens are kept in the system keyring"
+                    t: S.t("Token storage")
+                    d: S.secretBackend === "file" ? S.t("No system keyring found, tokens are stored unencrypted in a file") : S.t("Tokens are kept in the system keyring")
                     Rectangle {
                         anchors.right: parent.right
                         anchors.rightMargin: 16
@@ -634,7 +635,7 @@ Rectangle {
                         height: 24
                         radius: 12
                         color: S.secretBackend === "file" ? Th.a(Th.err, 0.18) : Th.a(Th.ok, 0.18)
-                        Lbl { id: kt; anchors.centerIn: parent; text: S.secretBackend === "file" ? "Unencrypted" : "Keyring"; color: S.secretBackend === "file" ? Th.err : Th.ok; font.pixelSize: Th.fsS; font.weight: Font.DemiBold }
+                        Lbl { id: kt; anchors.centerIn: parent; text: S.secretBackend === "file" ? S.t("Unencrypted") : S.t("Keyring"); color: S.secretBackend === "file" ? Th.err : Th.ok; font.pixelSize: Th.fsS; font.weight: Font.DemiBold }
                     }
                 }
             }
@@ -645,18 +646,18 @@ Rectangle {
         id: notifP
         Column {
             spacing: 0
-            Sub { text: "Desktop"; topPadding: 4 }
+            Sub { text: S.t("Desktop"); topPadding: 4 }
             Group {
-                Opt { t: "Desktop notifications"; d: "Alerts while the window is not focused"; on: S.ui.notif !== false; onTog: v => S.setUi("notif", v) }
-                Row_ { t: "Notify me for"; d: "Which messages raise an alert"; Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["both", "DMs and mentions"], ["dm", "DMs only"], ["men", "Mentions only"]]; cur: S.ui.nmode || "both"; onPick: v => S.setUi("nmode", v) } }
-                Opt { t: "Message preview"; d: "Show the message text in the alert, otherwise only the sender"; on: S.ui.npv !== false; onTog: v => S.setUi("npv", v) }
+                Opt { t: S.t("Desktop notifications"); d: S.t("Alerts while the window is not focused"); on: S.ui.notif !== false; onTog: v => S.setUi("notif", v) }
+                Row_ { t: S.t("Notify me for"); d: S.t("Which messages raise an alert"); Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["both", "DMs and mentions"], ["dm", "DMs only"], ["men", "Mentions only"]]; cur: S.ui.nmode || "both"; onPick: v => S.setUi("nmode", v) } }
+                Opt { t: S.t("Message preview"); d: S.t("Show the message text in the alert, otherwise only the sender"); on: S.ui.npv !== false; onTog: v => S.setUi("npv", v) }
             }
-            Sub { text: "Sounds" }
+            Sub { text: S.t("Sounds") }
             Group {
-                Opt { t: "Message sound"; d: "Play a short chime for new alerts"; on: S.ui.nsnd !== false; onTog: v => S.setUi("nsnd", v) }
-                Row_ { t: "Try it"; d: "Plays the message sound once"; Btn { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: "Play"; height: 30; onClicked: { S.ping.stop(); S.ping.play() } } }
+                Opt { t: S.t("Message sound"); d: S.t("Play a short chime for new alerts"); on: S.ui.nsnd !== false; onTog: v => S.setUi("nsnd", v) }
+                Row_ { t: S.t("Try it"); d: S.t("Plays the message sound once"); Btn { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: S.t("Play"); height: 30; onClicked: { S.ping.stop(); S.ping.play() } } }
             }
-            Sub { text: "Relationships" }
+            Sub { text: S.t("Relationships") }
             Group { Repeater { model: r.fcat.notif; FOpt { k: modelData } } }
         }
     }
@@ -666,21 +667,22 @@ Rectangle {
         Column {
             spacing: 8
             Component.onCompleted: r.adevs()
-            Sub { text: "Devices"; topPadding: 4 }
+            Sub { text: S.t("Devices"); topPadding: 4 }
             Group {
-                Row_ { t: "Microphone"; d: "Input device for calls"; Sel { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: r.dopts(r.adev["in"]); cur: S.ui.vin || ""; onPick: v => { S.setUi("vin", v); r.vsave() } } }
-                Row_ { t: "Speakers"; d: "Output device for calls"; Sel { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: r.dopts(r.adev.out); cur: S.ui.vout || ""; onPick: v => { S.setUi("vout", v); r.vsave() } } }
+                Row_ { t: S.t("Microphone"); d: S.t("Input device for calls"); Sel { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: r.dopts(r.adev["in"]); cur: S.ui.vin || ""; onPick: v => { S.setUi("vin", v); r.vsave() } } }
+                Row_ { t: S.t("Speakers"); d: S.t("Output device for calls"); Sel { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: r.dopts(r.adev.out); cur: S.ui.vout || ""; onPick: v => { S.setUi("vout", v); r.vsave() } } }
             }
-            Lbl { width: parent.width; text: "Device changes apply the next time you join a call."; color: Th.tx2; font.pixelSize: Th.fsS }
-            Sub { text: "Input" }
+            Lbl { width: parent.width; text: S.t("Device changes apply the next time you join a call."); color: Th.tx2; font.pixelSize: Th.fsS }
+            Sub { text: S.t("Input") }
             Group {
-            Opt { t: "Noise suppression"; d: "Filter background noise from your microphone"; on: S.ui.ns !== false; onTog: v => { S.setUi("ns", v); r.vsave() } }
-            Opt { t: "Push to talk"; d: "Only send audio while the key is held (" + (Qt.platform.os === "osx" ? "⌃`" : "Ctrl+`") + ", while cord is focused)"; on: !!S.ui.ptt; onTog: v => { S.setUi("ptt", v); r.vsave() } }
+            Opt { t: S.t("Noise suppression"); d: S.t("Filter background noise from your microphone"); on: S.ui.ns !== false; onTog: v => { S.setUi("ns", v); r.vsave() } }
+            Opt { t: S.t("Automatic gain control"); d: S.t("Keep your voice at an even level"); on: !!S.ui.agc; onTog: v => { S.setUi("agc", v); r.vsave() } }
+            Opt { t: S.t("Push to talk"); d: S.t("Only send audio while the key is held (") + (Qt.platform.os === "osx" ? "⌃`" : "Ctrl+`") + ", while cord is focused)"; on: !!S.ui.ptt; onTog: v => { S.setUi("ptt", v); r.vsave() } }
             }
             Group {
                 Row_ {
-                    t: "Input sensitivity"
-                    d: "Microphone level that counts as speaking"
+                    t: S.t("Input sensitivity")
+                    d: S.t("Microphone level that counts as speaking")
                     Sld {
                         anchors.right: parent.right
                         anchors.rightMargin: 16
@@ -695,17 +697,17 @@ Rectangle {
                     }
                 }
             }
-            Sub { text: "Screen share" }
+            Sub { text: S.t("Screen share") }
             Group {
-                Row_ { t: "Resolution"; d: "Capture size of your stream"; Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["720", "720p"], ["1080", "1080p"], ["1440", "1440p"], ["2160", "4K"]]; cur: String(S.ui.sh || 1080); onPick: v => S.setUi("sh", parseInt(v)) } }
-                Row_ { t: "Frame rate"; d: "Frames per second of your stream"; Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["30", "30"], ["60", "60"], ["120", "120"], ["144", "144"]]; cur: String(S.ui.sfps || 60); onPick: v => S.setUi("sfps", parseInt(v)) } }
+                Row_ { t: S.t("Resolution"); d: S.t("Capture size of your stream"); Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["720", "720p"], ["1080", "1080p"], ["1440", "1440p"], ["2160", "4K"]]; cur: String(S.ui.sh || 1080); onPick: v => S.setUi("sh", parseInt(v)) } }
+                Row_ { t: S.t("Frame rate"); d: S.t("Frames per second of your stream"); Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["30", "30"], ["60", "60"], ["120", "120"], ["144", "144"]]; cur: String(S.ui.sfps || 60); onPick: v => S.setUi("sfps", parseInt(v)) } }
             }
             Group {
             FOpt { k: "streamq" }
-            Opt { t: "Share audio"; d: Qt.platform.os === "osx" ? "System audio capture is not available on macOS yet" : "Send application and system audio with your stream"; enabled: Qt.platform.os !== "osx"; opacity: enabled ? 1 : 0.5; on: Qt.platform.os !== "osx" && S.ui.ssnd !== false; onTog: v => S.setUi("ssnd", v) }
+            Opt { t: S.t("Share audio"); d: Qt.platform.os === "osx" ? S.t("System audio capture is not available on macOS yet") : S.t("Send application and system audio with your stream"); enabled: Qt.platform.os !== "osx"; opacity: enabled ? 1 : 0.5; on: Qt.platform.os !== "osx" && S.ui.ssnd !== false; onTog: v => S.setUi("ssnd", v) }
             }
-            Lbl { visible: !S.f("streamq"); text: "Turn on Stream quality unlock to go above 720p30."; color: Th.tx2; font.pixelSize: Th.fsS }
-            Sub { text: "Calls" }
+            Lbl { visible: !S.f("streamq"); text: S.t("Turn on Stream quality unlock to go above 720p30."); color: Th.tx2; font.pixelSize: Th.fsS }
+            Sub { text: S.t("Calls") }
             Group { FOpt { k: "callTimer" } }
         }
     }
@@ -719,17 +721,17 @@ Rectangle {
                 wrapMode: Text.Wrap
                 elide: Text.ElideNone
                 color: Th.tx2
-                text: "A mod is a folder in " + S.c.home() + "/mods with a main.qml. It can import Cord, register blocks with S.regBlk, and hook render, send and ev. A block named like a built-in one in " + S.c.home() + "/blocks replaces it."
+                text: S.t("A mod is a folder in ") + S.c.home() + "/mods with a main.qml. It can import Cord, register blocks with S.regBlk, and hook render, send and ev. A block named like a built-in one in " + S.c.home() + "/blocks replaces it."
             }
-            Lbl { width: parent.width; wrapMode: Text.Wrap; elide: Text.ElideNone; color: Th.tx2; text: "A theme is a .json file in " + S.c.home() + "/themes. It shows up in Appearance and reloads live." }
+            Lbl { width: parent.width; wrapMode: Text.Wrap; elide: Text.ElideNone; color: Th.tx2; text: S.t("A theme is a .json file in ") + S.c.home() + "/themes. It shows up in Appearance and reloads live." }
             Row {
                 spacing: 8
-                Btn { text: "Open config folder"; onClicked: Qt.openUrlExternally("file://" + S.c.home()) }
-                Btn { text: "Reload"; onClicked: { S.scanMods(); S.loadTheme() } }
+                Btn { text: S.t("Open config folder"); onClicked: Qt.openUrlExternally("file://" + S.c.home()) }
+                Btn { text: S.t("Reload"); onClicked: { S.scanMods(); S.loadTheme() } }
             }
-            Sub { text: "Installed" }
+            Sub { text: S.t("Installed") }
             Group {
-            Row_ { visible: S.mods.length === 0; t: "No mods installed"; d: "Add a folder with a main.qml to the mods folder, then press Reload" }
+            Row_ { visible: S.mods.length === 0; t: S.t("No mods installed"); d: S.t("Add a folder with a main.qml to the mods folder, then press Reload") }
             Repeater {
                 model: S.mods
                 Opt {
@@ -765,7 +767,7 @@ Rectangle {
         id: keyP
         Column {
             spacing: 8
-            Lbl { width: parent.width; text: "Click a shortcut, then press the new keys. Esc cancels, Backspace resets."; color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone }
+            Lbl { width: parent.width; text: S.t("Click a shortcut, then press the new keys. Esc cancels, Backspace resets."); color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone }
             Grp {
                 Repeater {
                     model: S.keyDefs
@@ -809,7 +811,7 @@ Rectangle {
                     }
                 }
             }
-            Sub { text: "Fixed" }
+            Sub { text: S.t("Fixed") }
             Grp {
                 Repeater {
                     model: [["Up", "Edit your last message"], ["Esc", "Close popups and go back"], [(Qt.platform.os === "osx" ? "\u2303`" : "Ctrl+`"), "Push to talk"]]
@@ -832,7 +834,7 @@ Rectangle {
                     }
                 }
             }
-            Btn { visible: !!S.ui.keys && Object.keys(S.ui.keys).length > 0; text: "Reset all shortcuts"; out: true; onClicked: S.setUi("keys", {}) }
+            Btn { visible: !!S.ui.keys && Object.keys(S.ui.keys).length > 0; text: S.t("Reset all shortcuts"); out: true; onClicked: S.setUi("keys", {}) }
         }
     }
 
@@ -851,13 +853,13 @@ Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 2
                         Lbl { text: "cord"; font.pixelSize: Th.fsL + 2; font.weight: Font.Bold }
-                        Lbl { text: "Version 0.1.0 · GPL-3.0-or-later"; color: Th.tx2 }
-                        Lbl { text: "A native client for Discord, Matrix and Stoat."; color: Th.tx2 }
+                        Lbl { text: S.t("Version 0.1.0 · GPL-3.0-or-later"); color: Th.tx2 }
+                        Lbl { text: S.t("A native client for Discord, Matrix and Stoat."); color: Th.tx2 }
                     }
                 }
             }
             Item { width: 1; height: 4 }
-            Btn { text: "Source code"; ico: "link"; onClicked: Qt.openUrlExternally("https://github.com/Silvertree2010/cord") }
+            Btn { text: S.t("Source code"); ico: "link"; onClicked: Qt.openUrlExternally("https://github.com/Silvertree2010/cord") }
             Lbl {
                 width: parent.width
                 wrapMode: Text.Wrap
@@ -865,7 +867,7 @@ Rectangle {
                 topPadding: 12
                 color: Th.tx3
                 font.pixelSize: Th.fsS
-                text: "Using third party clients on Discord is against Discord's Terms of Service. Use at your own risk."
+                text: S.t("Using third party clients on Discord is against Discord's Terms of Service. Use at your own risk.")
             }
         }
     }

@@ -8,7 +8,7 @@ Window {
     width: 420
     height: 640
     visible: true
-    title: "cord · captcha"
+    title: S.t("cord · captcha")
     color: "#1c1f23"
     property bool sent: false
     readonly property string html: "<!doctype html><html><head><meta name=viewport content='width=device-width'><style>html,body{margin:0;height:100%;background:#1c1f23;display:flex;align-items:center;justify-content:center}</style>"

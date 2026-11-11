@@ -199,7 +199,7 @@ Rectangle {
             height: 20
             radius: Th.rc
             color: Th.shade
-            Lbl { id: gl; anchors.centerIn: parent; text: "GIF"; color: Th.wh; font.pixelSize: Th.fsT; font.weight: Font.Bold }
+            Lbl { id: gl; anchors.centerIn: parent; text: S.t("GIF"); color: Th.wh; font.pixelSize: Th.fsT; font.weight: Font.Bold }
         }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: r.gifv ? S.view(r.e.vid, true) : r.e.vid ? S.view(r.e.vid, true) : S.view(im.source) }
     }

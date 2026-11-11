@@ -30,7 +30,7 @@ Popup {
         return cu.concat(un)
     }
     property var secs: {
-        if (r.q.trim()) return [{ t: "Results", ic: "", it: r.items }]
+        if (r.q.trim()) return [{ t: S.t("Results"), ic: "", it: r.items }]
         const o = []
         for (const g of S.glds) if ((g.emos || []).length) o.push({ t: g.name, ic: g.icon || "", it: g.emos.map(e => ({ c: e, g: g.rid })) })
         o.push({ t: "Emoji", ic: "", it: E.all.map(x => ({ u: x[0] })) })
@@ -53,7 +53,7 @@ Popup {
         Fld {
             id: ef
             width: parent.width
-            placeholderText: "Search emoji"
+            placeholderText: S.t("Search emoji")
             onTextChanged: r.q = text.toLowerCase()
             Keys.onReturnPressed: e => { if (r.items.length) r.pickItem(r.items[0], !!(e.modifiers & Qt.ShiftModifier)) }
         }
@@ -61,7 +61,7 @@ Popup {
             visible: !r.q && r.recent.length > 0
             width: parent.width
             spacing: 4
-            Lbl { text: "Recent"; color: Th.tx3; font.pixelSize: Th.fsXS; font.weight: Font.DemiBold }
+            Lbl { text: S.t("Recent"); color: Th.tx3; font.pixelSize: Th.fsXS; font.weight: Font.DemiBold }
             Row {
                 spacing: 2
                 Repeater {
@@ -136,7 +136,7 @@ Popup {
                         }
                     }
                 }
-                Lbl { visible: r.items.length === 0; anchors.centerIn: parent; text: "No matches"; color: Th.tx3 }
+                Lbl { visible: r.items.length === 0; anchors.centerIn: parent; text: S.t("No matches"); color: Th.tx3 }
             }
         }
     }

@@ -28,14 +28,14 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 8
                 Ico { n: "inbox"; col: Th.tx2; anchors.verticalCenter: parent.verticalCenter }
-                Lbl { text: "Inbox"; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
+                Lbl { text: S.t("Inbox"); font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
             }
             Btn {
                 visible: S.f("readall")
                 anchors.right: parent.right
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Read all"
+                text: S.t("Read all")
                 flat: true
                 height: 28
                 onClicked: S.readAll()
@@ -110,7 +110,7 @@ Rectangle {
                 visible: r.items.length === 0
                 spacing: 8
                 Ico { anchors.horizontalCenter: parent.horizontalCenter; n: "inbox"; sz: 28; col: Th.tx3 }
-                Lbl { text: "No unread mentions or messages"; color: Th.tx3 }
+                Lbl { text: S.t("No unread mentions or messages"); color: Th.tx3 }
             }
         }
     }

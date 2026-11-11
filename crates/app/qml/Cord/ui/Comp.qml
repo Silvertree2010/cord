@@ -75,7 +75,7 @@ Item {
     }
     function esc() {
         if (st_edit && ta.text !== orig()) {
-            U.ask({ title: "Discard changes?", body: "Your edits to this message are not saved.", ok: "Discard", danger: true, run: () => r.clearMode() })
+            U.ask({ title: S.t("Discard changes?"), body: S.t("Your edits to this message are not saved."), ok: S.t("Discard"), danger: true, run: () => r.clearMode() })
             return
         }
         clearMode()
@@ -197,7 +197,7 @@ Item {
                 x: 14
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - 60
-                text: r.st_edit ? "Editing message" : "Replying to " + (r.rep ? (r.rep.auth.disp || r.rep.auth.name) : "")
+                text: r.st_edit ? S.t("Editing message") : S.t("Replying to ") + (r.rep ? (r.rep.auth.disp || r.rep.auth.name) : "")
                 color: Th.tx2
                 font.pixelSize: Th.fsS
             }
@@ -228,8 +228,8 @@ Item {
                     visible: !!r.cur && r.cur.st === "fail"
                     spacing: 4
                     anchors.verticalCenter: parent.verticalCenter
-                    Btn { text: "Retry"; height: 28; pri: true; onClicked: r.retry() }
-                    Btn { text: "Discard"; height: 28; out: true; onClicked: r.discard() }
+                    Btn { text: S.t("Retry"); height: 28; pri: true; onClicked: r.retry() }
+                    Btn { text: S.t("Discard"); height: 28; out: true; onClicked: r.discard() }
                 }
             }
         }
@@ -291,7 +291,7 @@ Item {
                 Ico { n: "lock"; sz: 18; col: Th.tx2; anchors.verticalCenter: parent.verticalCenter }
                 Lbl {
                     width: bx.width - 60
-                    text: "You do not have permission to send messages in this channel."
+                    text: S.t("You do not have permission to send messages in this channel.")
                     color: Th.tx2
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -302,7 +302,7 @@ Item {
                 anchors.leftMargin: 7
                 anchors.rightMargin: 7
                 spacing: 2
-                IBtn { n: "plus"; tip: "Upload a file"; Layout.alignment: Qt.AlignTop; Layout.topMargin: 8; onClicked: fd.open() }
+                IBtn { n: "plus"; tip: S.t("Upload a file"); Layout.alignment: Qt.AlignTop; Layout.topMargin: 8; onClicked: fd.open() }
                 ScrollView {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -313,7 +313,7 @@ Item {
                         color: Th.tx
                         font.family: Th.font
                         font.pixelSize: Th.fs
-                        placeholderText: r.cid ? "Message " + (r.ch && (r.ch.k === "Dm" || r.ch.k === "Grp") ? "@" : "#") + S.chName(r.cid) : ""
+                        placeholderText: r.cid ? S.t("Message") + " " + (r.ch && (r.ch.k === "Dm" || r.ch.k === "Grp") ? "@" : "#") + S.chName(r.cid) : ""
                         placeholderTextColor: Th.tx3
                         selectionColor: Th.ac
                         selectedTextColor: Th.acTx
@@ -378,7 +378,7 @@ Item {
                     color: gbm.containsMouse ? Th.hov : "transparent"
                     border.color: gbm.containsMouse ? Th.tx2 : Th.tx3
                     border.width: 1
-                    Lbl { anchors.centerIn: parent; text: "GIF"; font.pixelSize: Th.fsP; font.weight: Font.DemiBold; color: gbm.containsMouse ? Th.tx : Th.tx2 }
+                    Lbl { anchors.centerIn: parent; text: S.t("GIF"); font.pixelSize: Th.fsP; font.weight: Font.DemiBold; color: gbm.containsMouse ? Th.tx : Th.tx2 }
                     MouseArea {
                         id: gbm
                         anchors.fill: parent
@@ -394,8 +394,8 @@ Item {
                         }
                     }
                 }
-                IBtn { n: "smile"; tip: "Emoji"; Layout.alignment: Qt.AlignTop; Layout.topMargin: 8; onClicked: S.emoji(bx, e => { ta.insert(ta.cursorPosition, e.id ? "<" + (e.anim ? "a" : "") + ":" + e.name + ":" + e.id.raw + ">" : e.name); ta.forceActiveFocus() }) }
-                IBtn { n: "send"; tip: "Send"; visible: ta.text.length > 0 || r.files.length > 0; Layout.alignment: Qt.AlignTop; Layout.topMargin: 8; onClicked: r.go() }
+                IBtn { n: "smile"; tip: S.t("Emoji"); Layout.alignment: Qt.AlignTop; Layout.topMargin: 8; onClicked: S.emoji(bx, e => { ta.insert(ta.cursorPosition, e.id ? "<" + (e.anim ? "a" : "") + ":" + e.name + ":" + e.id.raw + ">" : e.name); ta.forceActiveFocus() }) }
+                IBtn { n: "send"; tip: S.t("Send"); visible: ta.text.length > 0 || r.files.length > 0; Layout.alignment: Qt.AlignTop; Layout.topMargin: 8; onClicked: r.go() }
             }
             DropArea {
                 anchors.fill: parent
@@ -462,7 +462,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.right: parent.right
                 anchors.rightMargin: 4
-                text: r.emptyEdit ? "Delete" : "Retry"
+                text: r.emptyEdit ? S.t("Delete") : S.t("Retry")
                 color: r.emptyEdit ? Th.err : Th.ac
                 font.pixelSize: Th.fsXS
                 font.weight: Font.DemiBold
@@ -481,7 +481,7 @@ Item {
         const id = st_edit
         const c = cid
         if (!id) return
-        U.ask({ title: "Delete message", body: "This message will be deleted for everyone in the conversation.", ok: "Delete", danger: true, run: () => { S.c.del(c, id); r.clearMode() } })
+        U.ask({ title: S.t("Delete message"), body: S.t("This message will be deleted for everyone in the conversation."), ok: S.t("Delete"), danger: true, run: () => { S.c.del(c, id); r.clearMode() } })
     }
     function discard() {
         const e = cur

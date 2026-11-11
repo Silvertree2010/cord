@@ -104,11 +104,11 @@ QtObject {
     function ask(o) { askReq(o) }
     function rmDemo() { S.cfgAccs.filter(a => a.base === "demo").forEach(a => S.c.rm_acc(a.id)) }
     function exitDemo() {
-        ask({ title: "Exit demo", body: "Demo accounts and their data are removed.", ok: "Exit demo", danger: true, run: rmDemo })
+        ask({ title: S.t("Exit demo"), body: S.t("Demo accounts and their data are removed."), ok: S.t("Exit demo"), danger: true, run: rmDemo })
     }
     function guardDemo(fn) {
         if (!demo) { fn(); return }
-        ask({ title: "Exit demo first", body: "Demo accounts are removed before a real account is added.", ok: "Exit demo and continue", danger: true, run: () => { rmDemo(); fn() } })
+        ask({ title: S.t("Exit demo first"), body: S.t("Demo accounts are removed before a real account is added."), ok: S.t("Exit demo and continue"), danger: true, run: () => { rmDemo(); fn() } })
     }
     function pushEmo(e) {
         const k = e.id ? "c" + e.id.raw : "u" + e.name
@@ -180,7 +180,7 @@ QtObject {
     function cancelEdit(then) {
         if (!S.edit) { if (then) then(); return }
         if (undo.length === 0) { doCancel(); if (then) then(); return }
-        ask({ title: "Discard layout changes?", body: "Your changes to the layout are lost.", ok: "Discard", danger: true, run: () => { doCancel(); if (then) then() } })
+        ask({ title: S.t("Discard layout changes?"), body: S.t("Your changes to the layout are lost."), ok: S.t("Discard"), danger: true, run: () => { doCancel(); if (then) then() } })
     }
     function recent(cid) {
         if (!cid) return
@@ -198,11 +198,11 @@ QtObject {
             const id = b.id
             if (id === "chat") {
                 if (JSON.stringify(S.lay).indexOf('"slot":1') >= 0) continue
-                out.push({ text: "Second chat", items: [{ text: "Left of chat", run: () => addBlk("chat", "l") }, { text: "Right of chat", run: () => addBlk("chat", "r") }] })
+                out.push({ text: S.t("Second chat"), items: [{ text: S.t("Left of chat"), run: () => addBlk("chat", "l") }, { text: S.t("Right of chat"), run: () => addBlk("chat", "r") }] })
                 continue
             }
             if (cnt(id) > 0) continue
-            out.push({ text: b.name, items: [{ text: "Left of chat", run: () => addBlk(id, "l") }, { text: "Right of chat", run: () => addBlk(id, "r") }] })
+            out.push({ text: b.name, items: [{ text: S.t("Left of chat"), run: () => addBlk(id, "l") }, { text: S.t("Right of chat"), run: () => addBlk(id, "r") }] })
         }
         return out
     }

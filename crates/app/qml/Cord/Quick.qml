@@ -7,7 +7,7 @@ Rectangle {
     color: Th.scrim
     NumberAnimation on opacity { from: 0; to: 1; duration: Th.mF + 20; easing.type: Easing.OutCubic }
     MouseArea { anchors.fill: parent; onClicked: S.qk = false }
-    readonly property var secs: ({ r: "Recent and unread", c: "Channels", d: "Direct messages", g: "Servers" })
+    readonly property var secs: ({ r: "Recent and unread", c: "Channels", d: S.t("Direct messages"), g: "Servers" })
     readonly property string q: fl.text.toLowerCase().replace(/^[#@*]/, "")
     property var ent: {
         void S.ver
@@ -109,7 +109,7 @@ Rectangle {
             Fld {
                 id: fl
                 width: parent.width
-                placeholderText: "Jump to…"
+                placeholderText: S.t("Jump to…")
                 focus: true
                 Component.onCompleted: forceActiveFocus()
                 Keys.onDownPressed: { r.cur = Math.min(r.cur + 1, r.ent.length - 1); r.vis() }
@@ -179,7 +179,7 @@ Rectangle {
                 height: 36
                 verticalAlignment: Text.AlignVCenter
                 leftPadding: 10
-                text: "No matches"
+                text: S.t("No matches")
                 color: Th.tx3
             }
         }

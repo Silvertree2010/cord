@@ -20,14 +20,14 @@ Rectangle {
         spacing: 10
         width: Math.min(320, parent.width - 32)
         Ico { anchors.horizontalCenter: parent.horizontalCenter; n: "voice"; sz: 32; col: Th.tx3 }
-        Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "No active call"; font.weight: Font.DemiBold }
-        Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "Join a voice channel to see participants and streams here."; color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone }
+        Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: S.t("No active call"); font.weight: Font.DemiBold }
+        Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: S.t("Join a voice channel to see participants and streams here."); color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone }
         Repeater {
             model: r.vcs
             Btn {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: parent.width
-                text: "Join " + modelData.name
+                text: S.t("Join ") + modelData.name
                 ico: "voice"
                 onClicked: S.c.join(modelData.rid)
             }
@@ -95,7 +95,7 @@ Rectangle {
                         visible: modelData.stream
                         anchors.centerIn: parent
                         anchors.verticalCenterOffset: parent.height * 0.3
-                        text: "Watch stream"
+                        text: S.t("Watch stream")
                         pri: true
                         onClicked: { S.c.watch(parent.uid, true); r.foc = parent.uid }
                     }
@@ -107,7 +107,7 @@ Rectangle {
                     }
                     Ctx {
                         id: vm
-                        model: [{ slider: true, text: "User volume", from: 0, to: 2, value: 1, run: v => S.c.vol(uid, v) }]
+                        model: [{ slider: true, text: S.t("User volume"), from: 0, to: 2, value: 1, run: v => S.c.vol(uid, v) }]
                     }
                 }
             }
@@ -121,8 +121,8 @@ Rectangle {
         spacing: 10
         IBtn { sz: 44; n: r.cs.mute ? "micoff" : "mic"; red: !!r.cs.mute; onClicked: S.c.vset(!r.cs.mute, !!r.cs.deaf) }
         IBtn { sz: 44; n: r.cs.deaf ? "headoff" : "head"; red: !!r.cs.deaf; onClicked: S.c.vset(!!r.cs.mute, !r.cs.deaf) }
-        IBtn { sz: 44; n: "screen"; act: !!r.cs.live; tip: "Share screen"; onClicked: r.cs.live ? S.c.golive(false, "{}") : S.goLive() }
-        IBtn { visible: !r.cs.chan; sz: 44; n: "phone"; tip: "Join"; onClicked: S.c.join(r.cid) }
-        IBtn { visible: !!r.cs.chan; sz: 44; n: "hang"; red: true; tip: "Leave"; onClicked: S.c.leave() }
+        IBtn { sz: 44; n: "screen"; act: !!r.cs.live; tip: S.t("Share screen"); onClicked: r.cs.live ? S.c.golive(false, "{}") : S.goLive() }
+        IBtn { visible: !r.cs.chan; sz: 44; n: "phone"; tip: S.t("Join"); onClicked: S.c.join(r.cid) }
+        IBtn { visible: !!r.cs.chan; sz: 44; n: "hang"; red: true; tip: S.t("Leave"); onClicked: S.c.leave() }
     }
 }

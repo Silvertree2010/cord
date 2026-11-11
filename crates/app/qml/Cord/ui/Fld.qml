@@ -34,7 +34,7 @@ TextField {
         sz: 28
         isz: 16
         act: r.show
-        tip: r.show ? "Hide" : "Show"
+        tip: r.show ? S.t("Hide") : S.t("Show")
         activeFocusOnTab: false
         onClicked: r.show = !r.show
     }

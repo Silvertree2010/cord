@@ -13,7 +13,7 @@ Popup {
     property int mods: 0
     property int cur: -1
     readonly property var rows: {
-        const src = view ? [{ back: true, text: "Back" }].concat(view) : model
+        const src = view ? [{ back: true, text: S.t("Back") }].concat(view) : model
         const f = src.filter(x => x && x.when !== false)
         const o = []
         for (const x of f) {
@@ -100,7 +100,7 @@ Popup {
                         x: 8
                         width: parent.width - 36
                         anchors.verticalCenter: parent.verticalCenter
-                        text: (modelData.back ? "‹  " : "") + modelData.text
+                        text: (modelData.back ? "‹  " : "") + S.t(modelData.text)
                         color: modelData.danger ? Th.err : Th.tx
                     }
                     Ico {

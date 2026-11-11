@@ -75,7 +75,7 @@ Rectangle {
                 x: 16
                 spacing: 6
                 Ico { visible: r.width >= 640; n: "users"; col: Th.tx2; anchors.verticalCenter: parent.verticalCenter }
-                Lbl { visible: r.width >= 640; text: "Friends"; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter; rightPadding: 12 }
+                Lbl { visible: r.width >= 640; text: S.t("Friends"); font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter; rightPadding: 12 }
                 Repeater {
                     model: [["on", "Online"], ["all", "All"], ["pend", "Pending"], ["blk", "Blocked"]]
                     Rectangle {
@@ -101,7 +101,7 @@ Rectangle {
                     radius: Th.rs
                     color: r.tab === "add" ? "transparent" : afm.containsMouse ? Qt.lighter(Th.ac, 1.08) : Th.ac
                     anchors.verticalCenter: parent.verticalCenter
-                    Lbl { id: afl; anchors.centerIn: parent; text: "Add Friend"; color: r.tab === "add" ? Th.ac : Th.acTx; font.weight: Font.DemiBold }
+                    Lbl { id: afl; anchors.centerIn: parent; text: S.t("Add Friend"); color: r.tab === "add" ? Th.ac : Th.acTx; font.weight: Font.DemiBold }
                     MouseArea { id: afm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: r.tab = "add" }
                 }
             }
@@ -114,8 +114,8 @@ Rectangle {
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: 20
             spacing: 8
-            Lbl { text: "Add Friend"; font.pixelSize: Th.fsL; font.weight: Font.Bold }
-            Lbl { width: parent.width; text: "You can add friends with their Discord username."; color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone }
+            Lbl { text: S.t("Add Friend"); font.pixelSize: Th.fsL; font.weight: Font.Bold }
+            Lbl { width: parent.width; text: S.t("You can add friends with their Discord username."); color: Th.tx2; wrapMode: Text.Wrap; elide: Text.ElideNone }
             Item { width: 1; height: 4 }
             Rectangle {
                 width: parent.width
@@ -135,9 +135,9 @@ Rectangle {
                     selectByMouse: true
                     onTextChanged: r.addSt = ""
                     onAccepted: r.addFriend()
-                    Lbl { visible: !af.text; text: "You can add friends with their Discord username."; color: Th.tx2; anchors.verticalCenter: parent.verticalCenter }
+                    Lbl { visible: !af.text; text: S.t("You can add friends with their Discord username."); color: Th.tx2; anchors.verticalCenter: parent.verticalCenter }
                 }
-                Btn { id: sb; anchors.right: parent.right; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter; height: 32; text: "Send Friend Request"; pri: true; on: af.text.trim() !== "" && r.addSt !== "busy"; onClicked: r.addFriend() }
+                Btn { id: sb; anchors.right: parent.right; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter; height: 32; text: S.t("Send Friend Request"); pri: true; on: af.text.trim() !== "" && r.addSt !== "busy"; onClicked: r.addFriend() }
             }
             Lbl { visible: r.addMsg !== ""; width: parent.width; text: r.addMsg; color: r.addSt === "ok" ? Th.ok : Th.err; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone }
         }
@@ -148,7 +148,7 @@ Rectangle {
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: 16
             Layout.bottomMargin: 16
-            placeholderText: "Search"
+            placeholderText: S.t("Search")
             onTextChanged: r.q = text
         }
         Lbl {
@@ -157,7 +157,7 @@ Rectangle {
             Layout.maximumWidth: 720 - 32
             Layout.alignment: Qt.AlignHCenter
             leftPadding: 12
-            text: (({ on: "Online", all: "All friends", pend: "Pending", blk: "Blocked" })[r.tab] + " — " + r.list.length).toUpperCase()
+            text: (({ on: S.t("Online"), all: S.t("All friends"), pend: S.t("Pending"), blk: S.t("Blocked") })[r.tab] + " — " + r.list.length).toUpperCase()
             color: Th.tx3
             font.pixelSize: Th.fsS - 1
             font.weight: Font.Bold
@@ -215,7 +215,7 @@ Rectangle {
                     }
                     Lbl {
                         width: parent.width
-                        text: row.f.k === "In" ? "Incoming request" : row.f.k === "Out" ? "Outgoing request" : row.f.k === "Block" ? "Blocked" : row.p && row.p.act ? row.p.act : row.p ? ({ On: "Online", Idle: "Idle", Dnd: "Do not disturb", Off: "Offline" })[row.p.st] : "Offline"
+                        text: row.f.k === "In" ? S.t("Incoming request") : row.f.k === "Out" ? S.t("Outgoing request") : row.f.k === "Block" ? S.t("Blocked") : row.p && row.p.act ? row.p.act : row.p ? ({ On: "Online", Idle: "Idle", Dnd: "Do not disturb", Off: "Offline" })[row.p.st] : "Offline"
                         color: Th.tx3
                         font.pixelSize: Th.fsXS
                     }
@@ -229,16 +229,16 @@ Rectangle {
                     IBtn {
                         id: mb
                         n: "thread"
-                        tip: "Message"
+                        tip: S.t("Message")
                         visible: row.f.k === "Friend"
                         onClicked: {
                             if (modelData.items.length === 1) r.msg(row.uid)
                             else mm.show(mb, 0, mb.height + 4)
                         }
                     }
-                    IBtn { n: "check"; tip: "Accept"; visible: row.f.k === "In"; onClicked: S.c.rel(row.uid, "accept") }
-                    IBtn { n: "x"; tip: "Ignore request"; red: true; visible: row.f.k === "In" || row.f.k === "Out"; onClicked: S.c.rel(row.uid, "remove") }
-                    IBtn { id: dots; n: "dots"; tip: "More"; visible: row.f.k === "Friend" || row.f.k === "Block"; onClicked: dm.show(dots, 0, dots.height + 4) }
+                    IBtn { n: "check"; tip: S.t("Accept"); visible: row.f.k === "In"; onClicked: S.c.rel(row.uid, "accept") }
+                    IBtn { n: "x"; tip: S.t("Ignore request"); red: true; visible: row.f.k === "In" || row.f.k === "Out"; onClicked: S.c.rel(row.uid, "remove") }
+                    IBtn { id: dots; n: "dots"; tip: S.t("More"); visible: row.f.k === "Friend" || row.f.k === "Block"; onClicked: dm.show(dots, 0, dots.height + 4) }
                 }
                 Ctx {
                     id: mm
@@ -249,16 +249,16 @@ Rectangle {
                     model: {
                         const a = []
                         if (row.f.k === "Friend") {
-                            a.push({ text: "Message", run: () => mb.clicked() })
-                            a.push({ text: "View profile", run: () => S.prof(row.f.usr, av) })
+                            a.push({ text: S.t("Message"), run: () => mb.clicked() })
+                            a.push({ text: S.t("View profile"), run: () => S.prof(row.f.usr, av) })
                             a.push({ sep: true })
                             for (const x of modelData.items) {
                                 const id = x.usr.id ? S.ridOf(x.usr.id) : ""
                                 const nm = x.usr.disp || x.usr.name
-                                a.push({ text: "Remove friend" + (modelData.items.length > 1 ? " (" + Th.svcName(S.svc(id)) + ")" : ""), danger: true, run: () => U.ask({ title: "Remove friend", body: "Remove " + nm + " from your " + Th.svcName(S.svc(id)) + " friends?", ok: "Remove", danger: true, run: () => S.c.rel(id, "remove") }) })
+                                a.push({ text: S.t("Remove friend") + (modelData.items.length > 1 ? " (" + Th.svcName(S.svc(id)) + ")" : ""), danger: true, run: () => U.ask({ title: S.t("Remove friend"), body: S.t("Remove ") + nm + " from your " + Th.svcName(S.svc(id)) + " friends?", ok: S.t("Remove"), danger: true, run: () => S.c.rel(id, "remove") }) })
                             }
                         } else {
-                            a.push({ text: "Unblock", run: () => S.c.rel(row.uid, "remove") })
+                            a.push({ text: S.t("Unblock"), run: () => S.c.rel(row.uid, "remove") })
                         }
                         return a
                     }

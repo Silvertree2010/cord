@@ -32,7 +32,7 @@ Rectangle {
             spacing: 6
             Ico { n: "voice"; sz: 16; col: r.cs.up ? Th.ok : Th.warn }
             Lbl {
-                text: r.cs.err ? "Call failed" : r.cs.up ? "Voice connected" : "Connecting"
+                text: r.cs.err ? "Call failed" : r.cs.up ? S.t("Voice connected") : S.t("Connecting")
                 color: r.cs.err ? Th.err : r.cs.up ? Th.ok : Th.warn
                 font.weight: Font.DemiBold
                 font.pixelSize: Th.fsS
@@ -57,7 +57,7 @@ Rectangle {
         y: 10
         n: "hang"
         red: true
-        tip: "Disconnect"
+        tip: S.t("Disconnect")
         onClicked: S.c.leave()
     }
     Row {
@@ -66,13 +66,13 @@ Rectangle {
         anchors.bottomMargin: 6
         spacing: 4
         Btn {
-            text: r.cs.live ? "Stop sharing" : "Share screen"
+            text: r.cs.live ? S.t("Stop sharing") : S.t("Share screen")
             ico: "screen"
             flat: !r.cs.live
             pri: !!r.cs.live
             height: 28
             onClicked: r.cs.live ? S.c.golive(false, "{}") : S.goLive()
         }
-        Btn { text: "Open"; flat: true; height: 28; onClicked: if (r.ch) S.open(r.ch.rid) }
+        Btn { text: S.t("Open"); flat: true; height: 28; onClicked: if (r.ch) S.open(r.ch.rid) }
     }
 }

@@ -9,7 +9,7 @@ Rectangle {
     signal pick(string v)
     readonly property string label: {
         const o = opts.find(x => x[0] === cur)
-        return o ? o[1] : opts.length ? opts[0][1] : ""
+        return S.t(o ? o[1] : opts.length ? opts[0][1] : "")
     }
     implicitWidth: mw
     implicitHeight: 32
@@ -30,6 +30,6 @@ Rectangle {
     Ctx {
         id: m
         w: r.width - 8
-        model: r.opts.map(o => ({ text: o[1], run: () => r.pick(o[0]) }))
+        model: r.opts.map(o => ({ text: S.t(o[1]), run: () => r.pick(o[0]) }))
     }
 }

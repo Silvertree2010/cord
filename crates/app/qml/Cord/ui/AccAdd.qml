@@ -151,13 +151,13 @@ ColumnLayout {
             width: parent.width - 24
             wrapMode: Text.Wrap
             elide: Text.ElideNone
-            text: "Third party clients are against Discord's Terms of Service. Your account could be suspended."
+            text: S.t("Third party clients are against Discord's Terms of Service. Your account could be suspended.")
             color: Th.tx2
         }
     }
     Btn {
         visible: r.sv === "dc" && !r.tos
-        text: "Continue"
+        text: S.t("Continue")
         pri: true
         height: 36
         onClicked: r.tos = true
@@ -189,27 +189,27 @@ ColumnLayout {
                 spacing: 8
                 visible: S.qr === "" && r.qerr === ""
                 BusyIndicator { anchors.horizontalCenter: parent.horizontalCenter; running: parent.visible; width: 28; height: 28 }
-                Lbl { text: "Waiting for code"; color: "#1c1f23"; anchors.horizontalCenter: parent.horizontalCenter }
+                Lbl { text: S.t("Waiting for code"); color: "#1c1f23"; anchors.horizontalCenter: parent.horizontalCenter }
             }
             Column {
                 anchors.centerIn: parent
                 spacing: 8
                 visible: r.qerr !== ""
                 width: 190
-                Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "Could not get a code"; color: "#b3342f"; font.weight: Font.DemiBold }
+                Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: S.t("Could not get a code"); color: "#b3342f"; font.weight: Font.DemiBold }
                 Lbl { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: r.qerr; color: "#1c1f23"; font.pixelSize: Th.fsS; wrapMode: Text.Wrap; elide: Text.ElideNone; maximumLineCount: 3 }
-                Btn { anchors.horizontalCenter: parent.horizontalCenter; text: "Retry"; onClicked: r.getQr() }
+                Btn { anchors.horizontalCenter: parent.horizontalCenter; text: S.t("Retry"); onClicked: r.getQr() }
             }
         }
-        Lbl { visible: S.qr !== "" && S.qrUsr === "" && r.qerr === ""; text: "Scan with the Discord app: Settings, Scan QR code"; color: Th.tx2 }
-        Lbl { visible: S.qrUsr !== "" && !S.cap; text: "Confirm the login on your phone as " + S.qrUsr; color: Th.ok }
-        Lbl { visible: !!S.cap; text: "Discord wants a captcha. Solve it in the window that opened."; color: Th.tx2 }
+        Lbl { visible: S.qr !== "" && S.qrUsr === "" && r.qerr === ""; text: S.t("Scan with the Discord app: Settings, Scan QR code"); color: Th.tx2 }
+        Lbl { visible: S.qrUsr !== "" && !S.cap; text: S.t("Confirm the login on your phone as ") + S.qrUsr; color: Th.ok }
+        Lbl { visible: !!S.cap; text: S.t("Discord wants a captcha. Solve it in the window that opened."); color: Th.tx2 }
         Loader {
             active: !!S.cap
             source: "Cap.qml"
             onStatusChanged: if (status === Loader.Error) r.qerr = "Captcha needs the QtWebView module"
         }
-        Btn { visible: S.qr !== "" && r.qerr === ""; text: "New code"; onClicked: r.getQr() }
+        Btn { visible: S.qr !== "" && r.qerr === ""; text: S.t("New code"); onClicked: r.getQr() }
     }
     ColumnLayout {
         visible: !(r.sv === "dc" && (r.mode === "qr" || !r.tos))
@@ -239,7 +239,7 @@ ColumnLayout {
         spacing: 8
         visible: !(r.sv === "dc" && (r.mode === "qr" || !r.tos))
         Btn {
-            text: r.busy ? "Signing in" : "Sign in"
+            text: r.busy ? S.t("Signing in") : S.t("Sign in")
             pri: true
             on: !r.busy && r.ready
             height: 36

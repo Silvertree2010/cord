@@ -19,8 +19,8 @@ Rectangle {
     property var rows: null
     property int asked: 0
     function gName(id) {
-        if (id === "online") return "Online"
-        if (id === "offline") return "Offline"
+        if (id === "online") return S.t("Online")
+        if (id === "offline") return S.t("Offline")
         const gd = S.gmap[r.g]
         const ro = gd && gd.roles ? gd.roles.find(x => S.raw(S.ridOf(x.id)) === id) : null
         return ro ? ro.name : id
@@ -101,11 +101,11 @@ Rectangle {
             off.sort(cmp)
             const out = []
             if (r.ch && r.ch.k === "Grp") {
-                out.push({ h: "Members — " + (on.length + off.length) })
+                out.push({ h: S.t("Members") + " — " + (on.length + off.length) })
                 out.push(...on, ...off)
             } else {
-                if (on.length) { out.push({ h: "Online — " + on.length }); out.push(...on) }
-                if (off.length) { out.push({ h: "Offline — " + off.length }); out.push(...off) }
+                if (on.length) { out.push({ h: S.t("Online") + " — " + on.length }); out.push(...on) }
+                if (off.length) { out.push({ h: S.t("Offline") + " — " + off.length }); out.push(...off) }
             }
             r.total = on.length + off.length
             r.grp = out
@@ -155,8 +155,8 @@ Rectangle {
             Ctx {
                 id: pm2
                 model: [
-                    { text: "Copy user ID", run: () => S.copy(r.dmU && r.dmU.id ? r.dmU.id.raw : "") },
-                    { text: "Copy username", run: () => S.copy(r.dmU ? r.dmU.name : "") }
+                    { text: S.t("Copy user ID"), run: () => S.copy(r.dmU && r.dmU.id ? r.dmU.id.raw : "") },
+                    { text: S.t("Copy username"), run: () => S.copy(r.dmU ? r.dmU.name : "") }
                 ]
             }
         }
@@ -189,7 +189,7 @@ Rectangle {
             }
         }
         Timer { id: slowT; interval: 900; running: r.total === 0; onTriggered: lm.show = true; onRunningChanged: if (!running) lm.show = false }
-        Lbl { id: lm; property bool show: false; anchors.centerIn: parent; visible: r.total === 0 && show; text: "Loading members"; color: Th.tx3 }
+        Lbl { id: lm; property bool show: false; anchors.centerIn: parent; visible: r.total === 0 && show; text: S.t("Loading members"); color: Th.tx3 }
     }
     Component {
         id: hd
