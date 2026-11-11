@@ -133,7 +133,7 @@ Rectangle {
                         spacing: 2
                         readonly property var ids: modelData[1].filter(x => r.hit(x))
                         visible: ids.length > 0
-                        Lbl { text: modelData[0]; color: Th.tx2; font.pixelSize: Th.fsS; font.weight: Font.DemiBold; leftPadding: 10; topPadding: 10; bottomPadding: 4 }
+                        Lbl { text: modelData[0].toUpperCase(); color: Th.tx2; font.pixelSize: Th.fsS - 1; font.weight: Font.Bold; font.letterSpacing: 0.6; leftPadding: 10; topPadding: 10; bottomPadding: 4 }
                         Repeater {
                             model: parent.ids
                             Rectangle {
