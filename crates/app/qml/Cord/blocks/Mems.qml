@@ -188,7 +188,8 @@ Rectangle {
                 sourceComponent: it.h ? hd : row
             }
         }
-        Lbl { anchors.centerIn: parent; visible: r.total === 0; text: "Loading members"; color: Th.tx3 }
+        Timer { id: slowT; interval: 900; running: r.total === 0; onTriggered: lm.show = true; onRunningChanged: if (!running) lm.show = false }
+        Lbl { id: lm; property bool show: false; anchors.centerIn: parent; visible: r.total === 0 && show; text: "Loading members"; color: Th.tx3 }
     }
     Component {
         id: hd
@@ -247,7 +248,7 @@ Rectangle {
                     RoleIco { role: r.g ? S.roleIcon(r.g, it.uid, it.m.roles) : null; sz: 16; anchors.verticalCenter: parent.verticalCenter }
                     TagPill { id: mtp; tag: it.m.usr.tag || null; fs: 10; opacity: rw.onl ? 1 : 0.6; anchors.verticalCenter: parent.verticalCenter }
                 }
-                Lbl { visible: !!(rw.p && rw.p.act); width: parent.width; text: rw.p && rw.p.act ? rw.p.act : ""; color: Th.tx3; font.pixelSize: 11 }
+                Lbl { visible: !!(rw.p && rw.p.act); width: parent.width; text: rw.p && rw.p.act ? rw.p.act : ""; color: Th.tx3; font.pixelSize: Th.fsT }
             }
             Row {
                 id: pl

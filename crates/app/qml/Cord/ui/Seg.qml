@@ -28,7 +28,7 @@ Rectangle {
                 height: 26
                 radius: Th.rs - 2
                 color: on ? Th.bg4 : sm.containsMouse ? Th.hov : "transparent"
-                Behavior on color { ColorAnimation { duration: 120 } }
+                Behavior on color { ColorAnimation { duration: Th.mF } }
                 activeFocusOnTab: true
                 Accessible.role: Accessible.Button
                 Accessible.name: modelData[1]

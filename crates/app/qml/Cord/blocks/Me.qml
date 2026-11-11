@@ -49,7 +49,7 @@ Rectangle {
                     radius: 4
                     color: Th.bg4
                     anchors.verticalCenter: parent.verticalCenter
-                    Lbl { id: dc; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: 10; font.weight: Font.DemiBold }
+                    Lbl { id: dc; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }
                 }
             }
             Lbl {

@@ -33,15 +33,49 @@ ApplicationWindow {
         const sd = Qt.application.arguments.indexOf("--dm")
         if (sd >= 0) { const c = Qt.application.arguments[sd + 1]; Qt.callLater(() => { S.sel = "home"; S.open(c) }) }
         if (sh >= 0) shotT.out = Qt.application.arguments[sh + 1] || "/tmp/cord.png"
+        const ss = Qt.application.arguments.indexOf("--steps")
+        if (ss >= 0) {
+            stepT.q = Qt.application.arguments[ss + 1].split(",").map(x => { const p = x.split("@"); return { a: p[0], t: +(p[1] || 0) } })
+            stepT.interval = Math.max(1, stepT.q[0].t)
+            stepT.start()
+        }
     }
 
+    function firstUsr() {
+        for (const c of Object.values(S.chans || {})) if (c && c.rcp && c.rcp.length) return c.rcp[0]
+        return null
+    }
+
+    readonly property var acts: ({
+        emo: () => { emoP.cb = null; emoP.q = ""; emoP.x = win.width - emoP.width - 40; emoP.y = win.height - emoP.height - 90; emoP.open() },
+        prof: () => S.prof(win.firstUsr(), root),
+        quick: () => S.qk = true,
+        unquick: () => S.qk = false,
+        set: () => S.showSet = true,
+        unset: () => S.showSet = false,
+        look: () => S.setPage = "look",
+        feat: () => S.setPage = "feat",
+        edit: () => S.edit = true,
+        unedit: () => S.edit = false,
+        ctx: () => addM.show(root, 300, 200),
+        home: () => S.pick("home"),
+        g0: () => S.pick("dc:1:g0"),
+        mx: () => S.pick("mx:2:g0"),
+        close: () => U.closePop(),
+        quit: () => Qt.quit()
+    })
+
     Timer {
-        id: shotT
-        property string out: ""
-        property string preset: ""
-        interval: 2500
-        running: out !== ""
-        onTriggered: (Qt.application.arguments.indexOf("--emo") >= 0 ? emoP.body : S.setup ? stp : S.showSet ? setL : root).grabToImage(r => { r.saveToFile(out); Qt.quit() })
+        id: stepT
+        property var q: []
+        property int i: 0
+        onTriggered: {
+            const s = q[i]
+            if (win.acts[s.a]) win.acts[s.a](); else if (s.a.indexOf(":") > 0) S.pick(s.a); else console.warn("step?", s.a)
+            console.log("STEP", s.a, s.t, Date.now())
+            i++
+            if (i < q.length) { interval = Math.max(1, q[i].t - s.t); start() }
+        }
     }
 
     FontLoader { source: "Cord/fonts/Figtree-Regular.ttf" }
@@ -59,6 +93,8 @@ ApplicationWindow {
         readonly property real pad: S.edit ? 0 : Th.gap / 2 + 2
         anchors.leftMargin: pad
         anchors.rightMargin: pad
+        Behavior on anchors.leftMargin { NumberAnimation { duration: Th.mM; easing.type: Easing.OutCubic } }
+        Behavior on anchors.rightMargin { NumberAnimation { duration: Th.mM; easing.type: Easing.OutCubic } }
         anchors.bottomMargin: (win.bar ? callBar.height : 0) + pad
         anchors.topMargin: S.edit ? tb.height : pad
         n: S.lay
@@ -114,7 +150,9 @@ ApplicationWindow {
 
     Rectangle {
         id: tb
-        visible: S.edit
+        visible: opacity > 0.01
+        opacity: S.edit ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Th.mM; easing.type: Easing.OutCubic } }
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
@@ -167,14 +205,18 @@ ApplicationWindow {
     Loader {
         id: setL
         anchors.fill: parent
-        active: S.showSet
+        active: S.showSet || opacity > 0.01
+        opacity: S.showSet ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Th.mF; easing.type: Easing.OutCubic } }
         source: "Cord/Settings.qml"
         z: 70
     }
     Loader {
         id: qs
         anchors.fill: parent
-        active: S.qk
+        active: S.qk || opacity > 0.01
+        opacity: S.qk ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Th.mF; easing.type: Easing.OutCubic } }
         source: "Cord/Quick.qml"
         z: 75
     }

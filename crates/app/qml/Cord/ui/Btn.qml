@@ -25,7 +25,7 @@ Rectangle {
     Keys.onEnterPressed: e => { if (on && enter) r.clicked(); else e.accepted = false }
     Keys.onSpacePressed: if (on) r.clicked()
     color: pri ? (ma.pressed ? Qt.darker(Th.ac, 1.08) : ma.containsMouse ? Qt.lighter(Th.ac, 1.06) : Th.ac) : dng ? (ma.containsMouse ? Qt.lighter(Th.err, 1.08) : Th.err) : flat || gh ? (ma.containsMouse ? Th.hov : "transparent") : out ? (ma.containsMouse ? Th.hov : "transparent") : (ma.containsMouse ? Th.bg4 : Th.bg3)
-    Behavior on color { ColorAnimation { duration: 120 } }
+    Behavior on color { ColorAnimation { duration: Th.mF } }
     scale: ma.pressed ? 0.97 : 1
     Behavior on scale { NumberAnimation { duration: Th.mF; easing.type: Easing.OutCubic } }
     border.color: out ? Th.ln : "transparent"

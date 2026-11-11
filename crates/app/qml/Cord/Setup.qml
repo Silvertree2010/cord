@@ -57,7 +57,7 @@ Rectangle {
                         Keys.onReturnPressed: r.pre = modelData
                         Keys.onSpacePressed: r.pre = modelData
                         LayPrev { x: 10; y: 10; width: parent.width - 20; height: 74; n: L.presets[modelData] }
-                        Lbl { x: 12; y: 92; text: L.presets[modelData].name; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        Lbl { x: 12; y: 92; text: L.presets[modelData].name; font.pixelSize: Th.fsXS; font.weight: Font.DemiBold }
                         MouseArea { id: pm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: r.pre = modelData; onDoubleClicked: { r.pre = modelData; S.preset(r.pre); r.step = 1 } }
                     }
                 }
@@ -88,7 +88,7 @@ Rectangle {
                                 radius: 4
                                 color: Th.bg4
                                 anchors.verticalCenter: parent.verticalCenter
-                                Lbl { id: dl; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: 10; font.weight: Font.DemiBold }
+                                Lbl { id: dl; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }
                             }
                         }
                     }

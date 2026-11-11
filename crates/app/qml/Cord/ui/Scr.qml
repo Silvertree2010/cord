@@ -11,8 +11,8 @@ ScrollBar {
         radius: width / 2
         color: r.pressed ? Th.tx3 : r.hovered ? Th.tx3 : Th.bg4
         opacity: r.active || r.hovered ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 220 } }
-        Behavior on implicitWidth { NumberAnimation { duration: 120 } }
+        Behavior on opacity { NumberAnimation { duration: Th.mM } }
+        Behavior on implicitWidth { NumberAnimation { duration: Th.mF } }
     }
     background: Item {}
 }

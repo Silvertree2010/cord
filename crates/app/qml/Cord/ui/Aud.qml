@@ -44,7 +44,7 @@ Rectangle {
         anchors.rightMargin: 12
         anchors.verticalCenter: parent.verticalCenter
         spacing: 6
-        Lbl { width: parent.width; text: r.name; color: Th.tx2; font.pixelSize: 11 }
+        Lbl { width: parent.width; text: r.name; color: Th.tx2; font.pixelSize: Th.fsT }
         Item {
             width: parent.width
             height: 12
@@ -56,7 +56,7 @@ Rectangle {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: m => { if (mp.duration > 0) mp.position = mp.duration * m.x / width }
             }
-            Lbl { id: tl; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: r.t(mp.position) + (mp.duration > 0 ? " / " + r.t(mp.duration) : ""); color: Th.tx3; font.pixelSize: 11 }
+            Lbl { id: tl; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: r.t(mp.position) + (mp.duration > 0 ? " / " + r.t(mp.duration) : ""); color: Th.tx3; font.pixelSize: Th.fsT }
         }
     }
 }

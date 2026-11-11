@@ -222,7 +222,7 @@ Item {
                     width: parent.width - (r.cur && r.cur.st === "fail" ? 140 : 0)
                     spacing: 2
                     Lbl { width: parent.width; text: r.cur ? (r.cur.txt || (r.cur.files.length + " attachment" + (r.cur.files.length === 1 ? "" : "s"))) : ""; elide: Text.ElideRight; maximumLineCount: 2; wrapMode: Text.Wrap }
-                    Lbl { width: parent.width; text: r.cur && r.cur.st === "fail" ? r.cur.err : "Sending…"; color: r.cur && r.cur.st === "fail" ? Th.err : Th.tx3; font.pixelSize: 12 }
+                    Lbl { width: parent.width; text: r.cur && r.cur.st === "fail" ? r.cur.err : "Sending…"; color: r.cur && r.cur.st === "fail" ? Th.err : Th.tx3; font.pixelSize: Th.fsXS }
                 }
                 Row {
                     visible: !!r.cur && r.cur.st === "fail"
@@ -260,7 +260,7 @@ Item {
                         x: 6
                         width: parent.width - 12
                         text: decodeURIComponent(modelData.split("/").pop())
-                        font.pixelSize: 11
+                        font.pixelSize: Th.fsT
                     }
                     IBtn {
                         anchors.right: parent.right
@@ -377,7 +377,7 @@ Item {
                     color: gbm.containsMouse ? Th.hov : "transparent"
                     border.color: gbm.containsMouse ? Th.tx : Th.tx2
                     border.width: 1.5
-                    Lbl { anchors.centerIn: parent; text: "GIF"; font.pixelSize: 10; font.weight: Font.Bold; color: gbm.containsMouse ? Th.tx : Th.tx2 }
+                    Lbl { anchors.centerIn: parent; text: "GIF"; font.pixelSize: Th.fsP; font.weight: Font.Bold; color: gbm.containsMouse ? Th.tx : Th.tx2 }
                     MouseArea {
                         id: gbm
                         anchors.fill: parent
@@ -452,7 +452,7 @@ Item {
                 width: parent.width - 8 - (r.stat ? rb.width + 8 : 0)
                 text: r.stat ? r.stat : parent.ty.length === 0 ? "" : parent.ty.length > 3 ? "Several people are typing…" : parent.ty.map(t => t.n).join(", ") + (parent.ty.length > 1 ? " are typing…" : " is typing…")
                 color: r.stat ? (r.emptyEdit ? Th.tx2 : Th.err) : parent.hid ? Th.tx3 : Th.tx2
-                font.pixelSize: 12
+                font.pixelSize: Th.fsXS
                 elide: Text.ElideRight
             }
             Lbl {
@@ -463,7 +463,7 @@ Item {
                 anchors.rightMargin: 4
                 text: r.emptyEdit ? "Delete" : "Retry"
                 color: r.emptyEdit ? Th.err : Th.ac
-                font.pixelSize: 12
+                font.pixelSize: Th.fsXS
                 font.weight: Font.DemiBold
                 MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: r.emptyEdit ? r.delEdit() : r.retry() }
             }

@@ -48,7 +48,7 @@ Rectangle {
         y: 12
         width: r.width - 32 - (r.sideThumb ? 92 : 0)
         spacing: 6
-        Lbl { visible: !!r.e.prov; text: r.e.prov || ""; color: Th.tx3; font.pixelSize: 11; width: parent.width }
+        Lbl { visible: !!r.e.prov; text: r.e.prov || ""; color: Th.tx3; font.pixelSize: Th.fsT; width: parent.width }
         Row {
             visible: !!r.e.auth
             spacing: 8
@@ -150,7 +150,7 @@ Rectangle {
             Lbl {
                 text: (r.e.foot || "") + (r.e.foot && r.e.ts ? "  •  " : "") + (r.e.ts ? F.time(r.e.ts) : "")
                 color: Th.tx3
-                font.pixelSize: 11
+                font.pixelSize: Th.fsT
                 width: parent.width - (r.e.foot_ic ? 24 : 0)
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -199,7 +199,7 @@ Rectangle {
             height: 20
             radius: 5
             color: Th.a("#000000", 0.65)
-            Lbl { id: gl; anchors.centerIn: parent; text: "GIF"; color: "#ffffff"; font.pixelSize: 11; font.weight: Font.Bold }
+            Lbl { id: gl; anchors.centerIn: parent; text: "GIF"; color: "#ffffff"; font.pixelSize: Th.fsT; font.weight: Font.Bold }
         }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: r.gifv ? S.view(r.e.vid, true) : r.e.vid ? S.view(r.e.vid, true) : S.view(im.source) }
     }

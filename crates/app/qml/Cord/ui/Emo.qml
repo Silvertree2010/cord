@@ -61,7 +61,7 @@ Popup {
             visible: !r.q && r.recent.length > 0
             width: parent.width
             spacing: 4
-            Lbl { text: "Recent"; color: Th.tx3; font.pixelSize: 12; font.weight: Font.DemiBold }
+            Lbl { text: "Recent"; color: Th.tx3; font.pixelSize: Th.fsXS; font.weight: Font.DemiBold }
             Row {
                 spacing: 2
                 Repeater {
@@ -84,7 +84,7 @@ Popup {
             spacing: 6
             ListView {
                 id: nav
-                visible: !r.q
+                visible: !r.q && r.secs.length > 1
                 width: visible ? 36 : 0
                 height: parent.height
                 clip: true
@@ -113,7 +113,7 @@ Popup {
                 readonly property real cw: (width - 8) / cols
                 delegate: Column {
                     width: sl.width
-                    Lbl { text: modelData.t; color: Th.tx3; font.pixelSize: 12; font.weight: Font.DemiBold; width: parent.width; topPadding: 6; bottomPadding: 4; elide: Text.ElideRight }
+                    Lbl { text: modelData.t; color: Th.tx3; font.pixelSize: Th.fsXS; font.weight: Font.DemiBold; width: parent.width; topPadding: 6; bottomPadding: 4; elide: Text.ElideRight }
                     Grid {
                         columns: sl.cols
                         Repeater {

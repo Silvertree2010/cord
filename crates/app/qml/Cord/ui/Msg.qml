@@ -119,7 +119,7 @@ Item {
             height: 28
             spacing: 4
             Rectangle { width: (parent.width - dl.implicitWidth - 16 - (r.nw ? nwp.width + 8 : 0)) / 2; height: 2; radius: 1; color: r.nw ? Th.err : Th.ln; anchors.verticalCenter: parent.verticalCenter }
-            Lbl { id: dl; text: F.day(r.m.ts || 0); color: r.nw ? Th.err : Th.tx2; font.pixelSize: 12; font.weight: Font.Medium; anchors.verticalCenter: parent.verticalCenter }
+            Lbl { id: dl; text: F.day(r.m.ts || 0); color: r.nw ? Th.err : Th.tx2; font.pixelSize: Th.fsXS; font.weight: Font.Medium; anchors.verticalCenter: parent.verticalCenter }
             Rectangle { width: (parent.width - dl.implicitWidth - 16 - (r.nw ? nwp.width + 8 : 0)) / 2; height: 2; radius: 1; color: r.nw ? Th.err : Th.ln; anchors.verticalCenter: parent.verticalCenter }
             Rectangle {
                 id: nwp
@@ -129,7 +129,7 @@ Item {
                 radius: 8
                 color: Th.err
                 anchors.verticalCenter: parent.verticalCenter
-                Lbl { id: nwl; anchors.centerIn: parent; text: "NEW"; color: "white"; font.pixelSize: 10; font.weight: Font.Bold }
+                Lbl { id: nwl; anchors.centerIn: parent; text: "NEW"; color: "white"; font.pixelSize: Th.fsP; font.weight: Font.Bold }
             }
         }
 
@@ -192,7 +192,7 @@ Item {
                 horizontalAlignment: Text.AlignRight
                 text: new Date(r.m.ts || 0).toLocaleTimeString(Qt.locale(), "HH:mm")
                 color: Th.tx3
-                font.pixelSize: 11
+                font.pixelSize: Th.fsT
             }
             Row {
                 id: hd
@@ -218,13 +218,13 @@ Item {
                     radius: 3
                     color: Th.ac
                     anchors.verticalCenter: parent.verticalCenter
-                    Lbl { id: bt; anchors.centerIn: parent; text: "BOT"; color: Th.acTx; font.pixelSize: 9; font.weight: Font.Bold }
+                    Lbl { id: bt; anchors.centerIn: parent; text: "BOT"; color: Th.acTx; font.pixelSize: Th.fsP - 1; font.weight: Font.Bold }
                 }
                 Lbl {
                     id: tm
                     text: F.time(r.m.ts || 0)
                     color: Th.tx3
-                    font.pixelSize: 11
+                    font.pixelSize: Th.fsT
                     y: 4
                 }
                 Rectangle {
@@ -234,7 +234,7 @@ Item {
                     radius: 3
                     color: Th.bg4
                     anchors.verticalCenter: parent.verticalCenter
-                    Lbl { id: dt; anchors.centerIn: parent; text: "deleted"; color: Th.tx2; font.pixelSize: 10 }
+                    Lbl { id: dt; anchors.centerIn: parent; text: "deleted"; color: Th.tx2; font.pixelSize: Th.fsP }
                 }
             }
             Column {
@@ -296,7 +296,7 @@ Item {
                     Lbl {
                         text: r.showH ? "Hide edit history" : "Edit history (" + (r.m.hist || []).length + ")"
                         color: Th.tx3
-                        font.pixelSize: 11
+                        font.pixelSize: Th.fsT
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: r.showH = !r.showH }
                     }
                     Repeater {
@@ -361,7 +361,7 @@ Item {
                                 spacing: 4
                                 Image { visible: !!modelData.emo.url; source: modelData.emo.url || ""; width: 18; height: 18; sourceSize: Qt.size(36, 36); anchors.verticalCenter: parent.verticalCenter }
                                 Lbl { visible: !modelData.emo.url; text: modelData.emo.name; font.pixelSize: 15; anchors.verticalCenter: parent.verticalCenter }
-                                Lbl { text: modelData.n; color: modelData.me ? Th.ac : Th.tx2; font.pixelSize: 12; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
+                                Lbl { text: modelData.n; color: modelData.me ? Th.ac : Th.tx2; font.pixelSize: Th.fsXS; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
                             }
                             MouseArea {
                                 id: rm
@@ -400,7 +400,7 @@ Item {
                 radius: 13
                 color: Th.a("#000000", 0.7)
                 z: 2
-                Lbl { id: spl; anchors.centerIn: parent; text: "SPOILER"; color: "#fff"; font.pixelSize: 12; font.weight: Font.Bold }
+                Lbl { id: spl; anchors.centerIn: parent; text: "SPOILER"; color: "#fff"; font.pixelSize: Th.fsXS; font.weight: Font.Bold }
             }
             MouseArea { anchors.fill: parent; z: 3; cursorShape: Qt.PointingHandCursor; onClicked: ia.sp ? ia.sp = false : S.view(a.url) }
         }
@@ -464,7 +464,7 @@ Item {
                 Column {
                     anchors.verticalCenter: parent.verticalCenter
                     Lbl { text: a.name; color: Th.ac; width: 300 }
-                    Lbl { text: F.size(a.size || 0); color: Th.tx3; font.pixelSize: 11 }
+                    Lbl { text: F.size(a.size || 0); color: Th.tx3; font.pixelSize: Th.fsT }
                 }
             }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: Qt.openUrlExternally(a.url) }

@@ -39,8 +39,8 @@ Item {
             width: modelData.w
             height: modelData.h
             radius: 3
-            color: modelData.b === "chat" || modelData.b === "stage" ? Th.bg4 : Th.bg3
-            border.color: Th.a(Th.tx3, 0.3)
+            color: modelData.b === "chat" || modelData.b === "stage" ? Th.a(Th.ac, 0.22) : Th.bg4
+            border.color: Th.a(Th.tx2, 0.35)
             Rectangle {
                 visible: modelData.b === "chat"
                 anchors.bottom: parent.bottom

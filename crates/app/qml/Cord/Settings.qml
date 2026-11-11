@@ -223,7 +223,7 @@ Rectangle {
                         Ico { anchors.centerIn: parent; n: "x"; sz: 16; col: xm.containsMouse ? Th.tx : Th.tx2 }
                         MouseArea { id: xm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.showSet = false }
                     }
-                    Lbl { anchors.horizontalCenter: parent.horizontalCenter; text: "ESC"; color: Th.tx2; font.pixelSize: 11; font.weight: Font.DemiBold }
+                    Lbl { anchors.horizontalCenter: parent.horizontalCenter; text: "ESC"; color: Th.tx2; font.pixelSize: Th.fsT; font.weight: Font.DemiBold }
                 }
             }
             Rectangle { x: pane.cx; y: hd.height; width: pane.cw; height: 1; color: Th.ln }
@@ -323,7 +323,7 @@ Rectangle {
                     radius: 3
                     color: Th.a(Th.err, 0.16)
                     anchors.verticalCenter: parent.verticalCenter
-                    Lbl { id: tgl; anchors.centerIn: parent; text: op.tag; color: Th.err; font.pixelSize: 10; font.weight: Font.DemiBold }
+                    Lbl { id: tgl; anchors.centerIn: parent; text: op.tag; color: Th.err; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }
                 }
             }
             Lbl { visible: op.d !== ""; text: op.d; color: Th.tx2; font.pixelSize: Th.fsS; wrapMode: Text.WrapAtWordBoundaryOrAnywhere; elide: Text.ElideNone; width: parent.width }
@@ -371,14 +371,14 @@ Rectangle {
                                 radius: 4
                                 color: Th.bg4
                                 anchors.verticalCenter: parent.verticalCenter
-                                Lbl { id: dl; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: 10; font.weight: Font.DemiBold }
+                                Lbl { id: dl; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: Th.fsP; font.weight: Font.DemiBold }
                             }
                         }
                         Row {
                             spacing: 8
                             Badge { sv: modelData.svc; txt: true; anchors.verticalCenter: parent.verticalCenter }
                             Rectangle { width: 8; height: 8; radius: 4; color: S.up.indexOf(modelData.id) >= 0 ? Th.ok : Th.tx3; anchors.verticalCenter: parent.verticalCenter }
-                            Lbl { text: S.up.indexOf(modelData.id) >= 0 ? "Online" : "Offline"; color: Th.tx3; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
+                            Lbl { text: S.up.indexOf(modelData.id) >= 0 ? "Online" : "Offline"; color: Th.tx3; font.pixelSize: Th.fsT; anchors.verticalCenter: parent.verticalCenter }
                         }
                     }
                     Btn {
@@ -450,7 +450,7 @@ Rectangle {
                         Keys.onReturnPressed: S.preset(modelData)
                         Keys.onSpacePressed: S.preset(modelData)
                         LayPrev { x: 10; y: 10; width: parent.width - 20; height: 88; n: L.presets[modelData] }
-                        Lbl { x: 12; y: 106; text: L.presets[modelData].name; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        Lbl { x: 12; y: 106; text: L.presets[modelData].name; font.pixelSize: Th.fsXS; font.weight: Font.DemiBold }
                         MouseArea { id: pm2; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.preset(modelData) }
                     }
                 }

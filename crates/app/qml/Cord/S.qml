@@ -6,7 +6,7 @@ import "Lay.js" as L
 QtObject {
     id: s
 
-    readonly property int api: 1
+    readonly property int apiVer: 1
 
     property Core c: Core {
         onDl: d => s.onBatch(d)

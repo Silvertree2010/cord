@@ -228,7 +228,7 @@ Item {
                             radius: 5
                             color: modelData.col ? "#" + ("000000" + modelData.col.toString(16)).slice(-6) : Th.tx2
                         }
-                        Lbl { id: rl; x: 22; anchors.verticalCenter: parent.verticalCenter; text: modelData.name; font.pixelSize: 12; font.weight: Font.Medium }
+                        Lbl { id: rl; x: 22; anchors.verticalCenter: parent.verticalCenter; text: modelData.name; font.pixelSize: Th.fsXS; font.weight: Font.Medium }
                     }
                 }
             }
@@ -262,7 +262,7 @@ Item {
                                 Ico { anchors.centerIn: parent; n: "check"; sz: 10; col: Th.acTx }
                             }
                         }
-                        Lbl { text: modelData.t.charAt(0).toUpperCase() + modelData.t.slice(1); color: Th.tx2; font.pixelSize: 11 }
+                        Lbl { text: modelData.t.charAt(0).toUpperCase() + modelData.t.slice(1); color: Th.tx2; font.pixelSize: Th.fsT }
                     }
                     Ico { visible: !!modelData.url; anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; n: "link"; sz: 15; col: Th.tx2 }
                     MouseArea {

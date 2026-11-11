@@ -20,7 +20,7 @@ Item {
         color: r.on ? Th.ac : Th.bg4
         border.color: r.on ? "transparent" : Th.ln
         border.width: 1
-        Behavior on color { ColorAnimation { duration: S.f("anim") ? 120 : 0 } }
+        Behavior on color { ColorAnimation { duration: Th.mF } }
         Rectangle {
             width: 14
             height: 14
@@ -28,7 +28,7 @@ Item {
             y: 3
             x: r.on ? parent.width - width - 3 : 3
             color: r.on ? "#ffffff" : Th.tx2
-            Behavior on x { NumberAnimation { duration: S.f("anim") ? 120 : 0; easing.type: Easing.OutCubic } }
+            Behavior on x { NumberAnimation { duration: Th.mF; easing.type: Easing.OutCubic } }
         }
     }
     Rectangle {

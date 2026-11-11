@@ -117,7 +117,7 @@ Rectangle {
                 height: 18
                 radius: 4
                 color: Th.bg4
-                Lbl { id: dc; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: 11; font.weight: Font.DemiBold }
+                Lbl { id: dc; anchors.centerIn: parent; text: "Demo"; color: Th.tx2; font.pixelSize: Th.fsT; font.weight: Font.DemiBold }
             }
             MouseArea {
                 anchors.fill: parent
@@ -208,7 +208,7 @@ Rectangle {
                     font.pixelSize: Th.fsS - 1
                     font.weight: Font.Bold
                     font.letterSpacing: 0.4
-                    Behavior on color { ColorAnimation { duration: 90 } }
+                    Behavior on color { ColorAnimation { duration: Th.mF } }
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -261,7 +261,7 @@ Rectangle {
                     Rectangle { x: 0; width: 1.5; height: parent.height; color: Th.ln }
                     Rectangle { x: 0; y: parent.height - 1.5; width: 10; height: 1.5; color: Th.ln }
                 }
-                Behavior on color { ColorAnimation { duration: 90 } }
+                Behavior on color { ColorAnimation { duration: Th.mF } }
                 opacity: ch.hidden ? 0.55 : 1
                 Row {
                     x: 8
@@ -314,7 +314,7 @@ Rectangle {
                         radius: 8
                         color: Th.mr
                         anchors.verticalCenter: parent.verticalCenter
-                        Lbl { id: mn; anchors.centerIn: parent; text: u ? u.ment : ""; color: "#fff"; font.pixelSize: 11; font.weight: Font.Bold }
+                        Lbl { id: mn; anchors.centerIn: parent; text: u ? u.ment : ""; color: "#fff"; font.pixelSize: Th.fsT; font.weight: Font.Bold }
                     }
 
                 }
@@ -372,7 +372,7 @@ Rectangle {
                         radius: 4
                         color: Th.err
                         anchors.verticalCenter: parent.verticalCenter
-                        Lbl { id: lt; anchors.centerIn: parent; text: "LIVE"; color: "#fff"; font.pixelSize: 10; font.weight: Font.Bold }
+                        Lbl { id: lt; anchors.centerIn: parent; text: "LIVE"; color: "#fff"; font.pixelSize: Th.fsP; font.weight: Font.Bold }
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { S.c.watch(parent.parent.uid, true); S.open(ch.rid) } }
                     }
                 }
@@ -459,7 +459,7 @@ Rectangle {
                 anchors.right: parent.right
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
-                Lbl { id: mn2; anchors.centerIn: parent; text: u ? u.ment : ""; color: "#fff"; font.pixelSize: 11; font.weight: Font.Bold }
+                Lbl { id: mn2; anchors.centerIn: parent; text: u ? u.ment : ""; color: "#fff"; font.pixelSize: Th.fsT; font.weight: Font.Bold }
             }
             Ico {
                 id: xb

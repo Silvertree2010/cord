@@ -42,6 +42,9 @@ QtObject {
     readonly property color mr: Qt.darker(err, 1.35)
     readonly property real sp: 8 * dens
     readonly property real fsS: fs - 2
+    readonly property real fsXS: fs - 3
+    readonly property real fsT: fs - 4
+    readonly property real fsP: fs - 5
     readonly property real fsL: fs + 2
     readonly property real fsXL: fs + 6
 

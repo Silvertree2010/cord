@@ -138,7 +138,7 @@ Rectangle {
                     anchors.fill: parent
                     radius: r.isz * 0.28
                     color: ft.open ? "transparent" : fm.containsMouse ? Qt.lighter(Th.bg4, 1.15) : Th.bg4
-                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on color { ColorAnimation { duration: Th.mF } }
                 }
                 Ico { visible: ft.open; anchors.centerIn: parent; n: "folder"; sz: 24; col: row.fc }
                 Grid {
@@ -180,7 +180,7 @@ Rectangle {
                     anchors.right: parent.right
                     anchors.top: parent.top
                     anchors.margins: -5
-                    Lbl { id: fmt; anchors.centerIn: parent; text: ft.un.m > 99 ? "99+" : ft.un.m; color: "#fff"; font.pixelSize: 10; font.weight: Font.Bold }
+                    Lbl { id: fmt; anchors.centerIn: parent; text: ft.un.m > 99 ? "99+" : ft.un.m; color: "#fff"; font.pixelSize: Th.fsP; font.weight: Font.Bold }
                 }
                 MouseArea { id: fm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.toggleFold(row.f.id) }
                 Tip { text: row.f ? (row.f.name || modelData.gs.map(g => g.name).slice(0, 3).join(", ")) : ""; hov: fm.containsMouse; side: r.hz ? "b" : "r" }
@@ -315,7 +315,7 @@ Rectangle {
             anchors.fill: parent
             radius: ic.rad
             color: ic.cur && ic.ico !== "" ? Th.ac : ic.cur ? Qt.lighter(Th.bg4, 1.2) : ma.containsMouse ? Qt.lighter(Th.bg4, 1.15) : Th.bg4
-            Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on color { ColorAnimation { duration: Th.mF } }
             visible: ic.ico !== "" || ic.img === ""
             Ico {
                 visible: ic.ico !== ""
@@ -379,7 +379,7 @@ Rectangle {
                 anchors.centerIn: parent
                 text: ic.ment > 99 ? "99+" : ic.ment
                 color: "#fff"
-                font.pixelSize: 10
+                font.pixelSize: Th.fsP
                 font.weight: Font.Bold
             }
         }

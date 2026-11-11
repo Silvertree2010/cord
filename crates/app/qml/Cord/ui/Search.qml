@@ -76,7 +76,7 @@ Popup {
                     visible: !!r.ch && !!r.ch.grid
                     text: "#" + S.chName(parent.mc)
                     color: Th.tx2
-                    font.pixelSize: 12
+                    font.pixelSize: Th.fsXS
                     font.weight: Font.DemiBold
                 }
                 Rectangle {

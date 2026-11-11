@@ -15,7 +15,8 @@ Item {
     visible: shown
     clip: !S.edit
     readonly property bool card: !S.edit
-    readonly property real gap: card ? Th.gap / 2 : 0
+    property real gap: card ? Th.gap / 2 : 0
+    Behavior on gap { NumberAnimation { duration: Th.mM; easing.type: Easing.OutCubic } }
     readonly property bool deep: r.n.b === "mems"
     Rectangle {
         id: cardBg
@@ -38,6 +39,7 @@ Item {
         id: ld
         anchors.fill: parent
         anchors.topMargin: S.edit ? r.strip : r.gap
+        Behavior on anchors.topMargin { NumberAnimation { duration: Th.mM; easing.type: Easing.OutCubic } }
         anchors.bottomMargin: r.gap
         anchors.rightMargin: r.gap
         anchors.leftMargin: r.gap

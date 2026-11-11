@@ -58,7 +58,7 @@ Rectangle {
                 height: 56
                 radius: Th.rs
                 color: ma.containsMouse ? Th.hov : "transparent"
-                Behavior on color { ColorAnimation { duration: 90 } }
+                Behavior on color { ColorAnimation { duration: Th.mF } }
                 Av {
                     id: av
                     x: 12
@@ -88,7 +88,7 @@ Rectangle {
                     width: Math.max(18, ibn.implicitWidth + 10)
                     radius: 9
                     color: Th.mr
-                    Lbl { id: ibn; anchors.centerIn: parent; text: modelData.u.ment > 99 ? "99+" : modelData.u.ment; color: "#fff"; font.pixelSize: 11; font.weight: Font.Bold }
+                    Lbl { id: ibn; anchors.centerIn: parent; text: modelData.u.ment > 99 ? "99+" : modelData.u.ment; color: "#fff"; font.pixelSize: Th.fsT; font.weight: Font.Bold }
                 }
                 Rectangle {
                     visible: modelData.u.ment === 0 && modelData.u.n > 0

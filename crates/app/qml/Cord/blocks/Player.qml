@@ -29,7 +29,7 @@ Rectangle {
         y: 10
         spacing: 1
         Lbl { width: parent.width; text: r.p ? r.p.title : ""; font.weight: Font.DemiBold; font.pixelSize: Th.fsS }
-        Lbl { width: parent.width; text: r.p ? r.p.artist : ""; color: Th.tx3; font.pixelSize: 11 }
+        Lbl { width: parent.width; text: r.p ? r.p.artist : ""; color: Th.tx3; font.pixelSize: Th.fsT }
         Row {
             spacing: 0
             IBtn { sz: 26; isz: 14; n: "prev"; onClicked: S.c.media("prev") }

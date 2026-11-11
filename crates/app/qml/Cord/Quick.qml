@@ -137,7 +137,7 @@ Rectangle {
                         y: 8
                         text: modelData.h || ""
                         color: Th.tx3
-                        font.pixelSize: 12
+                        font.pixelSize: Th.fsXS
                         font.weight: Font.DemiBold
                     }
                     Rectangle {
@@ -167,7 +167,7 @@ Rectangle {
                             horizontalAlignment: Text.AlignRight
                             text: modelData.e ? modelData.e.sub : ""
                             color: Th.tx2
-                            font.pixelSize: 12
+                            font.pixelSize: Th.fsXS
                         }
                         MouseArea { anchors.fill: parent; hoverEnabled: true; onEntered: r.cur = modelData.i; onClicked: r.go(modelData.e) }
                     }

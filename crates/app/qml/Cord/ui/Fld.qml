@@ -23,7 +23,7 @@ TextField {
         color: r.activeFocus ? Th.bg3 : Qt.darker(Th.bg3, Th.dark ? 1.12 : 1.0)
         border.color: r.activeFocus ? Th.a(Th.ac, 0.7) : Th.ln
         border.width: 1
-        Behavior on border.color { ColorAnimation { duration: 120 } }
+        Behavior on border.color { ColorAnimation { duration: Th.mF } }
     }
     IBtn {
         visible: r.pw

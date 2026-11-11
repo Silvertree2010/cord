@@ -2,6 +2,11 @@
 #include "cord/src/img.cxxqt.h"
 #include <QMetaObject>
 #include <QPointer>
+#include <QQuickWindow>
+#include <QTimer>
+#include <QElapsedTimer>
+#include <QGuiApplication>
+#include <QDir>
 #include <atomic>
 #include <memory>
 
@@ -87,4 +92,37 @@ public:
 void reg_img(QQmlApplicationEngine& e) {
     e.addImageProvider(QStringLiteral("cordm"), new MProv);
     e.addImageProvider(QStringLiteral("cordv"), new VProv);
+    const QString shot = qEnvironmentVariable("CORD_SHOT");
+    if (!shot.isEmpty()) {
+        const int at = qEnvironmentVariableIntValue("CORD_SHOT_AT") > 0 ? qEnvironmentVariableIntValue("CORD_SHOT_AT") : 2500;
+        QObject::connect(&e, &QQmlApplicationEngine::objectCreated, &e, [shot, at](QObject* o, const QUrl&) {
+            auto* w = qobject_cast<QQuickWindow*>(o);
+            if (!w) return;
+            QTimer::singleShot(at, w, [w, shot]() {
+                w->grabWindow().save(shot);
+                QGuiApplication::quit();
+            });
+        });
+    }
+    const QString dir = qEnvironmentVariable("CORD_FILM");
+    if (dir.isEmpty()) return;
+    const int len = qEnvironmentVariableIntValue("CORD_FILM_LEN") > 0 ? qEnvironmentVariableIntValue("CORD_FILM_LEN") : 3000;
+    QDir().mkpath(dir);
+    QObject::connect(&e, &QQmlApplicationEngine::objectCreated, &e, [dir, len](QObject* o, const QUrl&) {
+        auto* w = qobject_cast<QQuickWindow*>(o);
+        if (!w) return;
+        auto* t = new QTimer(w);
+        auto* et = new QElapsedTimer;
+        et->start();
+        auto n = std::make_shared<int>(0);
+        t->setInterval(16);
+        QObject::connect(t, &QTimer::timeout, w, [w, t, et, n, dir, len]() {
+            const qint64 ms = et->elapsed();
+            QImage im = w->grabWindow().scaled(720, 450, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+            im.save(QStringLiteral("%1/%2_%3.png").arg(dir).arg(*n, 4, 10, QLatin1Char('0')).arg(ms));
+            ++*n;
+            if (ms > len) { t->stop(); QGuiApplication::quit(); }
+        });
+        t->start();
+    });
 }

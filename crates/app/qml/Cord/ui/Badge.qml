@@ -22,7 +22,7 @@ Item {
             anchors.centerIn: parent
             text: Th.svcName(r.sv)
             color: "#fff"
-            font.pixelSize: 10
+            font.pixelSize: Th.fsP
             font.family: Th.font
             font.weight: Font.Bold
         }

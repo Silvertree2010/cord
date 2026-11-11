@@ -56,7 +56,7 @@ Popup {
                     width: cl.implicitWidth + 18
                     radius: 13
                     color: cm.containsMouse ? Th.bg4 : Th.bg3
-                    Lbl { id: cl; anchors.centerIn: parent; text: modelData.name; font.pixelSize: 12; font.weight: Font.Medium }
+                    Lbl { id: cl; anchors.centerIn: parent; text: modelData.name; font.pixelSize: Th.fsXS; font.weight: Font.Medium }
                     MouseArea { id: cm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: gf.text = modelData.name }
                 }
             }

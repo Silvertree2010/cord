@@ -62,12 +62,20 @@ Rectangle {
             Layout.preferredHeight: 48
             color: "transparent"
             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Th.ln }
+            Flickable {
+              anchors.fill: parent
+              clip: true
+              contentWidth: tabs.width + 32
+              contentHeight: height
+              boundsBehavior: Flickable.StopAtBounds
+              interactive: contentWidth > width
             Row {
-                anchors.verticalCenter: parent.verticalCenter
+                id: tabs
+                y: (48 - height) / 2
                 x: 16
                 spacing: 6
-                Ico { n: "users"; col: Th.tx2; anchors.verticalCenter: parent.verticalCenter }
-                Lbl { text: "Friends"; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter; rightPadding: 12 }
+                Ico { visible: r.width >= 640; n: "users"; col: Th.tx2; anchors.verticalCenter: parent.verticalCenter }
+                Lbl { visible: r.width >= 640; text: "Friends"; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter; rightPadding: 12 }
                 Repeater {
                     model: [["on", "Online"], ["all", "All"], ["pend", "Pending"], ["blk", "Blocked"]]
                     Rectangle {
@@ -96,6 +104,7 @@ Rectangle {
                     Lbl { id: afl; anchors.centerIn: parent; text: "Add Friend"; color: r.tab === "add" ? Th.ac : Th.acTx; font.weight: Font.DemiBold }
                     MouseArea { id: afm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: r.tab = "add" }
                 }
+            }
             }
         }
         Column {
@@ -208,7 +217,7 @@ Rectangle {
                         width: parent.width
                         text: row.f.k === "In" ? "Incoming request" : row.f.k === "Out" ? "Outgoing request" : row.f.k === "Block" ? "Blocked" : row.p && row.p.act ? row.p.act : row.p ? ({ On: "Online", Idle: "Idle", Dnd: "Do not disturb", Off: "Offline" })[row.p.st] : "Offline"
                         color: Th.tx3
-                        font.pixelSize: 12
+                        font.pixelSize: Th.fsXS
                     }
                 }
                 Row {

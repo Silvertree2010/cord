@@ -43,12 +43,12 @@ Rectangle {
             width: parent.width
             text: (r.ch ? S.chName(r.ch.rid) : "") + (r.ch && r.ch.grid && S.gmap[r.ch.grid] ? " / " + S.gmap[r.ch.grid].name : "")
             color: Th.tx2
-            font.pixelSize: 11
+            font.pixelSize: Th.fsT
         }
         Lbl {
             text: [r.cs.ping ? r.cs.ping + " ms" : "", S.f("callTimer") ? r.el : ""].filter(x => x).join("  ·  ")
             color: Th.tx3
-            font.pixelSize: 11
+            font.pixelSize: Th.fsT
         }
     }
     IBtn {

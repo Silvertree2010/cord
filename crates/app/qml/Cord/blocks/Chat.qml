@@ -69,8 +69,9 @@ Rectangle {
         }
         mm.clear()
         arr = rows
-        for (let i = 0; i < rows.length; i++) mm.append(entry(rows[i], secs[i]))
-        if (stick) Qt.callLater(() => lv.positionViewAtEnd())
+        mm.append(rows.map((w, i) => entry(w, secs[i])))
+        if (stick) lv.positionViewAtEnd()
+        if (r.swPend) { r.swPend = false; swA.restart() }
     }
     function prepend(list) {
         Qt.callLater(() => r.wantMems(list))
@@ -190,11 +191,14 @@ Rectangle {
     }
 
     property bool liveAdd: false
+    property bool swPend: false
     onCidChanged: {
         liveAdd = false
-        swA.restart()
+        swA.stop()
+        lv.opacity = 0
+        swPend = true
         reset()
-        if (!cid || cid === "inbox") return
+        if (!cid || cid === "inbox") { swPend = false; swA.restart(); return }
         const u = S.unr[cid]
         mark = u ? u.n : 0
         loading = true
@@ -324,7 +328,7 @@ Rectangle {
             Layout.fillHeight: true
             clip: true
             model: mm
-            cacheBuffer: 2000
+            cacheBuffer: 400
             topMargin: 12
             bottomMargin: 4
             boundsBehavior: Flickable.StopAtBounds

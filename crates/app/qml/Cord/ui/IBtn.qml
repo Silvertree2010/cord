@@ -21,7 +21,7 @@ Rectangle {
     Keys.onEnterPressed: r.clicked()
     Keys.onSpacePressed: r.clicked()
     color: red ? (ma.containsMouse ? Qt.lighter(Th.err, 1.1) : Th.a(Th.err, 0.2)) : act ? Th.sel : ma.containsMouse ? Th.hov : "transparent"
-    Behavior on color { ColorAnimation { duration: 90 } }
+    Behavior on color { ColorAnimation { duration: Th.mF } }
     scale: ma.pressed ? 0.9 : 1
     Behavior on scale { NumberAnimation { duration: Th.mF; easing.type: Easing.OutBack } }
     Ico {
