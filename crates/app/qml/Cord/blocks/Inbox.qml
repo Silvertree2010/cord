@@ -79,16 +79,12 @@ Rectangle {
                     Lbl { width: parent.width; text: (modelData.c.grid ? "#" : "@") + S.chName(modelData.c.rid); font.weight: Font.DemiBold }
                     Lbl { width: parent.width; text: modelData.c.grid && S.gmap[modelData.c.grid] ? S.gmap[modelData.c.grid].name : "Direct message"; color: Th.tx3; font.pixelSize: Th.fsS - 1 }
                 }
-                Rectangle {
+                Cnt {
                     visible: modelData.u.ment > 0
+                    n: modelData.u.ment
                     anchors.right: parent.right
                     anchors.rightMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
-                    height: 18
-                    width: Math.max(18, ibn.implicitWidth + 10)
-                    radius: 9
-                    color: Th.mr
-                    Lbl { id: ibn; anchors.centerIn: parent; text: modelData.u.ment > 99 ? "99+" : modelData.u.ment; color: Th.wh; font.pixelSize: Th.fsT; font.weight: Font.Bold }
                 }
                 Rectangle {
                     visible: modelData.u.ment === 0 && modelData.u.n > 0

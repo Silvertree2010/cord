@@ -169,18 +169,13 @@ Rectangle {
                     x: -((r.width - r.isz) / 2) + 2
                     anchors.verticalCenter: parent.verticalCenter
                 }
-                Rectangle {
+                Cnt {
                     visible: ft.un.m > 0 && !ft.open
-                    height: 16
-                    width: Math.max(16, fmt.implicitWidth + 8)
-                    radius: 8
-                    color: Th.mr
-                    border.color: Th.bg
-                    border.width: 2
+                    n: ft.un.m
+                    ring: true
                     anchors.right: parent.right
                     anchors.top: parent.top
                     anchors.margins: -5
-                    Lbl { id: fmt; anchors.centerIn: parent; text: ft.un.m > 99 ? "99+" : ft.un.m; color: Th.wh; font.pixelSize: Th.fsP; font.weight: Font.Bold }
                 }
                 MouseArea { id: fm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: S.toggleFold(row.f.id) }
                 Tip { text: row.f ? (row.f.name || modelData.gs.map(g => g.name).slice(0, 3).join(", ")) : ""; hov: fm.containsMouse; side: r.hz ? "b" : "r" }

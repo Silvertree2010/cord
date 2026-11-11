@@ -309,14 +309,10 @@ Rectangle {
                         color: Th.tx2
                         font.weight: Font.Bold
                     }
-                    Rectangle {
+                    Cnt {
                         visible: !!u && u.ment > 0
-                        height: 16
-                        width: Math.max(16, mn.implicitWidth + 8)
-                        radius: 8
-                        color: Th.mr
+                        n: u ? u.ment : 0
                         anchors.verticalCenter: parent.verticalCenter
-                        Lbl { id: mn; anchors.centerIn: parent; text: u ? u.ment : ""; color: Th.wh; font.pixelSize: Th.fsT; font.weight: Font.Bold }
                     }
 
                 }
@@ -452,16 +448,12 @@ Rectangle {
                 anchors.rightMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
             }
-            Rectangle {
+            Cnt {
                 visible: !!u && u.ment > 0
-                height: 16
-                width: Math.max(16, mn2.implicitWidth + 8)
-                radius: 8
-                color: Th.mr
+                n: u ? u.ment : 0
                 anchors.right: parent.right
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
-                Lbl { id: mn2; anchors.centerIn: parent; text: u ? u.ment : ""; color: Th.wh; font.pixelSize: Th.fsT; font.weight: Font.Bold }
             }
             Ico {
                 id: xb

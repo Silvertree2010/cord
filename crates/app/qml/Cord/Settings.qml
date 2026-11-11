@@ -689,29 +689,28 @@ Rectangle {
             Opt { t: "Noise suppression"; d: "Filter background noise from your microphone"; on: S.ui.ns !== false; onTog: v => { S.setUi("ns", v); S.c.cset("voice.json", JSON.stringify({ ns: v, vad: S.ui.vad || -50, ptt: !!S.ui.ptt })) } }
             Opt { t: "Push to talk"; d: "Only send audio while the key is held (" + (Qt.platform.os === "osx" ? "⌃`" : "Ctrl+`") + ", while cord is focused)"; on: !!S.ui.ptt; onTog: v => { S.setUi("ptt", v); S.c.cset("voice.json", JSON.stringify({ ns: S.ui.ns !== false, vad: S.ui.vad || -50, ptt: v })) } }
             }
-            Sub { text: "Input sensitivity" }
-            Sld {
-                width: parent.width
-                lab: true
-                unit: " dB"
-                from: -80
-                to: -10
-                value: S.ui.vad || -50
-                onMoved: { S.setUi("vad", value); S.c.cset("voice.json", JSON.stringify({ ns: S.ui.ns !== false, vad: value, ptt: !!S.ui.ptt })) }
+            Group {
+                Row_ {
+                    t: "Input sensitivity"
+                    d: "Microphone level that counts as speaking"
+                    Sld {
+                        anchors.right: parent.right
+                        anchors.rightMargin: 16
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 280
+                        lab: true
+                        unit: " dB"
+                        from: -80
+                        to: -10
+                        value: S.ui.vad || -50
+                        onMoved: { S.setUi("vad", value); S.c.cset("voice.json", JSON.stringify({ ns: S.ui.ns !== false, vad: value, ptt: !!S.ui.ptt })) }
+                    }
+                }
             }
             Sub { text: "Screen share" }
-            Row {
-                spacing: 24
-                Column {
-                    spacing: 6
-                    Lbl { text: "Resolution"; color: Th.tx2; font.pixelSize: Th.fsS }
-                    Seg { opts: [["720", "720p"], ["1080", "1080p"], ["1440", "1440p"], ["2160", "4K"]]; cur: String(S.ui.sh || 1080); onPick: v => S.setUi("sh", parseInt(v)) }
-                }
-                Column {
-                    spacing: 6
-                    Lbl { text: "Frame rate"; color: Th.tx2; font.pixelSize: Th.fsS }
-                    Seg { opts: [["30", "30"], ["60", "60"], ["120", "120"], ["144", "144"]]; cur: String(S.ui.sfps || 60); onPick: v => S.setUi("sfps", parseInt(v)) }
-                }
+            Group {
+                Row_ { t: "Resolution"; d: "Capture size of your stream"; Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["720", "720p"], ["1080", "1080p"], ["1440", "1440p"], ["2160", "4K"]]; cur: String(S.ui.sh || 1080); onPick: v => S.setUi("sh", parseInt(v)) } }
+                Row_ { t: "Frame rate"; d: "Frames per second of your stream"; Seg { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: [["30", "30"], ["60", "60"], ["120", "120"], ["144", "144"]]; cur: String(S.ui.sfps || 60); onPick: v => S.setUi("sfps", parseInt(v)) } }
             }
             Group {
             FOpt { k: "streamq" }
@@ -742,7 +741,7 @@ Rectangle {
             }
             Sub { text: "Installed" }
             Group {
-            visible: S.mods.length > 0
+            Row_ { visible: S.mods.length === 0; t: "No mods installed"; d: "Add a folder with a main.qml to the mods folder, then press Reload" }
             Repeater {
                 model: S.mods
                 Opt {
@@ -753,7 +752,6 @@ Rectangle {
                 }
             }
             }
-            Lbl { visible: S.mods.length === 0; text: "No mods installed"; color: Th.tx3 }
         }
     }
 
