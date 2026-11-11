@@ -929,6 +929,7 @@ dependencies = [
  "cord-dc",
  "cord-hub",
  "cord-mx",
+ "cord-rtc",
  "cord-st",
  "cord-store",
  "cxx",

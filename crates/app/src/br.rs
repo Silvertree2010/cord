@@ -95,6 +95,8 @@ pub mod q {
         #[qinvokable]
         fn cset(self: &Core, n: &QString, v: &QString);
         #[qinvokable]
+        fn audio_devs(self: &Core) -> QString;
+        #[qinvokable]
         fn exists(self: &Core, p: &QString) -> bool;
         #[qinvokable]
         fn ls(self: &Core, sub: &QString, ext: &QString) -> QString;
@@ -665,6 +667,10 @@ impl q::Core {
 
     pub fn bad(&self, n: &QString) -> QString {
         QString::from(&files::bad(&qs(n)))
+    }
+
+    pub fn audio_devs(&self) -> QString {
+        QString::from(&cord_rtc::list_devs().to_string())
     }
 
     pub fn cset(&self, n: &QString, v: &QString) {

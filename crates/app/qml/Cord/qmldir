@@ -11,6 +11,7 @@ Ico 1.0 ui/Ico.qml
 Av 1.0 ui/Av.qml
 Badge 1.0 ui/Badge.qml
 Cnt 1.0 ui/Cnt.qml
+Sel 1.0 ui/Sel.qml
 Btn 1.0 ui/Btn.qml
 IBtn 1.0 ui/IBtn.qml
 Tog 1.0 ui/Tog.qml

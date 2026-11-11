@@ -204,6 +204,22 @@ impl Eng {
     }
 }
 
+pub fn list_devs() -> serde_json::Value {
+    let h = cpal::default_host();
+    fn one<I: Iterator<Item = cpal::Device>>(it: Result<I, cpal::Error>) -> Vec<serde_json::Value> {
+        it.map(|d| {
+            d.filter_map(|d| {
+                let id = d.id().ok()?.to_string();
+                let name = d.description().map(|x| x.name().to_string()).unwrap_or_else(|_| id.clone());
+                Some(serde_json::json!({ "id": id, "name": name }))
+            })
+            .collect()
+        })
+        .unwrap_or_default()
+    }
+    serde_json::json!({ "in": one(h.input_devices()), "out": one(h.output_devices()) })
+}
+
 fn pick(h: &cpal::Host, id: &Option<String>, inp: bool) -> Result<cpal::Device> {
     if let Some(s) = id
         && let Ok(did) = s.parse::<cpal::DeviceId>()

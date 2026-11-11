@@ -12,6 +12,7 @@ cord-core.workspace = true
 cord-hub.workspace = true
 cord-store.workspace = true
 cord-dc.workspace = true
+cord-rtc.workspace = true
 cord-mx.workspace = true
 cord-st.workspace = true
 cord-cap.workspace = true

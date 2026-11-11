@@ -284,10 +284,15 @@ QtObject {
         return ["midnight", "graphite", "paper", "mono"].concat(c.scheme() ? ["caelestia"] : []).map(n => ({ id: n, path: n === "caelestia" ? "" : q + n + ".json", user: false }))
             .concat(b.map(p => ({ id: p.split("/").pop().replace(".json", ""), path: p, user: true })))
     }
+    property Connections schemeWatch: Connections {
+        target: Qt.styleHints
+        function onColorSchemeChanged() { if (s.ui.sys) s.loadTheme() }
+    }
     function loadTheme() {
         const T = Th
         try {
-            const n = ui.theme || "midnight"
+            let n = ui.theme || "midnight"
+            if (ui.sys) n = Qt.styleHints.colorScheme === Qt.ColorScheme.Light ? "paper" : (n === "paper" ? "midnight" : n)
             const t = themes().find(x => x.id === n) || themes()[0]
             T.apply(pj(c.rdf(c.qml() + "/Cord/themes/graphite.json"), {}))
             if (t.id === "caelestia") {

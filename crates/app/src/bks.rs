@@ -154,6 +154,9 @@ pub fn vapply(d: &cord_dc::Dc) {
     e.ns(v["ns"].as_bool().unwrap_or(true));
     e.ptt_mode(v["ptt"].as_bool().unwrap_or(false));
     e.vad(v["vad"].as_f64().map(|x| x as f32).or(Some(-50.0)));
+    let dv = |k: &str| v[k].as_str().filter(|s| !s.is_empty()).map(String::from);
+    e.dev_in(dv("in"));
+    e.dev_out(dv("out"));
 }
 
 pub fn vapply_all() {

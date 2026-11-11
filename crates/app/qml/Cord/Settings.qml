@@ -256,6 +256,15 @@ Rectangle {
         }
     }
 
+    function vsave() {
+        S.c.cset("voice.json", JSON.stringify({ ns: S.ui.ns !== false, vad: S.ui.vad || -50, ptt: !!S.ui.ptt, "in": S.ui.vin || "", out: S.ui.vout || "" }))
+    }
+    property var adev: ({ "in": [], out: [] })
+    function adevs() {
+        try { adev = JSON.parse(S.c.audio_devs()) } catch (e) { adev = { "in": [], out: [] } }
+    }
+    function dopts(l) { return [["", "System default"]].concat(l.map(d => [d.id, d.name])) }
+
     component Sub: Lbl { font.pixelSize: Th.fsS - 1; font.weight: Font.Bold; font.letterSpacing: 0.6; font.capitalization: Font.AllUppercase; color: Th.tx2; topPadding: 24; bottomPadding: 6 }
     component Row_: Item {
         id: rw
@@ -512,6 +521,7 @@ Rectangle {
         Column {
             spacing: 8
             Sub { text: "Theme"; topPadding: 4 }
+            Group { Opt { t: "Follow system appearance"; d: "Switch between light and dark with macOS or your desktop"; on: !!S.ui.sys; onTog: v => { S.setUi("sys", v); S.loadTheme() } } }
             Flow {
                 width: parent.width
                 spacing: 10
@@ -684,10 +694,17 @@ Rectangle {
         id: voiceP
         Column {
             spacing: 8
-            Sub { text: "Input"; topPadding: 4 }
+            Component.onCompleted: r.adevs()
+            Sub { text: "Devices"; topPadding: 4 }
             Group {
-            Opt { t: "Noise suppression"; d: "Filter background noise from your microphone"; on: S.ui.ns !== false; onTog: v => { S.setUi("ns", v); S.c.cset("voice.json", JSON.stringify({ ns: v, vad: S.ui.vad || -50, ptt: !!S.ui.ptt })) } }
-            Opt { t: "Push to talk"; d: "Only send audio while the key is held (" + (Qt.platform.os === "osx" ? "⌃`" : "Ctrl+`") + ", while cord is focused)"; on: !!S.ui.ptt; onTog: v => { S.setUi("ptt", v); S.c.cset("voice.json", JSON.stringify({ ns: S.ui.ns !== false, vad: S.ui.vad || -50, ptt: v })) } }
+                Row_ { t: "Microphone"; d: "Input device for calls"; Sel { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: r.dopts(r.adev["in"]); cur: S.ui.vin || ""; onPick: v => { S.setUi("vin", v); r.vsave() } } }
+                Row_ { t: "Speakers"; d: "Output device for calls"; Sel { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; opts: r.dopts(r.adev.out); cur: S.ui.vout || ""; onPick: v => { S.setUi("vout", v); r.vsave() } } }
+            }
+            Lbl { width: parent.width; text: "Device changes apply the next time you join a call."; color: Th.tx2; font.pixelSize: Th.fsS }
+            Sub { text: "Input" }
+            Group {
+            Opt { t: "Noise suppression"; d: "Filter background noise from your microphone"; on: S.ui.ns !== false; onTog: v => { S.setUi("ns", v); r.vsave() } }
+            Opt { t: "Push to talk"; d: "Only send audio while the key is held (" + (Qt.platform.os === "osx" ? "⌃`" : "Ctrl+`") + ", while cord is focused)"; on: !!S.ui.ptt; onTog: v => { S.setUi("ptt", v); r.vsave() } }
             }
             Group {
                 Row_ {
@@ -703,7 +720,7 @@ Rectangle {
                         from: -80
                         to: -10
                         value: S.ui.vad || -50
-                        onMoved: { S.setUi("vad", value); S.c.cset("voice.json", JSON.stringify({ ns: S.ui.ns !== false, vad: value, ptt: !!S.ui.ptt })) }
+                        onMoved: { S.setUi("vad", value); r.vsave() }
                     }
                 }
             }
